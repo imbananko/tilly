@@ -25,6 +25,7 @@ public class VoteEntity {
 
   public enum Value {
     UP,
+    EXPLAIN,
     DOWN
   }
 
