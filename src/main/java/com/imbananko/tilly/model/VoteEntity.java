@@ -24,9 +24,19 @@ public class VoteEntity {
   private Value value;
 
   public enum Value {
-    UP,
-    EXPLAIN,
-    DOWN
+    UP("\uD83D\uDC8E"),
+    EXPLAIN("\uD83E\uDD14"),
+    DOWN("\uD83D\uDCA9");
+
+    private String emoji;
+
+    Value(String emoji) {
+      this.emoji = emoji;
+    }
+
+    public String getEmoji() {
+      return emoji;
+    }
   }
 
   @NoArgsConstructor
