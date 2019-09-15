@@ -140,8 +140,8 @@ public class MemeManager extends TelegramLongPollingBot {
                                             memeEntity.getTargetChatId(),
                                             UP)
                                         == 0
-                                    ? UP.emoji
-                                    : UP.emoji
+                                    ? UP.getEmoji()
+                                    : UP.getEmoji()
                                         + " "
                                         + voteRepository.countByFileIdAndChatIdAndValue(
                                             memeEntity.getFileId(),
@@ -155,8 +155,8 @@ public class MemeManager extends TelegramLongPollingBot {
                                             memeEntity.getTargetChatId(),
                                             DOWN)
                                         == 0
-                                    ? DOWN.emoji
-                                    : DOWN.emoji
+                                    ? DOWN.getEmoji()
+                                    : DOWN.getEmoji()
                                         + " "
                                         + voteRepository.countByFileIdAndChatIdAndValue(
                                             memeEntity.getFileId(),
