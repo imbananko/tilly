@@ -28,9 +28,11 @@ public class VoteEntity {
     DOWN("\uD83D\uDCA9");
 
     private String emoji;
-    Value(String emoji){
+
+    Value(String emoji) {
       this.emoji = emoji;
     }
+
     public String getEmoji() {
       return emoji;
     }
