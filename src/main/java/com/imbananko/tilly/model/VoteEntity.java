@@ -24,17 +24,12 @@ public class VoteEntity {
   private Value value;
 
   public enum Value {
-    UP {
-      @Override
-      public String toString() {
-        return "\uD83D\uDC8E";
-      }
-    },
-    DOWN {
-      @Override
-      public String toString() {
-        return "\uD83D\uDCA9";
-      }
+    UP("\uD83D\uDC8E"),
+    DOWN("\uD83D\uDCA9");
+
+    public String emoji;
+    Value(String emoji){
+      this.emoji = emoji;
     }
   }
 
