@@ -159,8 +159,8 @@ public class MemeManager extends TelegramLongPollingBot {
                   memeEntity.getFileId(), memeEntity.getTargetChatId(), voteValue
               );
           return new InlineKeyboardButton()
-              .setText(voteCount == 0 ? voteValue.toString() : voteValue.toString() + " " + voteCount)
-              .setCallbackData(voteValue.toString());
+              .setText(voteCount == 0 ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+              .setCallbackData(voteValue.name());
         };
 
     return new InlineKeyboardMarkup()
