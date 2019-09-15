@@ -25,6 +25,7 @@ public class VoteEntity {
 
   public enum Value {
     UP("\uD83D\uDC8E"),
+    EXPLAIN("\uD83E\uDD14"),
     DOWN("\uD83D\uDCA9");
 
     private String emoji;
