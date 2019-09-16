@@ -4,15 +4,12 @@ import com.imbananko.tilly.model.VoteEntity;
 import lombok.experimental.UtilityClass;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @UtilityClass
 public class TelegramPredicates {
-  private final Set<String> voteValues =
-      Arrays.stream(VoteEntity.Value.values()).map(Enum::toString).collect(Collectors.toSet());
+  private final Set<VoteEntity.Value> voteValues = Set.of(VoteEntity.Value.values());
 
   public Predicate<Update> hasPhoto() {
     return update -> update.hasMessage() && update.getMessage().hasPhoto();
@@ -20,6 +17,7 @@ public class TelegramPredicates {
 
   public Predicate<Update> hasVote() {
     return update ->
-        update.hasCallbackQuery() && voteValues.contains(update.getCallbackQuery().getData());
+        update.hasCallbackQuery()
+            && voteValues.contains(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()));
   }
 }

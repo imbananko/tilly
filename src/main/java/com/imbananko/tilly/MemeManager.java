@@ -126,11 +126,11 @@ public class MemeManager extends TelegramLongPollingBot {
                     "Failed to update meme=" + meme + ". Exception=" + throwable.getMessage()));
 
     if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN)) {
-      var explainCount =
+      final var explainCount =
           voteRepository.countByFileIdAndChatIdAndValue(meme.getFileId(), meme.getTargetChatId(), EXPLAIN);
 
       if (explainCount == 2) {
-        var relpyText =
+        final var replyText =
             "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
                 + ", поясни за мем";
         Try.of(
@@ -139,7 +139,7 @@ public class MemeManager extends TelegramLongPollingBot {
                         new SendMessage()
                             .setChatId(message.getChatId())
                             .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
-                            .setText(relpyText)))
+                            .setText(replyText)))
             .onSuccess(ignore -> log.info("Successful reply for explaining"))
             .onFailure(
                 throwable ->
