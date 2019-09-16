@@ -1,0 +1,3 @@
+language: java
+jdk: openjdk12
+script: ./gradlew bootJar jib -PdockerUser=$DOCKER_USER -PdockerPassword=$DOCKER_PASSWORD
