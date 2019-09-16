@@ -25,6 +25,7 @@ import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
+import static io.vavr.Predicates.allOf;
 
 @Component
 @Slf4j
@@ -62,7 +63,7 @@ public class MemeManager extends TelegramLongPollingBot {
   public void onUpdateReceived(Update update) {
     Match(update)
         .of(
-            Case($(TelegramPredicates.hasPhoto()), this::processMeme),
+            Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), this::processMeme),
             Case($(TelegramPredicates.hasVote()), this::processVote),
             Case($(), () -> null));
   }

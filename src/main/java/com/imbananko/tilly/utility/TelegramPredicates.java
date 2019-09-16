@@ -15,6 +15,10 @@ public class TelegramPredicates {
     return update -> update.hasMessage() && update.getMessage().hasPhoto();
   }
 
+  public Predicate<Update> isP2PChat() {
+    return update -> update.hasMessage() && update.getMessage().getChat().isUserChat();
+  }
+
   public Predicate<Update> hasVote() {
     return update ->
         update.hasCallbackQuery()
