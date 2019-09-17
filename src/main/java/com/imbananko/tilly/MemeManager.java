@@ -1,6 +1,7 @@
 package com.imbananko.tilly;
 
 import com.imbananko.tilly.model.MemeEntity;
+import com.imbananko.tilly.model.Statistics;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.VoteRepository;
@@ -21,7 +22,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -84,7 +84,7 @@ public class MemeManager extends TelegramLongPollingBot {
                         .setChatId(chatId)
                         .setPhoto(meme.getFileId())
                         .setCaption("Sender: " + meme.getAuthorUsername())
-                        .setReplyMarkup(createMarkup(meme))))
+                        .setReplyMarkup(createMarkup(new Statistics()))))
         .onSuccess(ignore -> log.info("Sent meme=" + meme))
         .onFailure(
             throwable ->
@@ -109,8 +109,10 @@ public class MemeManager extends TelegramLongPollingBot {
     if (voteRepository.exists(voteEntity)) {
       voteRepository.delete(voteEntity);
     } else {
-      voteRepository.save(voteEntity);
+      voteRepository.insertOrUpdate(voteEntity);
     }
+
+    final var statistics = new Statistics(voteRepository.getStats(meme.getFileId(), meme.getTargetChatId()));
 
     Try.of(
             () ->
@@ -119,58 +121,48 @@ public class MemeManager extends TelegramLongPollingBot {
                         .setMessageId(message.getMessageId())
                         .setChatId(message.getChatId())
                         .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
-                        .setReplyMarkup(createMarkup(meme))))
+                        .setReplyMarkup(createMarkup(statistics))))
         .onSuccess(ignore -> log.info("Updated meme=" + meme))
         .onFailure(
             throwable ->
                 log.error(
                     "Failed to update meme=" + meme + ". Exception=" + throwable.getMessage()));
 
-    if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN)) {
-      final var explainCount =
-          voteRepository.countByFileIdAndChatIdAndValue(meme.getFileId(), meme.getTargetChatId(), EXPLAIN);
+    if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.explainCount == 3L) {
 
-      if (explainCount == 2) {
-        final var replyText =
-            "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
-                + ", поясни за мем";
-        Try.of(
-                () ->
-                    execute(
-                        new SendMessage()
-                            .setChatId(message.getChatId())
-                            .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
-                            .setText(replyText)))
-            .onSuccess(ignore -> log.info("Successful reply for explaining"))
-            .onFailure(
-                throwable ->
-                    log.error(
-                        "Failed to reply for explaining. Exception=" + throwable.getMessage()));
-      }
+      final var replyText =
+          "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
+              + ", поясни за мем";
+      Try.of(
+              () ->
+                  execute(
+                      new SendMessage()
+                          .setChatId(message.getChatId())
+                          .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
+                          .setText(replyText)))
+          .onSuccess(ignore -> log.info("Successful reply for explaining"))
+          .onFailure(
+              throwable ->
+                  log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
     }
 
     return voteEntity;
   }
 
-  private InlineKeyboardMarkup createMarkup(MemeEntity memeEntity) {
-    Function<VoteEntity.Value, InlineKeyboardButton> createVoteInlineKeyboardButton =
-        voteValue -> {
-          final var voteCount =
-              voteRepository.countByFileIdAndChatIdAndValue(
-                  memeEntity.getFileId(), memeEntity.getTargetChatId(), voteValue
-              );
-          return new InlineKeyboardButton()
-              .setText(voteCount == 0 ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
-              .setCallbackData(voteValue.name());
-        };
-
+  private static InlineKeyboardMarkup createMarkup(Statistics statistics) {
     return new InlineKeyboardMarkup()
         .setKeyboard(
             new ArrayList<>(
                 List.of(
                     List.of(
-                        createVoteInlineKeyboardButton.apply(UP),
-                        createVoteInlineKeyboardButton.apply(EXPLAIN),
-                        createVoteInlineKeyboardButton.apply(DOWN)))));
+                        createVoteInlineKeyboardButton(UP, statistics.upCount),
+                        createVoteInlineKeyboardButton(EXPLAIN, statistics.explainCount),
+                        createVoteInlineKeyboardButton(DOWN, statistics.downCount)))));
+  }
+
+  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount) {
+      return new InlineKeyboardButton()
+              .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+              .setCallbackData(voteValue.name());
   }
 }
