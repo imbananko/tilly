@@ -16,8 +16,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    compile('com.github.xabgesagtx:telegram-spring-boot-starter:0.19')
+    compile 'org.telegram:telegrambots-spring-boot-starter:4.1.2'
     compileOnly 'org.projectlombok:lombok:1.18.8'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
     compile group: 'io.vavr', name: 'vavr', version: '0.10.0'
