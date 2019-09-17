@@ -13,7 +13,7 @@ public class Statistics {
         this.downCount = voteCount(stats, VoteEntity.Value.DOWN);
     }
 
-    public Statistics() {
+    private Statistics() {
         this.upCount = 0L;
         this.explainCount = 0L;
         this.downCount = 0L;
@@ -24,4 +24,6 @@ public class Statistics {
                 .filter(it -> it.value.equals(voteValue))
                 .findAny().map(it -> it.count).orElse(0L);
     }
+
+    public static Statistics zeroStatistics = new Statistics();
 }

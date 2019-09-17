@@ -23,6 +23,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.imbananko.tilly.model.Statistics.zeroStatistics;
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.allOf;
@@ -84,7 +85,7 @@ public class MemeManager extends TelegramLongPollingBot {
                         .setChatId(chatId)
                         .setPhoto(meme.getFileId())
                         .setCaption("Sender: " + meme.getAuthorUsername())
-                        .setReplyMarkup(createMarkup(new Statistics()))))
+                        .setReplyMarkup(createMarkup(zeroStatistics))))
         .onSuccess(ignore -> log.info("Sent meme=" + meme))
         .onFailure(
             throwable ->
