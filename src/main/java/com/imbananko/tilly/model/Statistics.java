@@ -1,7 +1,10 @@
 package com.imbananko.tilly.model;
 
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
+@NoArgsConstructor
 public class Statistics {
     public long upCount;
     public long explainCount;
@@ -11,12 +14,6 @@ public class Statistics {
         this.upCount = voteCount(stats, VoteEntity.Value.UP);
         this.explainCount = voteCount(stats, VoteEntity.Value.EXPLAIN);
         this.downCount = voteCount(stats, VoteEntity.Value.DOWN);
-    }
-
-    private Statistics() {
-        this.upCount = 0L;
-        this.explainCount = 0L;
-        this.downCount = 0L;
     }
 
     private static long voteCount(List<StatsEntity> stats, VoteEntity.Value voteValue) {
