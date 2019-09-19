@@ -125,11 +125,11 @@ public class MemeManager extends TelegramLongPollingBot {
                         .setChatId(message.getChatId())
                         .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
                         .setReplyMarkup(createMarkup(statistics))))
-        .onSuccess(ignore -> log.info("Updated meme=" + meme))
+        .onSuccess(ignore -> log.info("Processed vote=" + voteEntity))
         .onFailure(
             throwable ->
                 log.error(
-                    "Failed to update meme=" + meme + ". Exception=" + throwable.getMessage()));
+                    "Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
 
     if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.explainCount == 3L) {
 
