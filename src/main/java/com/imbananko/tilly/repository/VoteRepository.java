@@ -1,7 +1,8 @@
 package com.imbananko.tilly.repository;
 
-import com.imbananko.tilly.model.StatsEntity;
+import com.imbananko.tilly.model.Statistics.StatsEntity;
 import com.imbananko.tilly.model.VoteEntity;
+import io.vavr.collection.List;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -9,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 
 @Repository
 public interface VoteRepository extends CrudRepository<VoteEntity, VoteEntity.VoteKey> {
