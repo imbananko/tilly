@@ -1,5 +1,4 @@
-name: Java CI
-
+name: Tilly CD
 on:
  push:
   branches:
@@ -17,4 +16,4 @@ jobs:
       with:
         java-version: 11
     - name: Build with Gradle
-      run: ./gradlew bootJar
+      run: ./gradlew bootJar jib -PdockerUser=${{ secrets.DOCKER_USER }} -PdockerPassword=${{ secrets.DOCKER_PASSWORD }}
