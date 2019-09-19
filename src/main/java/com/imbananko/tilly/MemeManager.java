@@ -1,14 +1,5 @@
 package com.imbananko.tilly;
 
-import static com.imbananko.tilly.model.Statistics.zeroStatistics;
-import static com.imbananko.tilly.model.VoteEntity.Value.DOWN;
-import static com.imbananko.tilly.model.VoteEntity.Value.EXPLAIN;
-import static com.imbananko.tilly.model.VoteEntity.Value.UP;
-import static io.vavr.API.$;
-import static io.vavr.API.Case;
-import static io.vavr.API.Match;
-import static io.vavr.Predicates.allOf;
-
 import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.Statistics;
 import com.imbananko.tilly.model.VoteEntity;
@@ -16,7 +7,6 @@ import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.VoteRepository;
 import com.imbananko.tilly.utility.TelegramPredicates;
 import io.vavr.control.Try;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,12 +20,21 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+
+import static com.imbananko.tilly.model.Statistics.zeroStatistics;
+import static com.imbananko.tilly.model.VoteEntity.Value.*;
+import static io.vavr.API.*;
+import static io.vavr.Predicates.allOf;
+
 @Component
 @Slf4j
 public class MemeManager extends TelegramLongPollingBot {
 
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
+    private final ForkJoinPool pool;
 
   @Value("${target.chat.id}")
   private long chatId;
@@ -50,6 +49,8 @@ public class MemeManager extends TelegramLongPollingBot {
   public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository) {
     this.memeRepository = memeRepository;
     this.voteRepository = voteRepository;
+      this.pool = new ForkJoinPool(8);
+      Runtime.getRuntime().addShutdownHook(new Thread(pool::shutdownNow));
   }
 
   @Override
@@ -64,11 +65,15 @@ public class MemeManager extends TelegramLongPollingBot {
 
   @Override
   public void onUpdateReceived(Update update) {
-    Match(update)
-        .of(
-            Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), this::processMeme),
-            Case($(TelegramPredicates.hasVote()), this::processVote),
-            Case($(), () -> null));
+      pool.execute(
+              () ->
+                      Match(update)
+                              .of(
+                                      Case(
+                                              $(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())),
+                                              this::processMeme),
+                                      Case($(TelegramPredicates.hasVote()), this::processVote),
+                                      Case($(), () -> null)));
   }
 
   private MemeEntity processMeme(Update update) {
@@ -115,7 +120,8 @@ public class MemeManager extends TelegramLongPollingBot {
       voteRepository.insertOrUpdate(voteEntity);
     }
 
-    final var statistics = new Statistics(voteRepository.getStats(meme.getFileId(), meme.getTargetChatId()));
+      final var statistics =
+              new Statistics(voteRepository.getStats(meme.getFileId(), meme.getTargetChatId()));
 
     Try.of(
             () ->
@@ -129,19 +135,25 @@ public class MemeManager extends TelegramLongPollingBot {
         .onFailure(
             throwable ->
                 log.error(
-                    "Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
+                        "Failed to process vote="
+                                + voteEntity
+                                + ". Exception="
+                                + throwable.getMessage()));
 
-    if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.explainCount == 3L) {
+      if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN)
+              && statistics.explainCount == 3L) {
 
       final var replyText =
-          "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
+              "@"
+                      + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
               + ", поясни за мем";
       Try.of(
               () ->
                   execute(
                       new SendMessage()
                           .setChatId(message.getChatId())
-                          .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
+                              .setReplyToMessageId(
+                                      update.getCallbackQuery().getMessage().getMessageId())
                           .setText(replyText)))
           .onSuccess(ignore -> log.info("Successful reply for explaining"))
           .onFailure(
@@ -162,9 +174,10 @@ public class MemeManager extends TelegramLongPollingBot {
                     createVoteInlineKeyboardButton(DOWN, statistics.downCount))));
   }
 
-  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount) {
-      return new InlineKeyboardButton()
-              .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
-              .setCallbackData(voteValue.name());
+    private static InlineKeyboardButton createVoteInlineKeyboardButton(
+            VoteEntity.Value voteValue, long voteCount) {
+        return new InlineKeyboardButton()
+                .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+                .setCallbackData(voteValue.name());
   }
 }
