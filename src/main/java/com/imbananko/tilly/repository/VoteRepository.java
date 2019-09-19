@@ -1,6 +1,6 @@
 package com.imbananko.tilly.repository;
 
-import com.imbananko.tilly.model.Statistics.StatsEntity;
+import com.imbananko.tilly.model.StatsEntity;
 import com.imbananko.tilly.model.VoteEntity;
 import io.vavr.collection.List;
 import org.springframework.data.jpa.repository.Modifying;

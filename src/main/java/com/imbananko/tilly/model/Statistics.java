@@ -1,7 +1,6 @@
 package com.imbananko.tilly.model;
 
 import io.vavr.collection.List;
-import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
 
@@ -24,11 +23,4 @@ public class Statistics {
 
   public static Statistics zeroStatistics = new Statistics();
 
-  @AllArgsConstructor
-  public static class StatsEntity {
-
-    VoteEntity.Value value;
-    long count;
-
-  }
 }
