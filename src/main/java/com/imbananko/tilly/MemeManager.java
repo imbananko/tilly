@@ -1,5 +1,14 @@
 package com.imbananko.tilly;
 
+import static com.imbananko.tilly.model.Statistics.zeroStatistics;
+import static com.imbananko.tilly.model.VoteEntity.Value.DOWN;
+import static com.imbananko.tilly.model.VoteEntity.Value.EXPLAIN;
+import static com.imbananko.tilly.model.VoteEntity.Value.UP;
+import static io.vavr.API.$;
+import static io.vavr.API.Case;
+import static io.vavr.API.Match;
+import static io.vavr.Predicates.allOf;
+
 import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.Statistics;
 import com.imbananko.tilly.model.VoteEntity;
@@ -7,6 +16,7 @@ import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.VoteRepository;
 import com.imbananko.tilly.utility.TelegramPredicates;
 import io.vavr.control.Try;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,14 +29,6 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.imbananko.tilly.model.Statistics.zeroStatistics;
-import static com.imbananko.tilly.model.VoteEntity.Value.*;
-import static io.vavr.API.*;
-import static io.vavr.Predicates.allOf;
 
 @Component
 @Slf4j
@@ -153,12 +155,11 @@ public class MemeManager extends TelegramLongPollingBot {
   private static InlineKeyboardMarkup createMarkup(Statistics statistics) {
     return new InlineKeyboardMarkup()
         .setKeyboard(
-            new ArrayList<>(
+            List.of(
                 List.of(
-                    List.of(
-                        createVoteInlineKeyboardButton(UP, statistics.upCount),
-                        createVoteInlineKeyboardButton(EXPLAIN, statistics.explainCount),
-                        createVoteInlineKeyboardButton(DOWN, statistics.downCount)))));
+                    createVoteInlineKeyboardButton(UP, statistics.upCount),
+                    createVoteInlineKeyboardButton(EXPLAIN, statistics.explainCount),
+                    createVoteInlineKeyboardButton(DOWN, statistics.downCount))));
   }
 
   private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount) {

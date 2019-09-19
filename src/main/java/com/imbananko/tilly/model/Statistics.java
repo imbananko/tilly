@@ -1,26 +1,34 @@
 package com.imbananko.tilly.model;
 
+import io.vavr.collection.List;
+import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 
 @NoArgsConstructor
 public class Statistics {
-    public long upCount;
-    public long explainCount;
-    public long downCount;
 
-    public Statistics(List<StatsEntity> stats) {
-        this.upCount = voteCount(stats, VoteEntity.Value.UP);
-        this.explainCount = voteCount(stats, VoteEntity.Value.EXPLAIN);
-        this.downCount = voteCount(stats, VoteEntity.Value.DOWN);
-    }
+  public long upCount;
+  public long explainCount;
+  public long downCount;
 
-    private static long voteCount(List<StatsEntity> stats, VoteEntity.Value voteValue) {
-        return stats.stream()
-                .filter(it -> it.value.equals(voteValue))
-                .findAny().map(it -> it.count).orElse(0L);
-    }
+  public Statistics(List<StatsEntity> stats) {
+    this.upCount = voteCount(stats, VoteEntity.Value.UP);
+    this.explainCount = voteCount(stats, VoteEntity.Value.EXPLAIN);
+    this.downCount = voteCount(stats, VoteEntity.Value.DOWN);
+  }
 
-    public static Statistics zeroStatistics = new Statistics();
+  private static long voteCount(List<StatsEntity> stats, VoteEntity.Value voteValue) {
+    return stats.find(it -> it.value.equals(voteValue)).map(it -> it.count).getOrElse(0L);
+  }
+
+  public static Statistics zeroStatistics = new Statistics();
+
+  @AllArgsConstructor
+  public static class StatsEntity {
+
+    VoteEntity.Value value;
+    long count;
+
+  }
 }
