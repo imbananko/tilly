@@ -1,30 +1,21 @@
 package com.imbananko.tilly.model;
 
-import java.io.Serializable;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.Id;
-import javax.persistence.IdClass;
-import javax.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Table(name = "vote")
-@Entity
+import java.io.Serializable;
+
 @Builder(toBuilder = true)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@IdClass(VoteEntity.VoteKey.class)
 public class VoteEntity {
-  @Id private String fileId;
-  @Id private String username;
-  @Id private Long chatId;
+  private String fileId;
+  private String username;
+  private Long chatId;
 
-  @Enumerated(EnumType.STRING)
   private Value value;
 
   public enum Value {

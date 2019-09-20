@@ -1,5 +1,6 @@
 package com.imbananko.tilly.model;
 
+import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import lombok.NoArgsConstructor;
 
@@ -11,14 +12,14 @@ public class Statistics {
   public long explainCount;
   public long downCount;
 
-  public Statistics(List<StatsEntity> stats) {
-    this.upCount = voteCount(stats, VoteEntity.Value.UP);
-    this.explainCount = voteCount(stats, VoteEntity.Value.EXPLAIN);
-    this.downCount = voteCount(stats, VoteEntity.Value.DOWN);
+  public Statistics(List<Tuple2<VoteEntity.Value, Long>> rawStats) {
+    this.upCount = voteCount(rawStats, VoteEntity.Value.UP);
+    this.explainCount = voteCount(rawStats, VoteEntity.Value.EXPLAIN);
+    this.downCount = voteCount(rawStats, VoteEntity.Value.DOWN);
   }
 
-  private static long voteCount(List<StatsEntity> stats, VoteEntity.Value voteValue) {
-    return stats.find(it -> it.value.equals(voteValue)).map(it -> it.count).getOrElse(0L);
+  private static long voteCount(List<Tuple2<VoteEntity.Value, Long>> rawStats, VoteEntity.Value voteValue) {
+    return rawStats.find(it -> it._1.equals(voteValue)).map(it -> it._2).getOrElse(0L);
   }
 
   public static Statistics zeroStatistics = new Statistics();
