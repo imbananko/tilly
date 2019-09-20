@@ -16,16 +16,16 @@ repositories {
 }
 
 dependencies {
-    compile 'org.telegram:telegrambots-spring-boot-starter:4.1.2'
     compileOnly 'org.projectlombok:lombok:1.18.8'
+    compile 'org.telegram:telegrambots-spring-boot-starter:4.1.2'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
     compile group: 'io.vavr', name: 'vavr', version: '0.10.0'
-    compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: '2.1.7.RELEASE'
+    compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-jdbc', version: '2.1.8.RELEASE'
     annotationProcessor 'org.projectlombok:lombok:1.18.8'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
-        exclude group: 'junit', module: 'junit'
     }
+    testCompile 'junit:junit:4.12'
 }
 
 bootJar {
