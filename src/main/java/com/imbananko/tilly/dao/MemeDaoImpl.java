@@ -4,15 +4,11 @@ import com.imbananko.tilly.model.MemeEntity;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import io.vavr.collection.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
 public class MemeDaoImpl implements MemeDao {
     private final Mono<Connection> connectionMono;
 
-    @Autowired
     public MemeDaoImpl(DaoModule daoModule) {
         this.connectionMono = daoModule.connectionMono;
     }
@@ -31,7 +27,8 @@ public class MemeDaoImpl implements MemeDao {
 
     @Override
     public Mono<MemeEntity> findById(String fileId) {
-        return connectionMono.flatMapMany(connection -> connection
+        return connectionMono
+                .flatMapMany(connection -> connection
                 .createStatement("SELECT author_username, target_chat_id FROM meme WHERE file_id= $1")
                 .bind("$1", fileId)
                 .execute())

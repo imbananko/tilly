@@ -6,16 +6,12 @@ import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
 public class VoteDaoImpl implements VoteDao {
 
     private final Mono<Connection> connectionMono;
 
-    @Autowired
     public VoteDaoImpl(DaoModule daoModule) {
         this.connectionMono = daoModule.connectionMono;
     }

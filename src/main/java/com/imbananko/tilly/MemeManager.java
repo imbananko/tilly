@@ -6,11 +6,9 @@ import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.Statistics;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.utility.TelegramPredicates;
+import com.typesafe.config.Config;
 import io.vavr.collection.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -19,6 +17,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import static com.imbananko.tilly.model.Statistics.zeroStatistics;
@@ -26,26 +25,25 @@ import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.allOf;
 
-@Component
 @Slf4j
 public class MemeManager extends TelegramLongPollingBot {
 
     private final MemeDao memeDao;
     private final VoteDao voteDao;
 
-    @Value("${target.chat.id}")
     private long chatId;
 
-    @Value("${bot.token}")
     private String token;
 
-    @Value("${bot.username}")
     private String username;
 
-    @Autowired
-    public MemeManager(MemeDao memeDao, VoteDao voteDao) {
+    MemeManager(MemeDao memeDao, VoteDao voteDao, Config config) {
         this.memeDao = memeDao;
         this.voteDao = voteDao;
+
+        this.chatId = config.getLong("target.chat.id");
+        this.token = config.getString("bot.token");
+        this.username = config.getString("bot.username");
     }
 
     @Override
@@ -64,11 +62,11 @@ public class MemeManager extends TelegramLongPollingBot {
                 .of(
                         Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), this::processMeme),
                         Case($(TelegramPredicates.hasVote()), this::processVote),
-                        Case($(), Mono.empty())
+                        Case($(), () -> null)
                 );
     }
 
-    private Mono<?> processMeme(Update update) {
+    private Disposable processMeme(Update update) {
         Message message = update.getMessage();
         MemeEntity meme = MemeEntity.builder()
                 .authorUsername(message.getChat().getUserName())
@@ -85,10 +83,11 @@ public class MemeManager extends TelegramLongPollingBot {
                 )
         ).flatMap(mes -> memeDao.save(meme))
                 .doOnSuccess(ignore -> log.info("Sent meme=" + meme))
-                .doOnError(throwable -> log.error("Failed to send meme=" + meme + ". Exception=" + throwable.getMessage()));
+                .doOnError(throwable -> log.error("Failed to send meme=" + meme + ". Exception=" + throwable.getMessage()))
+                .subscribe();
     }
 
-    private Mono<?> processVote(Update update) {
+    private Disposable processVote(Update update) {
         final Message message = update.getCallbackQuery().getMessage();
         final Mono<MemeEntity> memeMono = memeDao.findById(message.getPhoto().get(0).getFileId());
 
@@ -135,7 +134,7 @@ public class MemeManager extends TelegramLongPollingBot {
                                         }
                                     })
                     );
-        });
+        }).subscribe();
     }
 
     private static InlineKeyboardMarkup createMarkup(Statistics statistics) {
