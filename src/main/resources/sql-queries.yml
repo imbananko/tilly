@@ -1,0 +1,3 @@
+sql:
+  queries:
+    insertMeme: "insert into meme (file_id, author_username, target_chat_id) values (:fileId, :username, :chatId)"

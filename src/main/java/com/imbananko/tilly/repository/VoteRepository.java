@@ -8,7 +8,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-@SuppressWarnings({"ConstantConditions", "SqlResolve"})
+@SuppressWarnings({"ConstantConditions", "SqlResolve", "SqlDialectInspection"})
 @Repository
 public class VoteRepository {
 
@@ -19,7 +19,7 @@ public class VoteRepository {
   }
 
   public boolean exists(VoteEntity vote) {
-    String query = "select exists(select 1 from vote where file_id = :fileId and chat_id = :chatId and value = :value and username = :username)";
+    var query = "select exists(select 1 from vote where file_id = :fileId and chat_id = :chatId and value = :value and username = :username)";
     return template.queryForObject(query,
         new MapSqlParameterSource("chatId", vote.getChatId())
             .addValue("fileId", vote.getFileId())
@@ -28,7 +28,7 @@ public class VoteRepository {
   }
 
   public void insertOrUpdate(VoteEntity vote) {
-    String query = "insert into vote(file_id, chat_id, username, value) "
+    var query = "insert into vote(file_id, chat_id, username, value) "
         + "values (:fileId, :chatId, :username, :value) "
         + "on conflict (chat_id, file_id, username) do update set value = :value";
     template.update(query, new MapSqlParameterSource("chatId", vote.getChatId())
@@ -38,7 +38,7 @@ public class VoteRepository {
   }
 
   public void delete(VoteEntity vote) {
-    String query = "delete from vote where file_id = :fileId and chat_id = :chatId and username = :username and value = :value";
+    var query = "delete from vote where file_id = :fileId and chat_id = :chatId and username = :username and value = :value";
     template.update(query, new MapSqlParameterSource("chatId", vote.getChatId())
         .addValue("fileId", vote.getFileId())
         .addValue("value", vote.getValue().name())
@@ -46,7 +46,7 @@ public class VoteRepository {
   }
 
   public HashMap<Value, Long> getStats(String fileId, long chatId) {
-    String query = "select value, count(value) from vote where file_id = :fileId and chat_id = :chatId group by value";
+    var query = "select value, count(value) from vote where file_id = :fileId and chat_id = :chatId group by value";
     return HashMap.ofEntries(template.query(query,
         new MapSqlParameterSource("chatId", chatId).addValue("fileId", fileId),
         (rs, rowNum) ->

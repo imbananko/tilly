@@ -6,15 +6,9 @@ spring:
     url: url
     username: username
     password: password
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate.temp.use_jdbc_metadata_defaults: false
 
 bot:
   token: token
   username: username
 
-target.chat.id: target.chat.id
+target.chat.id: 0

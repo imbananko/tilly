@@ -21,6 +21,7 @@ dependencies {
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
     compile group: 'io.vavr', name: 'vavr', version: '0.10.0'
     compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-jdbc', version: '2.1.8.RELEASE'
+    compile "org.springframework.boot:spring-boot-configuration-processor"
     annotationProcessor 'org.projectlombok:lombok:1.18.8'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
