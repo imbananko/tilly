@@ -32,7 +32,7 @@ public class VoteDaoImpl implements VoteDao {
     @Override
     public Mono<Statistics> getStats(String fileId, long chatId) {
         return connectionMono.flatMapMany(connection -> connection
-                .createStatement("SELECT v.value as val, COUNT(v.value) as count FROM vote v WHERE v.fileId=$1 and v.chatId=$2 GROUP BY v.value")
+                .createStatement("SELECT v.value as val, COUNT(v.value) as count FROM vote v WHERE v.file_id=$1 and v.chat_id=$2 GROUP BY v.value")
                 .bind("$1", fileId)
                 .bind("$2", chatId)
                 .execute())
@@ -62,12 +62,13 @@ public class VoteDaoImpl implements VoteDao {
         return connectionMono.flatMapMany(connection -> connection
                 .createStatement(
                         "INSERT INTO vote(file_id, chat_id, username, value) VALUES ($1, $2, $3, $4) " +
-                                "ON CONFLICT (chat_id, file_id, username) DO UPDATE SET value=$4"
+                                "ON CONFLICT (chat_id, file_id, username) DO UPDATE SET value=$5"
                 )
                 .bind("$1", entity.getFileId())
                 .bind("$2", entity.getChatId())
                 .bind("$3", entity.getUsername())
                 .bind("$4", entity.getValue().name())
+                .bind("$5", entity.getValue().name())
                 .execute())
                 .flatMap(Result::getRowsUpdated)
                 .reduce(Integer::sum);

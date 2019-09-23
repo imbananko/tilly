@@ -3,7 +3,6 @@ package com.imbananko.tilly.dao;
 import com.imbananko.tilly.model.MemeEntity;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
-import io.vavr.collection.List;
 import reactor.core.publisher.Mono;
 
 public class MemeDaoImpl implements MemeDao {
@@ -23,21 +22,5 @@ public class MemeDaoImpl implements MemeDao {
                 .execute())
                 .flatMap(Result::getRowsUpdated)
                 .reduce(Integer::sum);
-    }
-
-    @Override
-    public Mono<MemeEntity> findById(String fileId) {
-        return connectionMono
-                .flatMapMany(connection -> connection
-                .createStatement("SELECT author_username, target_chat_id FROM meme WHERE file_id= $1")
-                .bind("$1", fileId)
-                .execute())
-                .flatMap(res -> res.map((row, rowMetadata) -> {
-                    String authorUsername = row.get("title", String.class);
-                    Long targetChatId = row.get("target_chat_id", Long.class);
-
-                    return new MemeEntity(fileId, authorUsername, targetChatId);
-                })).<List<MemeEntity>>reduceWith(List::empty, List::append)
-                .map(it -> it.headOption().getOrElseThrow(IndexOutOfBoundsException::new));
     }
 }

@@ -88,53 +88,51 @@ public class MemeManager extends TelegramLongPollingBot {
     }
 
     private Disposable processVote(Update update) {
-        final Message message = update.getCallbackQuery().getMessage();
-        final Mono<MemeEntity> memeMono = memeDao.findById(message.getPhoto().get(0).getFileId());
+        final var message = update.getCallbackQuery().getMessage();
+        final var fileId = message.getPhoto().get(0).getFileId();
+        final var targetChatId = message.getChatId();
 
-        return memeMono.flatMap(meme -> {
-            VoteEntity voteEntity =
-                    VoteEntity.builder()
-                            .chatId(chatId)
-                            .fileId(meme.getFileId())
-                            .username(update.getCallbackQuery().getFrom().getUserName())
-                            .value(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()))
-                            .build();
+        VoteEntity voteEntity = VoteEntity.builder()
+                .chatId(targetChatId)
+                .fileId(fileId)
+                .username(update.getCallbackQuery().getFrom().getUserName())
+                .value(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()))
+                .build();
 
-            return voteDao.exists(voteEntity)
-                    .flatMap(exists -> exists
-                            ? voteDao.delete(voteEntity)
-                            : voteDao.insertOrUpdate(voteEntity)
-                    )
-                    .flatMap(notUser -> voteDao.getStats(meme.getFileId(), meme.getTargetChatId()))
-                    .flatMap(statistics ->
-                            Mono.fromCallable(() -> execute(
-                                    new EditMessageReplyMarkup()
-                                            .setMessageId(message.getMessageId())
-                                            .setChatId(message.getChatId())
-                                            .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
-                                            .setReplyMarkup(createMarkup(statistics))
-                                    )
-                            ).doOnSuccess(ignore -> log.info("Processed vote=" + voteEntity))
-                                    .doOnError(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()))
-                                    .flatMap(notUsed -> {
-                                        if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.explainCount == 3L) {
-                                            final var replyText =
-                                                    "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
-                                                            + ", поясни за мем";
+        return voteDao.exists(voteEntity)
+                .flatMap(exists -> exists
+                        ? voteDao.delete(voteEntity)
+                        : voteDao.insertOrUpdate(voteEntity)
+                )
+                .flatMap(notUsed -> voteDao.getStats(fileId, targetChatId))
+                .flatMap(statistics ->
+                        Mono.fromCallable(() -> execute(
+                                new EditMessageReplyMarkup()
+                                        .setMessageId(message.getMessageId())
+                                        .setChatId(message.getChatId())
+                                        .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
+                                        .setReplyMarkup(createMarkup(statistics))
+                                )
+                        ).doOnSuccess(ignore -> log.info("Processed vote=" + voteEntity))
+                                .doOnError(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage(), throwable))
+                                .flatMap(notUsed -> {
+                                    if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.explainCount == 3L) {
+                                        final var replyText =
+                                                "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
+                                                        + ", поясни за мем";
 
-                                            return Mono.fromCallable(() -> execute(
-                                                    new SendMessage()
-                                                            .setChatId(message.getChatId())
-                                                            .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
-                                                            .setText(replyText)))
-                                                    .doOnSuccess(ignore -> log.info("Successful reply for explaining"))
-                                                    .doOnError(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
-                                        } else {
-                                            return Mono.empty();
-                                        }
-                                    })
-                    );
-        }).subscribe();
+                                        return Mono.fromCallable(() -> execute(
+                                                new SendMessage()
+                                                        .setChatId(message.getChatId())
+                                                        .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
+                                                        .setText(replyText)))
+                                                .doOnSuccess(ignore -> log.info("Successful reply for explaining"))
+                                                .doOnError(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
+                                    } else {
+                                        return Mono.empty();
+                                    }
+                                })
+                ).subscribe();
     }
 
     private static InlineKeyboardMarkup createMarkup(Statistics statistics) {
