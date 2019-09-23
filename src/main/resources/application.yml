@@ -12,3 +12,8 @@ bot:
   username: username
 
 target.chat.id: 0
+
+sqlka:
+  lol: 'kek'
+  queries:
+    lol: 'kek'
