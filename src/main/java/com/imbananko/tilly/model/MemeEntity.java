@@ -1,14 +1,12 @@
 package com.imbananko.tilly.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
 
 @Builder(toBuilder = true)
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@ToString
 public class MemeEntity {
   private String fileId;
   private String authorUsername;

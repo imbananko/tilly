@@ -10,11 +10,11 @@ import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -26,6 +26,7 @@ import static io.vavr.API.*;
 import static io.vavr.Predicates.allOf;
 
 @Slf4j
+@Component
 public class MemeManager extends TelegramLongPollingBot {
 
   private final MemeRepository memeRepository;
@@ -93,7 +94,7 @@ public class MemeManager extends TelegramLongPollingBot {
 
   private VoteEntity processVote(Update update) {
     final var message = update.getCallbackQuery().getMessage();
-    final var meme = memeRepository.findById(message.getPhoto().get(0).getFileId()).orElseThrow();
+    final var meme = memeRepository.findByFileId(message.getPhoto().get(0).getFileId()).orElseThrow();
 
     var voteEntity =
         VoteEntity.builder()
@@ -153,7 +154,7 @@ public class MemeManager extends TelegramLongPollingBot {
                 List.of(
                     createVoteInlineKeyboardButton(UP, stats.getOrElse(UP, 0L)),
                     createVoteInlineKeyboardButton(EXPLAIN, stats.getOrElse(EXPLAIN, 0L)),
-                    createVoteInlineKeyboardButton(DOWN, stats.getOrElse(EXPLAIN, 0L)))
+                    createVoteInlineKeyboardButton(DOWN, stats.getOrElse(DOWN, 0L)))
             ));
   }
 

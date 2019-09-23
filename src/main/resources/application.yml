@@ -3,18 +3,49 @@ spring:
     continue-on-error: true
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
+    password: password
     url: url
     username: username
-    password: password
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate.temp.use_jdbc_metadata_defaults: false
 
 bot:
   token: token
   username: username
 
-target.chat.id: target.chat.id
+target.chat.id: 0
+
+sql:
+  queries:
+    insertMeme: >
+      insert into meme (file_id, author_username, target_chat_id)
+      values (:fileId, :username, :chatId)
+    findMemeById: >
+      select file_id, author_username, target_chat_id
+      from meme
+      where file_id = :fileId
+    voteExists: >
+      select exists(
+        select 1 from vote
+        where
+          file_id = :fileId
+          and chat_id = :chatId
+          and value = :value
+          and username = :username)
+    insertOrUpdateVote: >
+      insert into vote(file_id, chat_id, username, value)
+      values (:fileId, :chatId, :username, :value)
+      on conflict (chat_id, file_id, username)
+      do update set value = :value
+    deleteVote: >
+      delete from vote
+      where
+        file_id = :fileId
+        and chat_id = :chatId
+        and username = :username
+        and value = :value
+    findVoteStats: >
+      select value, count(value)
+      from vote
+      where
+        file_id = :fileId
+        and chat_id = :chatId
+      group by value
