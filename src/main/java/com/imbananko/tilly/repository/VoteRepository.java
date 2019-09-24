@@ -1,52 +1,51 @@
 package com.imbananko.tilly.repository;
 
-import com.imbananko.tilly.model.StatsEntity;
 import com.imbananko.tilly.model.VoteEntity;
-import io.vavr.collection.List;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
+import com.imbananko.tilly.model.VoteEntity.Value;
+import com.imbananko.tilly.utility.SqlQueries;
+import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
 
 @Repository
-public interface VoteRepository extends CrudRepository<VoteEntity, VoteEntity.VoteKey> {
-  boolean existsByFileIdAndChatIdAndValueAndUsername(
-      String fileId, long chatId, VoteEntity.Value value, String username);
+public class VoteRepository {
 
-  default boolean exists(VoteEntity entity) {
-    return existsByFileIdAndChatIdAndValueAndUsername(
-        entity.getFileId(), entity.getChatId(), entity.getValue(), entity.getUsername());
+  private final NamedParameterJdbcTemplate template;
+  private final Map<String, String> queries;
+
+  public VoteRepository(NamedParameterJdbcTemplate template, SqlQueries queries) {
+    this.template = template;
+    this.queries = queries.getQueries();
   }
 
-  @Query(
-      "SELECT new com.imbananko.tilly.model.StatsEntity(v.value, COUNT(v.value)) "
-          + "FROM VoteEntity v "
-          + "WHERE v.fileId=?1 and v.chatId=?2 "
-          + "GROUP BY v.value")
-  List<StatsEntity> getStats(String fileId, long chatId);
-
-  @Modifying
-  @Query(value = "DELETE FROM vote WHERE file_id=:fileId AND chat_id=:chatId AND username=:username", nativeQuery = true)
-  void delete(@Param("fileId") String fileId, @Param("chatId") long chatId, @Param("username") String username);
-
-  @Override
-  default void delete(VoteEntity entity) {
-    delete(entity.getFileId(), entity.getChatId(), entity.getUsername());
+  @SuppressWarnings("ConstantConditions")
+  public boolean exists(VoteEntity vote) {
+    return template.queryForObject(
+            queries.getOrElse("voteExists", null), getParams(vote), Boolean.class);
   }
 
-  @Transactional
-  @Modifying
-  @Query(value = "INSERT INTO vote(file_id, chat_id, username, value) VALUES (:fileId, :chatId, :username, :val) " +
-                 "ON CONFLICT (chat_id, file_id, username) DO UPDATE SET value=:val", nativeQuery = true)
-  void insertOrUpdate(@Param("fileId") String fileId,
-                      @Param("chatId") long chatId,
-                      @Param("username") String username,
-                      @Param("val") String val);
+  public int insertOrUpdate(VoteEntity vote) {
+    return template.update(queries.getOrElse("insertOrUpdateVote", null), getParams(vote));
+  }
 
-  default void insertOrUpdate(VoteEntity entity) {
-      insertOrUpdate(entity.getFileId(), entity.getChatId(), entity.getUsername(), entity.getValue().name());
+  public int delete(VoteEntity vote) {
+    return template.update(queries.getOrElse("deleteVote", null), getParams(vote));
+  }
+
+  public HashMap<Value, Long> getStats(String fileId, long chatId) {
+    return HashMap.ofEntries(template.query(queries.getOrElse("findVoteStats", null),
+        new MapSqlParameterSource("chatId", chatId).addValue("fileId", fileId),
+        (rs, rowNum) ->
+            new Tuple2<>(Value.valueOf(rs.getString("value")), rs.getLong("count"))));
+  }
+
+  private MapSqlParameterSource getParams(VoteEntity vote) {
+    return new MapSqlParameterSource("chatId", vote.getChatId())
+            .addValue("fileId", vote.getFileId())
+            .addValue("value", vote.getValue().name())
+            .addValue("username", vote.getUsername());
   }
 }

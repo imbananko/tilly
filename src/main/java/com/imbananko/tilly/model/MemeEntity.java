@@ -1,22 +1,14 @@
 package com.imbananko.tilly.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
-@Table(name = "meme")
-@Entity
 @Builder(toBuilder = true)
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@ToString
 public class MemeEntity {
-  @Id private String fileId;
+  private String fileId;
   private String authorUsername;
   private Long targetChatId;
 }
