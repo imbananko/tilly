@@ -1,16 +1,14 @@
 package com.imbananko.tilly.utility;
 
 import com.imbananko.tilly.model.VoteEntity;
+import io.vavr.control.Try;
 import lombok.experimental.UtilityClass;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.Set;
 import java.util.function.Predicate;
 
 @UtilityClass
 public class TelegramPredicates {
-  private final Set<VoteEntity.Value> voteValues = Set.of(VoteEntity.Value.values());
-
   public Predicate<Update> hasPhoto() {
     return update -> update.hasMessage() && update.getMessage().hasPhoto();
   }
@@ -20,8 +18,12 @@ public class TelegramPredicates {
   }
 
   public Predicate<Update> hasVote() {
-    return update ->
-        update.hasCallbackQuery()
-            && voteValues.contains(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()));
+    return update -> {
+      var voteParts = update.getCallbackQuery().getData().split(" ");
+
+      return update.hasCallbackQuery()
+        && voteParts.length > 1
+        && Try.of(() -> VoteEntity.Value.valueOf(voteParts[0])).isSuccess();
+    };
   }
 }
