@@ -1,11 +1,12 @@
 package com.imbananko.tilly;
 
 import com.imbananko.tilly.model.MemeEntity;
+import com.imbananko.tilly.model.Statistics;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.VoteRepository;
 import com.imbananko.tilly.utility.TelegramPredicates;
-import io.vavr.collection.HashMap;
+import io.vavr.collection.Set;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.util.List;
 
+import static com.imbananko.tilly.model.Statistics.emptyStatistics;
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.allOf;
@@ -81,7 +83,7 @@ public class MemeManager extends TelegramLongPollingBot {
         .setChatId(chatId)
         .setPhoto(meme.getFileId())
         .setCaption("Sender: " + meme.getAuthorUsername())
-        .setReplyMarkup(createMarkup(HashMap.empty()))
+        .setReplyMarkup(createMarkup(emptyStatistics))
       )
     )
       .onSuccess(ignore -> log.info("Sent meme=" + meme))
@@ -143,20 +145,23 @@ public class MemeManager extends TelegramLongPollingBot {
     return voteEntity;
   }
 
-  private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats) {
+  private static InlineKeyboardMarkup createMarkup(Statistics stats) {
     return new InlineKeyboardMarkup().setKeyboard(
       List.of(
         List.of(
-          createVoteInlineKeyboardButton(UP, stats.getOrElse(UP, 0L)),
-          createVoteInlineKeyboardButton(EXPLAIN, stats.getOrElse(EXPLAIN, 0L)),
-          createVoteInlineKeyboardButton(DOWN, stats.getOrElse(DOWN, 0L)))
+          createVoteInlineKeyboardButton(UP, stats.upVoters),
+          createVoteInlineKeyboardButton(EXPLAIN, stats.explainVoters),
+          createVoteInlineKeyboardButton(DOWN, stats.downVoters))
       )
     );
   }
 
-  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount) {
+  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, Set<String> voters) {
+    var voteCount = voters.length();
+    var votersString = voters.mkString("[", ",", "]");
+
     return new InlineKeyboardButton()
-      .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
-      .setCallbackData(voteValue.name());
+      .setText(voteCount == 0 ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+      .setCallbackData(voteValue.name() + " " + votersString);
   }
 }

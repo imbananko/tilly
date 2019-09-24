@@ -7,8 +7,6 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
 @Repository
 public class MemeRepository {
   private final NamedParameterJdbcTemplate template;
