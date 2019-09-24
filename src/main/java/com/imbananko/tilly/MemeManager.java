@@ -194,20 +194,20 @@ public class MemeManager extends TelegramLongPollingBot {
     var newUpStats = oldStats.upVoters.contains(voteUsername)
       ? oldStats.upVoters.remove(voteUsername)
       : UP.equals(voteValue)
-      ? oldStats.upVoters.add(voteUsername)
-      : oldStats.upVoters;
+        ? oldStats.upVoters.add(voteUsername)
+        : oldStats.upVoters;
 
     var newExplainStats = oldStats.explainVoters.contains(voteUsername)
       ? oldStats.explainVoters.remove(voteUsername)
       : EXPLAIN.equals(voteValue)
-      ? oldStats.explainVoters.add(voteUsername)
-      : oldStats.explainVoters;
+        ? oldStats.explainVoters.add(voteUsername)
+        : oldStats.explainVoters;
 
     var newDownStats = oldStats.downVoters.contains(voteUsername)
       ? oldStats.downVoters.remove(voteUsername)
       : DOWN.equals(voteValue)
-      ? oldStats.downVoters.add(voteUsername)
-      : oldStats.downVoters;
+        ? oldStats.downVoters.add(voteUsername)
+        : oldStats.downVoters;
 
     return new Statistics(newUpStats, newExplainStats, newDownStats);
   }
