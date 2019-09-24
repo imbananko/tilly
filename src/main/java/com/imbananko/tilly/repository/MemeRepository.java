@@ -21,20 +21,8 @@ public class MemeRepository {
 
   public void save(MemeEntity memeEntity) {
     template.update(queries.getOrElse("insertMeme", null),
-        new MapSqlParameterSource("fileId", memeEntity.getFileId())
-            .addValue("username", memeEntity.getAuthorUsername())
-            .addValue("chatId", memeEntity.getTargetChatId()));
-  }
-
-  public Optional<MemeEntity> findByFileId(String fileId) {
-    return Optional.ofNullable(
-        template.queryForObject(queries.getOrElse("findMemeById", null),
-            new MapSqlParameterSource("fileId", fileId),
-            (rs, rowNum) ->
-                MemeEntity.builder()
-                    .authorUsername(rs.getString("author_username"))
-                    .fileId(rs.getString("file_id"))
-                    .targetChatId(rs.getLong("target_chat_id"))
-                    .build()));
+      new MapSqlParameterSource("fileId", memeEntity.getFileId())
+        .addValue("username", memeEntity.getAuthorUsername())
+        .addValue("chatId", memeEntity.getTargetChatId()));
   }
 }

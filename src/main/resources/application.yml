@@ -18,10 +18,6 @@ sql:
     insertMeme: >
       insert into meme (file_id, author_username, target_chat_id)
       values (:fileId, :username, :chatId)
-    findMemeById: >
-      select file_id, author_username, target_chat_id
-      from meme
-      where file_id = :fileId
     voteExists: >
       select exists(
         select 1 from vote
