@@ -127,12 +127,12 @@ public class MemeManager extends TelegramLongPollingBot {
       .onFailure(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
 
     return CompletableFuture.runAsync(() -> {
-      final var voteWasExisted =
+      final var doesVoteExist =
         (currentStats.upVoters.contains(voterUsername) && voteValue.equals(UP))
           || (currentStats.explainVoters.contains(voterUsername) && voteValue.equals(EXPLAIN))
           || (currentStats.downVoters.contains(voterUsername) && voteValue.equals(DOWN));
 
-      if (voteWasExisted) {
+      if (doesVoteExist) {
         voteRepository.delete(voteEntity);
       } else {
         voteRepository.insertOrUpdate(voteEntity);
