@@ -4,5 +4,5 @@ import com.imbananko.tilly.model.MemeEntity;
 import reactor.core.publisher.Mono;
 
 public interface MemeDao {
-    Mono<Integer> save(MemeEntity meme);
+  Mono<Integer> save(MemeEntity meme);
 }

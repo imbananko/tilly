@@ -12,19 +12,19 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 @Slf4j
 public class TillyApplication {
 
-    public static void main(String[] args) {
-        ApiContextInitializer.init();
+  public static void main(String[] args) {
+    ApiContextInitializer.init();
 
-        final var config = ConfigFactory.load();
-        final var daoModule = new DaoModule(config);
-        final var memeDao = new MemeDaoImpl(daoModule);
-        final var voteDao = new VoteDaoImpl(daoModule);
-        final var memeManager = new MemeManager(memeDao, voteDao, config);
+    final var config = ConfigFactory.load();
+    final var daoModule = new DaoModule(config);
+    final var memeDao = new MemeDaoImpl(daoModule);
+    final var voteDao = new VoteDaoImpl(daoModule);
+    final var memeManager = new MemeManager(memeDao, voteDao, config);
 
-        TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
+    TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
 
-        Try.of(() -> telegramBotsApi.registerBot(memeManager))
-                .onSuccess(ignore -> log.info("Bot registered"))
-                .onFailure(error -> log.error("Bot registration was failed because of", error));
-    }
+    Try.of(() -> telegramBotsApi.registerBot(memeManager))
+      .onSuccess(ignore -> log.info("Bot registered"))
+      .onFailure(error -> log.error("Bot registration was failed because of", error));
+  }
 }

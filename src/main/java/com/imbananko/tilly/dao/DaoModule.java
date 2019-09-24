@@ -12,19 +12,19 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 @NoArgsConstructor
 public class DaoModule {
-    Mono<Connection> connectionMono;
+  Mono<Connection> connectionMono;
 
-    public DaoModule(Config config) {
-        final ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
-                .option(DRIVER, "postgresql")
-                .option(HOST, config.getString("database.host"))
-                .option(PORT, config.getInt("database.port"))  // optional, defaults to
-                .option(USER, config.getString("database.user"))
-                .option(PASSWORD, config.getString("database.password"))
-                .option(DATABASE, config.getString("database.name"))  // optional
-                .build());
+  public DaoModule(Config config) {
+    final ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
+      .option(DRIVER, "postgresql")
+      .option(HOST, config.getString("database.host"))
+      .option(PORT, config.getInt("database.port"))  // optional, defaults to 5432
+      .option(USER, config.getString("database.user"))
+      .option(PASSWORD, config.getString("database.password"))
+      .option(DATABASE, config.getString("database.name"))
+      .build());
 
-        connectionMono = Mono.from(connectionFactory.create());
+    connectionMono = Mono.from(connectionFactory.create());
 
-    }
+  }
 }
