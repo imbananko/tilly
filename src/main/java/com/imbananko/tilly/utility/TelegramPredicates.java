@@ -1,6 +1,7 @@
 package com.imbananko.tilly.utility;
 
 import com.imbananko.tilly.model.VoteEntity;
+import io.vavr.control.Try;
 import lombok.experimental.UtilityClass;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
@@ -21,7 +22,8 @@ public class TelegramPredicates {
 
   public Predicate<Update> hasVote() {
     return update ->
-        update.hasCallbackQuery()
-            && voteValues.contains(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()));
+        update.hasCallbackQuery() &&
+          Try.of(() -> voteValues.contains(VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0])))
+            .getOrElse(false);
   }
 }

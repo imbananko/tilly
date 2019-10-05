@@ -21,6 +21,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -84,7 +86,7 @@ public class MemeManager extends TelegramLongPollingBot {
         .setChatId(chatId)
         .setPhoto(meme.getFileId())
         .setCaption(memeCaption)
-        .setReplyMarkup(createMarkup(HashMap.empty()))
+        .setReplyMarkup(createMarkup(HashMap.empty(), false))
       )
     )
       .onSuccess(ignore -> log.info("Sent meme=" + meme))
@@ -98,13 +100,19 @@ public class MemeManager extends TelegramLongPollingBot {
     final var message = update.getCallbackQuery().getMessage();
     final var fileId = message.getPhoto().get(0).getFileId();
     final var targetChatId = message.getChatId();
+    final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
+    final var wasExplained = message
+      .getReplyMarkup()
+      .getKeyboard().get(0).get(1)
+      .getCallbackData()
+      .contains("EXPLAINED");
 
     var voteEntity =
       VoteEntity.builder()
         .chatId(targetChatId)
         .fileId(fileId)
         .username(update.getCallbackQuery().getFrom().getUserName())
-        .value(VoteEntity.Value.valueOf(update.getCallbackQuery().getData()))
+        .value(vote)
         .build();
 
     if (voteRepository.exists(voteEntity)) {
@@ -114,22 +122,23 @@ public class MemeManager extends TelegramLongPollingBot {
     }
 
     final var statistics = voteRepository.getStats(fileId, targetChatId);
+    final var shouldMarkExplained = vote.equals(EXPLAIN) && !wasExplained && statistics.getOrElse(EXPLAIN, 0L) == 3L;
 
     Try.of(() -> execute(
       new EditMessageReplyMarkup()
         .setMessageId(message.getMessageId())
         .setChatId(message.getChatId())
         .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
-        .setReplyMarkup(createMarkup(statistics))
+        .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
       )
     )
       .onSuccess(ignore -> log.info("Processed vote=" + voteEntity))
       .onFailure(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
 
-    if (VoteEntity.Value.valueOf(update.getCallbackQuery().getData()).equals(EXPLAIN) && statistics.getOrElse(EXPLAIN, 0L) == 3L) {
+    if (shouldMarkExplained) {
 
       final var replyText =
-        "@" + update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "")
+        update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "@")
         + ", поясни за мем";
 
       Try.of(() -> execute(
@@ -146,20 +155,25 @@ public class MemeManager extends TelegramLongPollingBot {
     return voteEntity;
   }
 
-  private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats) {
+  private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, boolean markExplained) {
+    BiFunction<VoteEntity.Value, Long, InlineKeyboardButton> createVoteInlineKeyboardButton = (voteValue, voteCount) -> {
+      final var callbackData = voteValue.equals(EXPLAIN) && markExplained
+              ? voteValue.name() + " EXPLAINED"
+              : voteValue.name();
+
+      return new InlineKeyboardButton()
+              .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+              .setCallbackData(callbackData);
+    };
+
     return new InlineKeyboardMarkup().setKeyboard(
       List.of(
         List.of(
-          createVoteInlineKeyboardButton(UP, stats.getOrElse(UP, 0L)),
-          createVoteInlineKeyboardButton(EXPLAIN, stats.getOrElse(EXPLAIN, 0L)),
-          createVoteInlineKeyboardButton(DOWN, stats.getOrElse(DOWN, 0L)))
+          createVoteInlineKeyboardButton.apply(UP, stats.getOrElse(UP, 0L)),
+          createVoteInlineKeyboardButton.apply(EXPLAIN, stats.getOrElse(EXPLAIN, 0L)),
+          createVoteInlineKeyboardButton.apply(DOWN, stats.getOrElse(DOWN, 0L))
+        )
       )
     );
-  }
-
-  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount) {
-    return new InlineKeyboardButton()
-      .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
-      .setCallbackData(voteValue.name());
   }
 }
