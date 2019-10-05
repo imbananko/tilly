@@ -12,5 +12,6 @@ public class SqlQueries {
 
   public void setQueries(java.util.Map<String, String> queries) {
       this.queries = HashMap.ofAll(queries);
+
   }
 }
