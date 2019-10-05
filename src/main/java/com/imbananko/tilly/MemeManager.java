@@ -77,7 +77,7 @@ public class MemeManager extends TelegramLongPollingBot {
         .fileId(message.getPhoto().get(0).getFileId())
         .build();
     final var memeCaption =
-      Optional.ofNullable(message.getCaption()).map(it -> it + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
 
     Try.of(() -> execute(
       new SendPhoto()
