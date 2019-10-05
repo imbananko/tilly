@@ -20,6 +20,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -68,19 +71,21 @@ public class MemeManager extends TelegramLongPollingBot {
   }
 
   private MemeEntity processMeme(Update update) {
-    var message = update.getMessage();
-    var meme =
+    final var message = update.getMessage();
+    final var meme =
       MemeEntity.builder()
         .authorUsername(message.getChat().getUserName())
         .targetChatId(chatId)
         .fileId(message.getPhoto().get(0).getFileId())
         .build();
+    final var memeCaption =
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
 
     Try.of(() -> execute(
       new SendPhoto()
         .setChatId(chatId)
         .setPhoto(meme.getFileId())
-        .setCaption("Sender: " + meme.getAuthorUsername())
+        .setCaption(memeCaption)
         .setReplyMarkup(createMarkup(HashMap.empty(), false))
       )
     )
@@ -150,24 +155,25 @@ public class MemeManager extends TelegramLongPollingBot {
     return voteEntity;
   }
 
-  private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, Boolean markExplained) {
+  private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, boolean markExplained) {
+    BiFunction<VoteEntity.Value, Long, InlineKeyboardButton> createVoteInlineKeyboardButton = (voteValue, voteCount) -> {
+      final var callbackData = voteValue.equals(EXPLAIN) && markExplained
+              ? voteValue.name() + " EXPLAINED"
+              : voteValue.name();
+
+      return new InlineKeyboardButton()
+              .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
+              .setCallbackData(callbackData);
+    };
+
     return new InlineKeyboardMarkup().setKeyboard(
       List.of(
         List.of(
-          createVoteInlineKeyboardButton(UP, stats.getOrElse(UP, 0L), markExplained),
-          createVoteInlineKeyboardButton(EXPLAIN, stats.getOrElse(EXPLAIN, 0L), markExplained),
-          createVoteInlineKeyboardButton(DOWN, stats.getOrElse(DOWN, 0L), markExplained))
+          createVoteInlineKeyboardButton.apply(UP, stats.getOrElse(UP, 0L)),
+          createVoteInlineKeyboardButton.apply(EXPLAIN, stats.getOrElse(EXPLAIN, 0L)),
+          createVoteInlineKeyboardButton.apply(DOWN, stats.getOrElse(DOWN, 0L))
+        )
       )
     );
-  }
-
-  private static InlineKeyboardButton createVoteInlineKeyboardButton(VoteEntity.Value voteValue, long voteCount, Boolean markExplained) {
-    final var callbackData = voteValue.equals(EXPLAIN) && markExplained
-      ? voteValue.name() + " EXPLAINED"
-      : voteValue.name();
-
-    return new InlineKeyboardButton()
-      .setText(voteCount == 0L ? voteValue.getEmoji() : voteValue.getEmoji() + " " + voteCount)
-      .setCallbackData(callbackData);
   }
 }
