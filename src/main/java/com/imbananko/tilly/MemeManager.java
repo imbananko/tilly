@@ -20,6 +20,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -68,19 +69,21 @@ public class MemeManager extends TelegramLongPollingBot {
   }
 
   private MemeEntity processMeme(Update update) {
-    var message = update.getMessage();
-    var meme =
+    final var message = update.getMessage();
+    final var meme =
       MemeEntity.builder()
         .authorUsername(message.getChat().getUserName())
         .targetChatId(chatId)
         .fileId(message.getPhoto().get(0).getFileId())
         .build();
+    final var memeCaption =
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
 
     Try.of(() -> execute(
       new SendPhoto()
         .setChatId(chatId)
         .setPhoto(meme.getFileId())
-        .setCaption("Sender: " + meme.getAuthorUsername())
+        .setCaption(memeCaption)
         .setReplyMarkup(createMarkup(HashMap.empty()))
       )
     )
