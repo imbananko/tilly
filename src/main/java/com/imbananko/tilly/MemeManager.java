@@ -101,6 +101,9 @@ public class MemeManager extends TelegramLongPollingBot {
     final var fileId = message.getPhoto().get(0).getFileId();
     final var targetChatId = message.getChatId();
     final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
+    final var voteSender = update.getCallbackQuery().getFrom().getUserName();
+    final var memeSender = message.getCaption().split("Sender: ")[1];
+
     final var wasExplained = message
       .getReplyMarkup()
       .getKeyboard().get(0).get(1)
@@ -111,9 +114,11 @@ public class MemeManager extends TelegramLongPollingBot {
       VoteEntity.builder()
         .chatId(targetChatId)
         .fileId(fileId)
-        .username(update.getCallbackQuery().getFrom().getUserName())
+        .username(voteSender)
         .value(vote)
         .build();
+
+    if (voteSender.equals(memeSender)) return voteEntity;
 
     if (voteRepository.exists(voteEntity)) {
       voteRepository.delete(voteEntity);
