@@ -8,6 +8,8 @@ import lombok.ToString;
 @Getter
 @ToString
 public class VoteEntity {
+  private String memeId;
+  private Integer voterId;
   private String fileId;
   private String username;
   private Long chatId;

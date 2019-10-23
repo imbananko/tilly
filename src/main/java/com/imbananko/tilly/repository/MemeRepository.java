@@ -7,8 +7,6 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
 @Repository
 public class MemeRepository {
   private final NamedParameterJdbcTemplate template;
@@ -21,7 +19,9 @@ public class MemeRepository {
 
   public void save(MemeEntity memeEntity) {
     template.update(queries.getOrElse("insertMeme", null),
-      new MapSqlParameterSource("fileId", memeEntity.getFileId())
+      new MapSqlParameterSource("memeId", memeEntity.getMemeId())
+        .addValue("senderId", memeEntity.getSenderId())
+        .addValue("fileId", memeEntity.getFileId())
         .addValue("username", memeEntity.getAuthorUsername())
         .addValue("chatId", memeEntity.getTargetChatId()));
   }

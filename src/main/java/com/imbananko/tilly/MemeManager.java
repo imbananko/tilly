@@ -3,8 +3,10 @@ package com.imbananko.tilly;
 import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
+import com.imbananko.tilly.repository.UserRepository;
 import com.imbananko.tilly.repository.VoteRepository;
 import com.imbananko.tilly.utility.TelegramPredicates;
+import com.imbananko.tilly.utility.Helpers;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +18,14 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -34,6 +37,7 @@ public class MemeManager extends TelegramLongPollingBot {
 
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
+  private final UserRepository userRepository;
 
   @Value("${target.chat.id}")
   private long chatId;
@@ -45,9 +49,10 @@ public class MemeManager extends TelegramLongPollingBot {
   private String username;
 
   @Autowired
-  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository) {
+  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository, UserRepository userRepository) {
     this.memeRepository = memeRepository;
     this.voteRepository = voteRepository;
+    this.userRepository = userRepository;
   }
 
   @Override
@@ -70,39 +75,46 @@ public class MemeManager extends TelegramLongPollingBot {
       );
   }
 
-  private MemeEntity processMeme(Update update) {
+  private CompletableFuture<?> processMeme(Update update) {
     final var message = update.getMessage();
-    final var meme =
-      MemeEntity.builder()
-        .authorUsername(message.getChat().getUserName())
-        .targetChatId(chatId)
-        .fileId(message.getPhoto().get(0).getFileId())
-        .build();
+    final var fileId = message.getPhoto().get(0).getFileId();
+    final var authorUsername = message.getFrom().getUserName();
     final var memeCaption =
-      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
+        + "Sender: "
+        + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.getFrom().getId());
 
     Try.of(() -> execute(
       new SendPhoto()
         .setChatId(chatId)
-        .setPhoto(meme.getFileId())
+        .setPhoto(fileId)
         .setCaption(memeCaption)
         .setReplyMarkup(createMarkup(HashMap.empty(), false))
       )
     )
-      .onSuccess(ignore -> log.info("Sent meme=" + meme))
-      .onFailure(throwable -> log.error("Failed to send meme=" + meme + ". Exception=" + throwable.getMessage()));
+      .onSuccess(sentMemeMessage -> {
+        final var meme = MemeEntity.builder()
+          .memeId(Helpers.getMemeId(sentMemeMessage.getChatId(), sentMemeMessage.getMessageId()))
+          .senderId(message.getFrom().getId())
+          .authorUsername(authorUsername)
+          .targetChatId(chatId)
+          .fileId(message.getPhoto().get(0).getFileId())
+          .build();
+        log.info("Sent meme=" + meme);
+        memeRepository.save(meme);
+      })
+      .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getMessage()));
 
-    memeRepository.save(meme);
-    return meme;
+    return saveUser(message.getFrom());
   }
 
-  private VoteEntity processVote(Update update) {
+  private CompletableFuture<?> processVote(Update update) {
     final var message = update.getCallbackQuery().getMessage();
-    final var fileId = message.getPhoto().get(0).getFileId();
     final var targetChatId = message.getChatId();
+    final var memeId = Helpers.getMemeId(targetChatId, message.getMessageId());
+    final var fileId = message.getPhoto().get(0).getFileId();
     final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
-    final var voteSender = update.getCallbackQuery().getFrom().getUserName();
-    final var memeSender = message.getCaption().split("Sender: ")[1];
+    final var voteSender = update.getCallbackQuery().getFrom();
 
     final var wasExplained = message
       .getReplyMarkup()
@@ -112,13 +124,15 @@ public class MemeManager extends TelegramLongPollingBot {
 
     var voteEntity =
       VoteEntity.builder()
+        .memeId(memeId)
+        .voterId(voteSender.getId())
         .chatId(targetChatId)
         .fileId(fileId)
-        .username(voteSender)
+        .username(voteSender.getUserName())
         .value(vote)
         .build();
 
-    if (voteSender.equals(memeSender)) return voteEntity;
+    if (voteRepository.isSenderAndVoterSame(memeId, voteSender.getId())) return CompletableFuture.completedFuture(null);
 
     if (voteRepository.exists(voteEntity)) {
       voteRepository.delete(voteEntity);
@@ -126,7 +140,7 @@ public class MemeManager extends TelegramLongPollingBot {
       voteRepository.insertOrUpdate(voteEntity);
     }
 
-    final var statistics = voteRepository.getStats(fileId, targetChatId);
+    final var statistics = voteRepository.getStats(memeId);
     final var shouldMarkExplained = vote.equals(EXPLAIN) && !wasExplained && statistics.getOrElse(EXPLAIN, 0L) == 3L;
 
     Try.of(() -> execute(
@@ -157,7 +171,7 @@ public class MemeManager extends TelegramLongPollingBot {
         .onFailure(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
     }
 
-    return voteEntity;
+    return saveUser(update.getCallbackQuery().getFrom());
   }
 
   private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, boolean markExplained) {
@@ -180,5 +194,19 @@ public class MemeManager extends TelegramLongPollingBot {
         )
       )
     );
+  }
+
+  private CompletableFuture saveUser(User user) {
+    return CompletableFuture.runAsync(() -> {
+      if (!user.getBot()) {
+        userRepository.saveIfNotExists(user);
+      }
+    }).handle((res, throwable) -> {
+      if (throwable != null) {
+        log.error("Failed to save user " + user + ". Exception=" + throwable);
+      }
+
+      return null;
+    });
   }
 }

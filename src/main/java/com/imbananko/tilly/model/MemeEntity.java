@@ -8,6 +8,8 @@ import lombok.ToString;
 @Getter
 @ToString
 public class MemeEntity {
+  private String memeId;
+  private Integer senderId;
   private String fileId;
   private String authorUsername;
   private Long targetChatId;
