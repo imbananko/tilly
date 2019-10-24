@@ -22,11 +22,8 @@ sql:
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    isSenderAndVoterSame: >
-      select exists(
-        select 1 from meme
-        where meme_id = :memeId and sender_id = :voterId
-      )
+    findMemeSender: >
+      select sender_id from meme where meme_id = :memeId
     voteExists: >
       select exists(
         select 1 from vote
