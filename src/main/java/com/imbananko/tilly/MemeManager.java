@@ -5,8 +5,8 @@ import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.UserRepository;
 import com.imbananko.tilly.repository.VoteRepository;
-import com.imbananko.tilly.utility.TelegramPredicates;
 import com.imbananko.tilly.utility.Helpers;
+import com.imbananko.tilly.utility.TelegramPredicates;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,6 @@ import static io.vavr.Predicates.allOf;
 @Slf4j
 @Component
 public class MemeManager extends TelegramLongPollingBot {
-
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
   private final UserRepository userRepository;
@@ -133,7 +132,7 @@ public class MemeManager extends TelegramLongPollingBot {
         .value(vote)
         .build();
 
-    if (voteRepository.isSenderAndVoterSame(memeId, voteSender.getId()) || voteSender.getUserName().equals(memeSenderFromCaption)) {
+    if (voteSender.getUserName().equals(memeSenderFromCaption) || memeRepository.getMemeSender(memeId).equals(voteSender.getId())) {
       return CompletableFuture.completedFuture(null);
     }
 

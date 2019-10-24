@@ -26,15 +26,6 @@ public class VoteRepository {
     return template.queryForObject(queries.getOrElse("voteExists", null), getParams(vote), Boolean.class);
   }
 
-  @SuppressWarnings("ConstantConditions")
-  public boolean isSenderAndVoterSame(String memeId, Integer voterId) {
-    return template.queryForObject(
-      queries.getOrElse("isSenderAndVoterSame", null),
-      new MapSqlParameterSource("memeId", memeId).addValue("voterId", voterId),
-      Boolean.class
-    );
-  }
-
   public void insertOrUpdate(VoteEntity vote) {
     template.update(queries.getOrElse("insertOrUpdateVote", null), getParams(vote));
   }
