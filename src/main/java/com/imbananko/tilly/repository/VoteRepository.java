@@ -34,7 +34,7 @@ public class VoteRepository {
     template.update(queries.getOrElse("deleteVote", null), getParams(vote));
   }
 
-  public HashMap<Value, Long> getStats(Long chatId, Integer messageId) {
+  public HashMap<Value, Long> getStats(long chatId, int messageId) {
     return HashMap.ofEntries(template.query(queries.getOrElse("findVoteStats", null),
       new MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId),
       (rs, rowNum) ->

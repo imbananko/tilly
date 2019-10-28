@@ -31,12 +31,12 @@ sql:
           chat_id = :chatId
           and message_id = :messageId
           and voter_id = :voterId
-          and value = :value)
+          and value = :value::vote_value)
     insertOrUpdateVote: >
       insert into vote2(chat_id, message_id, voter_id, value)
-      values (:chatId, :messageId, :voterId, :value)
+      values (:chatId, :messageId, :voterId, :value::vote_value)
       on conflict (chat_id, message_id, voter_id)
-      do update set value = :value
+      do update set value = :value::vote_value
     deleteVote: >
       delete from vote2
       where
@@ -47,5 +47,5 @@ sql:
       select value, count(value)
       from vote2
       where
-        chat_id = :chatId and message_id = messageId
+        chat_id = :chatId and message_id = :messageId
       group by value
