@@ -22,7 +22,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -31,7 +30,6 @@ import static io.vavr.Predicates.allOf;
 @Slf4j
 @Component
 public class MemeManager extends TelegramLongPollingBot {
-
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
 
@@ -64,45 +62,49 @@ public class MemeManager extends TelegramLongPollingBot {
   public void onUpdateReceived(Update update) {
     Match(update)
       .of(
-        Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), this::processMeme),
-        Case($(TelegramPredicates.hasVote()), this::processVote),
+        Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), it -> run(() -> this.processMeme(it))),
+        Case($(TelegramPredicates.hasVote()), it -> run(() -> this.processVote(it))),
         Case($(), () -> null)
       );
   }
 
-  private MemeEntity processMeme(Update update) {
+  private void processMeme(Update update) {
     final var message = update.getMessage();
-    final var meme =
-      MemeEntity.builder()
-        .authorUsername(message.getChat().getUserName())
-        .targetChatId(chatId)
-        .fileId(message.getPhoto().get(0).getFileId())
-        .build();
+    final var fileId = message.getPhoto().get(0).getFileId();
+    final var authorUsername = message.getFrom().getUserName();
     final var memeCaption =
-      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("") + "Sender: " + meme.getAuthorUsername();
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
+        + "Sender: "
+        + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.getFrom().getId());
 
     Try.of(() -> execute(
       new SendPhoto()
         .setChatId(chatId)
-        .setPhoto(meme.getFileId())
+        .setPhoto(fileId)
         .setCaption(memeCaption)
         .setReplyMarkup(createMarkup(HashMap.empty(), false))
       )
     )
-      .onSuccess(ignore -> log.info("Sent meme=" + meme))
-      .onFailure(throwable -> log.error("Failed to send meme=" + meme + ". Exception=" + throwable.getMessage()));
-
-    memeRepository.save(meme);
-    return meme;
+      .onSuccess(sentMemeMessage -> {
+        final var meme = MemeEntity.builder()
+          .chatId(sentMemeMessage.getChatId())
+          .messageId(sentMemeMessage.getMessageId())
+          .senderId(message.getFrom().getId())
+          .fileId(message.getPhoto().get(0).getFileId())
+          .build();
+        log.info("Sent meme=" + meme);
+        memeRepository.save(meme);
+      })
+      .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getMessage()));
   }
 
-  private VoteEntity processVote(Update update) {
+  private void processVote(Update update) {
     final var message = update.getCallbackQuery().getMessage();
-    final var fileId = message.getPhoto().get(0).getFileId();
     final var targetChatId = message.getChatId();
+    final var messageId = message.getMessageId();
     final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
-    final var voteSender = update.getCallbackQuery().getFrom().getUserName();
-    final var memeSender = message.getCaption().split("Sender: ")[1];
+    final var voteSender = update.getCallbackQuery().getFrom();
+    final var memeSenderFromCaption = message.getCaption().split("Sender: ")[1];
 
     final var wasExplained = message
       .getReplyMarkup()
@@ -113,12 +115,14 @@ public class MemeManager extends TelegramLongPollingBot {
     var voteEntity =
       VoteEntity.builder()
         .chatId(targetChatId)
-        .fileId(fileId)
-        .username(voteSender)
+        .messageId(messageId)
+        .voterId(voteSender.getId())
         .value(vote)
         .build();
 
-    if (voteSender.equals(memeSender)) return voteEntity;
+    if (voteSender.getUserName().equals(memeSenderFromCaption) || memeRepository.getMemeSender(targetChatId, messageId).equals(voteSender.getId())) {
+      return;
+    }
 
     if (voteRepository.exists(voteEntity)) {
       voteRepository.delete(voteEntity);
@@ -126,13 +130,13 @@ public class MemeManager extends TelegramLongPollingBot {
       voteRepository.insertOrUpdate(voteEntity);
     }
 
-    final var statistics = voteRepository.getStats(fileId, targetChatId);
+    final var statistics = voteRepository.getStats(targetChatId, messageId);
     final var shouldMarkExplained = vote.equals(EXPLAIN) && !wasExplained && statistics.getOrElse(EXPLAIN, 0L) == 3L;
 
     Try.of(() -> execute(
       new EditMessageReplyMarkup()
-        .setMessageId(message.getMessageId())
-        .setChatId(message.getChatId())
+        .setMessageId(messageId)
+        .setChatId(targetChatId)
         .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
         .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
       )
@@ -144,11 +148,11 @@ public class MemeManager extends TelegramLongPollingBot {
 
       final var replyText =
         update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "@")
-        + ", поясни за мем";
+          + ", поясни за мем";
 
       Try.of(() -> execute(
         new SendMessage()
-          .setChatId(message.getChatId())
+          .setChatId(targetChatId)
           .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
           .setText(replyText)
         )
@@ -156,8 +160,6 @@ public class MemeManager extends TelegramLongPollingBot {
         .onSuccess(ignore -> log.info("Successful reply for explaining"))
         .onFailure(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
     }
-
-    return voteEntity;
   }
 
   private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, boolean markExplained) {

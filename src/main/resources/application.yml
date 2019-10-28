@@ -16,32 +16,36 @@ target.chat.id: 0
 sql:
   queries:
     insertMeme: >
-      insert into meme (file_id, author_username, target_chat_id)
-      values (:fileId, :username, :chatId)
+      insert into meme2 (chat_id, message_id, sender_id, file_id)
+      values (:chatId, :messageId, :senderId, :fileId)
+    insertUserIfNotExists: >
+      insert into users (user_id, username, first_name, last_name)
+      select :userId, :username, :firstName, :lastName
+      where not exists (select 1 from users where user_id = :userId)
+    findMemeSender: >
+      select sender_id from meme2 where chat_id = :chatId and message_id = :messageId
     voteExists: >
       select exists(
-        select 1 from vote
+        select 1 from vote2
         where
-          file_id = :fileId
-          and chat_id = :chatId
-          and value = :value
-          and username = :username)
+          chat_id = :chatId
+          and message_id = :messageId
+          and voter_id = :voterId
+          and value = :value::vote_value)
     insertOrUpdateVote: >
-      insert into vote(file_id, chat_id, username, value)
-      values (:fileId, :chatId, :username, :value)
-      on conflict (chat_id, file_id, username)
-      do update set value = :value
+      insert into vote2(chat_id, message_id, voter_id, value)
+      values (:chatId, :messageId, :voterId, :value::vote_value)
+      on conflict (chat_id, message_id, voter_id)
+      do update set value = :value::vote_value
     deleteVote: >
-      delete from vote
+      delete from vote2
       where
-        file_id = :fileId
-        and chat_id = :chatId
-        and username = :username
-        and value = :value
+        chat_id = :chatId
+        and message_id = :messageId
+        and voter_id = :voterId
     findVoteStats: >
       select value, count(value)
-      from vote
+      from vote2
       where
-        file_id = :fileId
-        and chat_id = :chatId
+        chat_id = :chatId and message_id = :messageId
       group by value

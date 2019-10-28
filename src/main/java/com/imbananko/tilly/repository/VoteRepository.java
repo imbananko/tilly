@@ -26,25 +26,25 @@ public class VoteRepository {
     return template.queryForObject(queries.getOrElse("voteExists", null), getParams(vote), Boolean.class);
   }
 
-  public int insertOrUpdate(VoteEntity vote) {
-    return template.update(queries.getOrElse("insertOrUpdateVote", null), getParams(vote));
+  public void insertOrUpdate(VoteEntity vote) {
+    template.update(queries.getOrElse("insertOrUpdateVote", null), getParams(vote));
   }
 
-  public int delete(VoteEntity vote) {
-    return template.update(queries.getOrElse("deleteVote", null), getParams(vote));
+  public void delete(VoteEntity vote) {
+    template.update(queries.getOrElse("deleteVote", null), getParams(vote));
   }
 
-  public HashMap<Value, Long> getStats(String fileId, long chatId) {
+  public HashMap<Value, Long> getStats(long chatId, int messageId) {
     return HashMap.ofEntries(template.query(queries.getOrElse("findVoteStats", null),
-      new MapSqlParameterSource("chatId", chatId).addValue("fileId", fileId),
+      new MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId),
       (rs, rowNum) ->
         new Tuple2<>(Value.valueOf(rs.getString("value")), rs.getLong("count"))));
   }
 
   private MapSqlParameterSource getParams(VoteEntity vote) {
     return new MapSqlParameterSource("chatId", vote.getChatId())
-      .addValue("fileId", vote.getFileId())
-      .addValue("value", vote.getValue().name())
-      .addValue("username", vote.getUsername());
+      .addValue("messageId", vote.getMessageId())
+      .addValue("voterId", vote.getVoterId())
+      .addValue("value", vote.getValue().name());
   }
 }

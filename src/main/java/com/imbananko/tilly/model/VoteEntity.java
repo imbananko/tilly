@@ -8,9 +8,9 @@ import lombok.ToString;
 @Getter
 @ToString
 public class VoteEntity {
-  private String fileId;
-  private String username;
-  private Long chatId;
+  private long chatId;
+  private int messageId;
+  private int voterId;
   private Value value;
 
   public enum Value {
