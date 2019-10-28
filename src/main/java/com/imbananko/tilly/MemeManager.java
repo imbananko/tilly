@@ -22,7 +22,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
@@ -63,108 +62,104 @@ public class MemeManager extends TelegramLongPollingBot {
   public void onUpdateReceived(Update update) {
     Match(update)
       .of(
-        Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), this::processMeme),
-        Case($(TelegramPredicates.hasVote()), this::processVote),
+        Case($(allOf(TelegramPredicates.isP2PChat(), TelegramPredicates.hasPhoto())), it -> run(() -> this.processMeme(it))),
+        Case($(TelegramPredicates.hasVote()), it -> run(() -> this.processVote(it))),
         Case($(), () -> null)
       );
   }
 
-  private Consumer<Update> processMeme() {
-    return update -> {
-      final var message = update.getMessage();
-      final var fileId = message.getPhoto().get(0).getFileId();
-      final var authorUsername = message.getFrom().getUserName();
-      final var memeCaption =
-        Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
-          + "Sender: "
-          + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.getFrom().getId());
+  private void processMeme(Update update) {
+    final var message = update.getMessage();
+    final var fileId = message.getPhoto().get(0).getFileId();
+    final var authorUsername = message.getFrom().getUserName();
+    final var memeCaption =
+      Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
+        + "Sender: "
+        + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.getFrom().getId());
 
-      Try.of(() -> execute(
-        new SendPhoto()
-          .setChatId(chatId)
-          .setPhoto(fileId)
-          .setCaption(memeCaption)
-          .setReplyMarkup(createMarkup(HashMap.empty(), false))
-        )
+    Try.of(() -> execute(
+      new SendPhoto()
+        .setChatId(chatId)
+        .setPhoto(fileId)
+        .setCaption(memeCaption)
+        .setReplyMarkup(createMarkup(HashMap.empty(), false))
       )
-        .onSuccess(sentMemeMessage -> {
-          final var meme = MemeEntity.builder()
-            .chatId(sentMemeMessage.getChatId())
-            .messageId(sentMemeMessage.getMessageId())
-            .senderId(message.getFrom().getId())
-            .fileId(message.getPhoto().get(0).getFileId())
-            .build();
-          log.info("Sent meme=" + meme);
-          memeRepository.save(meme);
-        })
-        .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getMessage()));
-    };
+    )
+      .onSuccess(sentMemeMessage -> {
+        final var meme = MemeEntity.builder()
+          .chatId(sentMemeMessage.getChatId())
+          .messageId(sentMemeMessage.getMessageId())
+          .senderId(message.getFrom().getId())
+          .fileId(message.getPhoto().get(0).getFileId())
+          .build();
+        log.info("Sent meme=" + meme);
+        memeRepository.save(meme);
+      })
+      .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getMessage()));
   }
 
-  private Consumer<Update> processVote() {
-    return update -> {
-      final var message = update.getCallbackQuery().getMessage();
-      final var targetChatId = message.getChatId();
-      final var messageId = message.getMessageId();
-      final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
-      final var voteSender = update.getCallbackQuery().getFrom();
-      final var memeSenderFromCaption = message.getCaption().split("Sender: ")[1];
+  private void processVote(Update update) {
+    final var message = update.getCallbackQuery().getMessage();
+    final var targetChatId = message.getChatId();
+    final var messageId = message.getMessageId();
+    final var vote = VoteEntity.Value.valueOf(update.getCallbackQuery().getData().split(" ")[0]);
+    final var voteSender = update.getCallbackQuery().getFrom();
+    final var memeSenderFromCaption = message.getCaption().split("Sender: ")[1];
 
-      final var wasExplained = message
-        .getReplyMarkup()
-        .getKeyboard().get(0).get(1)
-        .getCallbackData()
-        .contains("EXPLAINED");
+    final var wasExplained = message
+      .getReplyMarkup()
+      .getKeyboard().get(0).get(1)
+      .getCallbackData()
+      .contains("EXPLAINED");
 
-      var voteEntity =
-        VoteEntity.builder()
-          .chatId(targetChatId)
-          .messageId(messageId)
-          .voterId(voteSender.getId())
-          .value(vote)
-          .build();
+    var voteEntity =
+      VoteEntity.builder()
+        .chatId(targetChatId)
+        .messageId(messageId)
+        .voterId(voteSender.getId())
+        .value(vote)
+        .build();
 
-      if (voteSender.getUserName().equals(memeSenderFromCaption) || memeRepository.getMemeSender(targetChatId, messageId).equals(voteSender.getId())) {
-        return;
-      }
+    if (voteSender.getUserName().equals(memeSenderFromCaption) || memeRepository.getMemeSender(targetChatId, messageId).equals(voteSender.getId())) {
+      return;
+    }
 
-      if (voteRepository.exists(voteEntity)) {
-        voteRepository.delete(voteEntity);
-      } else {
-        voteRepository.insertOrUpdate(voteEntity);
-      }
+    if (voteRepository.exists(voteEntity)) {
+      voteRepository.delete(voteEntity);
+    } else {
+      voteRepository.insertOrUpdate(voteEntity);
+    }
 
-      final var statistics = voteRepository.getStats(targetChatId, messageId);
-      final var shouldMarkExplained = vote.equals(EXPLAIN) && !wasExplained && statistics.getOrElse(EXPLAIN, 0L) == 3L;
+    final var statistics = voteRepository.getStats(targetChatId, messageId);
+    final var shouldMarkExplained = vote.equals(EXPLAIN) && !wasExplained && statistics.getOrElse(EXPLAIN, 0L) == 3L;
+
+    Try.of(() -> execute(
+      new EditMessageReplyMarkup()
+        .setMessageId(messageId)
+        .setChatId(targetChatId)
+        .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
+        .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
+      )
+    )
+      .onSuccess(ignore -> log.info("Processed vote=" + voteEntity))
+      .onFailure(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
+
+    if (shouldMarkExplained) {
+
+      final var replyText =
+        update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "@")
+          + ", поясни за мем";
 
       Try.of(() -> execute(
-        new EditMessageReplyMarkup()
-          .setMessageId(messageId)
+        new SendMessage()
           .setChatId(targetChatId)
-          .setInlineMessageId(update.getCallbackQuery().getInlineMessageId())
-          .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
+          .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
+          .setText(replyText)
         )
       )
-        .onSuccess(ignore -> log.info("Processed vote=" + voteEntity))
-        .onFailure(throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.getMessage()));
-
-      if (shouldMarkExplained) {
-
-        final var replyText =
-          update.getCallbackQuery().getMessage().getCaption().replaceFirst("Sender: ", "@")
-            + ", поясни за мем";
-
-        Try.of(() -> execute(
-          new SendMessage()
-            .setChatId(targetChatId)
-            .setReplyToMessageId(update.getCallbackQuery().getMessage().getMessageId())
-            .setText(replyText)
-          )
-        )
-          .onSuccess(ignore -> log.info("Successful reply for explaining"))
-          .onFailure(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
-      }
-    };
+        .onSuccess(ignore -> log.info("Successful reply for explaining"))
+        .onFailure(throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.getMessage()));
+    }
   }
 
   private static InlineKeyboardMarkup createMarkup(HashMap<VoteEntity.Value, Long> stats, boolean markExplained) {
