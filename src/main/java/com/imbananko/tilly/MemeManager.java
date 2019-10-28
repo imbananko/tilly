@@ -3,7 +3,6 @@ package com.imbananko.tilly;
 import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
-import com.imbananko.tilly.repository.UserRepository;
 import com.imbananko.tilly.repository.VoteRepository;
 import com.imbananko.tilly.utility.TelegramPredicates;
 import io.vavr.collection.HashMap;
@@ -33,7 +32,6 @@ import static io.vavr.Predicates.allOf;
 public class MemeManager extends TelegramLongPollingBot {
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
-  private final UserRepository userRepository;
 
   @Value("${target.chat.id}")
   private long chatId;
@@ -45,10 +43,9 @@ public class MemeManager extends TelegramLongPollingBot {
   private String username;
 
   @Autowired
-  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository, UserRepository userRepository) {
+  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository) {
     this.memeRepository = memeRepository;
     this.voteRepository = voteRepository;
-    this.userRepository = userRepository;
   }
 
   @Override
