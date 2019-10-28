@@ -34,19 +34,17 @@ public class VoteRepository {
     template.update(queries.getOrElse("deleteVote", null), getParams(vote));
   }
 
-  public HashMap<Value, Long> getStats(String memeId) {
+  public HashMap<Value, Long> getStats(Long chatId, Integer messageId) {
     return HashMap.ofEntries(template.query(queries.getOrElse("findVoteStats", null),
-      new MapSqlParameterSource("memeId", memeId),
+      new MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId),
       (rs, rowNum) ->
         new Tuple2<>(Value.valueOf(rs.getString("value")), rs.getLong("count"))));
   }
 
   private MapSqlParameterSource getParams(VoteEntity vote) {
-    return new MapSqlParameterSource("memeId", vote.getMemeId())
+    return new MapSqlParameterSource("chatId", vote.getChatId())
+      .addValue("messageId", vote.getMessageId())
       .addValue("voterId", vote.getVoterId())
-      .addValue("chatId", vote.getChatId())
-      .addValue("fileId", vote.getFileId())
-      .addValue("value", vote.getValue().name())
-      .addValue("username", vote.getUsername());
+      .addValue("value", vote.getValue().name());
   }
 }
