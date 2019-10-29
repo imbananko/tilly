@@ -48,7 +48,7 @@ public class MemeRepository {
         new MapSqlParameterSource("chat_id", chatId),
         (rs, rowNum) ->
             MemeEntity.builder()
-                .senderId((int) rs.getLong("sender_id"))
+                .senderId(rs.getInt("sender_id"))
                 .fileId(rs.getString("file_id"))
                 .chatId(rs.getLong("chat_id"))
                 .build());

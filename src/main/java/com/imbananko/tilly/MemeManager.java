@@ -18,7 +18,6 @@ import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
-import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -27,7 +26,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import javax.annotation.PostConstruct;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -240,13 +238,13 @@ public class MemeManager extends TelegramLongPollingBot {
   }
 
   private java.io.File downloadFromFileId(String fileId) throws TelegramApiException, IOException {
-    GetFile getFile = new GetFile();
+    final var getFile = new GetFile();
     getFile.setFileId(fileId);
 
-    File file = execute(getFile);
-    URL fileUrl = new URL(file.getFileUrl(getBotToken()));
-    HttpURLConnection httpConn = (HttpURLConnection) fileUrl.openConnection();
-    InputStream inputStream = httpConn.getInputStream();
+    final var file = execute(getFile);
+    final var fileUrl = new URL(file.getFileUrl(getBotToken()));
+    final var httpConn = (HttpURLConnection) fileUrl.openConnection();
+    final var inputStream = httpConn.getInputStream();
 
     final java.io.File tempFile = java.io.File.createTempFile("telegram-photo-", "");
     tempFile.deleteOnExit();

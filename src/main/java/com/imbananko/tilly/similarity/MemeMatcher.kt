@@ -16,11 +16,11 @@ class MemeMatcher {
 
     fun addMeme(fileId: String, imageFile: File) = matcher.addImage(fileId, imageFile)
 
-    fun checkMemeExists(memeId: String, imageFile: File): Try<Option<String?>> = Try.of {
+    fun checkMemeExists(memeId: String, imageFile: File): Try<Option<String>> = Try.of {
         Option.of(
                 matcher.getMatchingImages(imageFile).poll()
                         ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
-                        ?.value
+                        ?.value!!
         ).also { if (it.isEmpty) matcher.addImage(memeId, imageFile) }
     }
 }
