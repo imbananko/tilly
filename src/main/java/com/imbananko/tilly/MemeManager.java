@@ -4,27 +4,43 @@ import com.imbananko.tilly.model.MemeEntity;
 import com.imbananko.tilly.model.VoteEntity;
 import com.imbananko.tilly.repository.MemeRepository;
 import com.imbananko.tilly.repository.VoteRepository;
+import com.imbananko.tilly.similarity.MemeMatcher;
 import com.imbananko.tilly.utility.TelegramPredicates;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import javax.annotation.PostConstruct;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static com.imbananko.tilly.model.VoteEntity.Value.*;
 import static io.vavr.API.*;
+import static io.vavr.Patterns.$None;
+import static io.vavr.Patterns.$Some;
 import static io.vavr.Predicates.allOf;
 
 @Slf4j
@@ -32,6 +48,8 @@ import static io.vavr.Predicates.allOf;
 public class MemeManager extends TelegramLongPollingBot {
   private final MemeRepository memeRepository;
   private final VoteRepository voteRepository;
+
+  private final MemeMatcher memeMatcher;
 
   @Value("${target.chat.id}")
   private long chatId;
@@ -43,9 +61,23 @@ public class MemeManager extends TelegramLongPollingBot {
   private String username;
 
   @Autowired
-  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository) {
+  public MemeManager(MemeRepository memeRepository, VoteRepository voteRepository, MemeMatcher memeMatcher) {
     this.memeRepository = memeRepository;
     this.voteRepository = voteRepository;
+    this.memeMatcher = memeMatcher;
+  }
+
+  @PostConstruct
+  public void init() {
+    memeRepository
+        .load(chatId)
+        .forEach(me -> {
+          try {
+            memeMatcher.addMeme(me.getFileId(), downloadFromFileId(me.getFileId()));
+          } catch (TelegramApiException | IOException e) {
+            log.error("Failed to load file {}: {}, skipping...", me.getFileId(), e.getMessage());
+          }
+        });
   }
 
   @Override
@@ -72,12 +104,13 @@ public class MemeManager extends TelegramLongPollingBot {
     final var message = update.getMessage();
     final var fileId = message.getPhoto().get(0).getFileId();
     final var authorUsername = message.getFrom().getUserName();
+
     final var memeCaption =
       Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
         + "Sender: "
         + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.getFrom().getId());
 
-    Try.of(() -> execute(
+    final Supplier<Try> processMemeIfUnique = () -> Try.of(() -> execute(
       new SendPhoto()
         .setChatId(chatId)
         .setPhoto(fileId)
@@ -95,7 +128,29 @@ public class MemeManager extends TelegramLongPollingBot {
         log.info("Sent meme=" + meme);
         memeRepository.save(meme);
       })
-      .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getMessage()));
+        .onFailure(throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.getCause()));
+
+    final Function<String, Try> processMemeIfExists = (existingMemeId) -> Try.of(() -> execute(
+        new SendPhoto()
+            .setChatId(message.getChatId())
+            .setPhoto(existingMemeId)
+            .setCaption("Было нахой, вот смотри:")
+            .setReplyToMessageId(message.getMessageId())
+    )).onFailure(throwable -> log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.getCause()));
+
+    Try.of(() -> downloadFromFileId(fileId))
+        .flatMap(memeFile -> memeMatcher.checkMemeExists(fileId, memeFile))
+        .flatMap(memeId -> Match(memeId).of(
+            Case($Some($()), processMemeIfExists),
+            Case($None(), processMemeIfUnique)
+        ))
+        .onFailure(new Consumer<Throwable>() {
+          @Override
+          public void accept(Throwable throwable) {
+            log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.getMessage());
+            processMemeIfUnique.get();
+          }
+        });
   }
 
   private void processVote(Update update) {
@@ -182,5 +237,26 @@ public class MemeManager extends TelegramLongPollingBot {
         )
       )
     );
+  }
+
+  private java.io.File downloadFromFileId(String fileId) throws TelegramApiException, IOException {
+    GetFile getFile = new GetFile();
+    getFile.setFileId(fileId);
+
+    File file = execute(getFile);
+    URL fileUrl = new URL(file.getFileUrl(getBotToken()));
+    HttpURLConnection httpConn = (HttpURLConnection) fileUrl.openConnection();
+    InputStream inputStream = httpConn.getInputStream();
+
+    final java.io.File tempFile = java.io.File.createTempFile("telegram-photo-", "");
+    tempFile.deleteOnExit();
+    try (FileOutputStream out = new FileOutputStream(tempFile)) {
+      IOUtils.copy(inputStream, out);
+    }
+
+    inputStream.close();
+    httpConn.disconnect();
+
+    return tempFile;
   }
 }
