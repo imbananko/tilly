@@ -53,4 +53,10 @@ public class MemeRepository {
                 .chatId(rs.getLong("chat_id"))
                 .build());
   }
+
+  public Integer messageIdByFileId(String fileId, long chatId) {
+    return template.query(queries.get("messageIdByFileId").get(),
+        new MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId),
+        (rs, rowNum) -> rs.getInt("message_id")).get(0);
+  }
 }

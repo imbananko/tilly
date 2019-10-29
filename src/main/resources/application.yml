@@ -53,3 +53,9 @@ sql:
       select file_id, sender_id, chat_id
       from meme2
       where chat_id = :chat_id
+    messageIdByFileId: >
+      select message_id
+      from meme2
+      where chat_id = :chat_id and file_id = :file_id
+      order by created_at desc
+      limit 1
