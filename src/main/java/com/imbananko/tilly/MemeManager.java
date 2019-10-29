@@ -134,7 +134,7 @@ public class MemeManager extends TelegramLongPollingBot {
         new SendPhoto()
             .setChatId(chatId)
             .setPhoto(fileId)
-            .setCaption(String.format("%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsername))
+            .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsername))
             .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
     )).onFailure(throwable -> log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.getCause()));
 
