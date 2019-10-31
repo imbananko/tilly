@@ -68,6 +68,7 @@ public class MemeManager extends TelegramLongPollingBot {
   public void init() {
     memeRepository
         .load(chatId)
+        .parallelStream()
         .forEach(me -> {
           try {
             memeMatcher.addMeme(me.getFileId(), downloadFromFileId(me.getFileId()));
@@ -142,7 +143,7 @@ public class MemeManager extends TelegramLongPollingBot {
             Case($Some($()), processMemeIfExists),
             Case($None(), processMemeIfUnique)
         ))
-        .onFailure(new Consumer<>() {
+        .onFailure(new Consumer<Throwable>() {
           @Override
           public void accept(Throwable throwable) {
             log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.getMessage());

@@ -14,6 +14,7 @@ class MemeMatcher {
         it.addHashingAlgorithm(PerceptiveHash(128), .02, true)
     }
 
+    @Synchronized
     fun addMeme(fileId: String, imageFile: File) = matcher.addImage(fileId, imageFile)
 
     fun checkMemeExists(memeId: String, imageFile: File): Try<Option<String?>> = Try.of {
