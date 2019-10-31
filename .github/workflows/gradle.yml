@@ -16,4 +16,4 @@ jobs:
       with:
         java-version: 11
     - name: Create image
-      run: ./gradlew bootJar
+      run: ./gradlew bootJar jib -PdockerUser=${{ secrets.DOCKER_USER }} -PdockerPassword=${{ secrets.DOCKER_PASSWORD }}
