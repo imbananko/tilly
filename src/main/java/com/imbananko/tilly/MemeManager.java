@@ -26,7 +26,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import javax.annotation.PostConstruct;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Optional;
@@ -102,6 +101,7 @@ public class MemeManager extends TelegramLongPollingBot {
     final var message = update.getMessage();
     final var fileId = message.getPhoto().get(0).getFileId();
     final var authorUsername = message.getFrom().getUserName();
+    final var authorUsernameOrSenderId = authorUsername == null ? message.getFrom().getId() : authorUsername;
 
     final var memeCaption =
       Optional.ofNullable(message.getCaption()).map(it -> it.trim() + "\n\n").orElse("")
@@ -132,7 +132,7 @@ public class MemeManager extends TelegramLongPollingBot {
         new SendPhoto()
             .setChatId(chatId)
             .setPhoto(fileId)
-            .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsername))
+            .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsernameOrSenderId))
             .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
     )).onFailure(throwable -> log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.getCause()));
 
@@ -142,7 +142,7 @@ public class MemeManager extends TelegramLongPollingBot {
             Case($Some($()), processMemeIfExists),
             Case($None(), processMemeIfUnique)
         ))
-        .onFailure(new Consumer<Throwable>() {
+        .onFailure(new Consumer<>() {
           @Override
           public void accept(Throwable throwable) {
             log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.getMessage());
@@ -242,9 +242,7 @@ public class MemeManager extends TelegramLongPollingBot {
     getFile.setFileId(fileId);
 
     final var file = execute(getFile);
-    final var fileUrl = new URL(file.getFileUrl(getBotToken()));
-    final var httpConn = (HttpURLConnection) fileUrl.openConnection();
-    final var inputStream = httpConn.getInputStream();
+    final var inputStream = new URL(file.getFileUrl(getBotToken())).openStream();
 
     final java.io.File tempFile = java.io.File.createTempFile("telegram-photo-", "");
     tempFile.deleteOnExit();
@@ -253,7 +251,6 @@ public class MemeManager extends TelegramLongPollingBot {
     }
 
     inputStream.close();
-    httpConn.disconnect();
 
     return tempFile;
   }
