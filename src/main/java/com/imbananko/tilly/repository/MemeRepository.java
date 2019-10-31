@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
@@ -39,5 +40,23 @@ public class MemeRepository {
       template.queryForObject(queries.getOrElse("findMemeSender", null),
         new MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId), Integer.class)
     );
+  }
+
+  public List<MemeEntity> load(long chatId) {
+    return template.query(
+        queries.get("loadMemes").get(),
+        new MapSqlParameterSource("chat_id", chatId),
+        (rs, rowNum) ->
+            MemeEntity.builder()
+                .senderId(rs.getInt("sender_id"))
+                .fileId(rs.getString("file_id"))
+                .chatId(rs.getLong("chat_id"))
+                .build());
+  }
+
+  public Integer messageIdByFileId(String fileId, long chatId) {
+    return template.query(queries.get("messageIdByFileId").get(),
+        new MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId),
+        (rs, rowNum) -> rs.getInt("message_id")).get(0);
   }
 }
