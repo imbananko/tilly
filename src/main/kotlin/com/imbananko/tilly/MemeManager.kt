@@ -68,7 +68,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   override fun getBotUsername(): String? = username
 
-  override fun onUpdateReceived(update: Update): Unit {
+  override fun onUpdateReceived(update: Update) {
     if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
     if (update.hasVote()) processVote(update)
   }
@@ -99,7 +99,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         log.info("Sent meme=$meme")
         memeRepository.save(meme)
       }.onFailure { throwable ->
-        log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.cause)
+        log.error("Failed to send meme from message=$message. Exception=", throwable)
       }
     }
 
@@ -114,7 +114,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
         )
       }.onFailure { throwable: Throwable ->
-        log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.cause)
+        log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
       }
     }
 
@@ -122,7 +122,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
         .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
         .onFailure { throwable: Throwable ->
-          log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.message)
+          log.error("Failed to check if meme is unique, sending anyway. Exception=", throwable)
           processMemeIfUnique()
         }
   }
