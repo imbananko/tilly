@@ -9,16 +9,16 @@ import com.imbananko.tilly.model.VoteValue.UP
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
+import com.imbananko.tilly.utility.downloadFromFileId
 import com.imbananko.tilly.utility.extractVoteValue
 import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
-import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
-import org.telegram.telegrambots.meta.api.methods.GetFile
+import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
@@ -27,10 +27,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import java.net.URL
 import java.util.*
 import javax.annotation.PostConstruct
 
@@ -78,7 +75,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         val message = update.message
         val fileId = message.photo[0].fileId
         val authorUsername = message.from.userName
-        val authorUsernameOrSenderId = authorUsername ?: message.from.id
+        val mention = "[${authorUsername
+            ?: message.from.firstName
+            ?: message.from.lastName
+            ?: "еблан без ника, имени и фамилии"}](tg://user?id=${message.from.id})"
 
         val memeCaption = (Optional.ofNullable(message.caption).map { it -> it.trim { it <= ' ' } + "\n\n" }.orElse("")
                 + "Sender: "
@@ -90,6 +90,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                     SendPhoto()
                         .setChatId(chatId)
                         .setPhoto(fileId)
+                        .setParseMode(ParseMode.MARKDOWN)
                         .setCaption(memeCaption)
                         .setReplyMarkup(createMarkup(emptyMap(), false)))
             }.onSuccess { sentMemeMessage ->
@@ -107,7 +108,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                     SendPhoto()
                         .setChatId(chatId)
                         .setPhoto(fileId)
-                        .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsernameOrSenderId))
+                        .setParseMode(ParseMode.MARKDOWN)
+                        .setCaption("$mention попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...")
                         .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
                 )
             }.onFailure { throwable: Throwable ->
@@ -200,19 +202,5 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                         )
                 )
         )
-    }
-
-    private fun downloadFromFileId(fileId: String): File {
-        val getFile = GetFile()
-        getFile.fileId = fileId
-        val file = execute(getFile)
-
-        return URL(file.getFileUrl(botToken)).openStream().use { inputStream ->
-            val tempFile = File.createTempFile("telegram-photo-", "").also {
-                it.deleteOnExit()
-                FileOutputStream(it).use { out -> IOUtils.copy(inputStream, out) }
-            }
-            tempFile
-        }
     }
 }
