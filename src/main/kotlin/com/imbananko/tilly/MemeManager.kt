@@ -43,10 +43,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     private val chatId: Long = 0
 
     @Value("\${bot.token}")
-    private val token: String? = null
+    private lateinit var token: String
 
     @Value("\${bot.username}")
-    private val username: String? = null
+    private lateinit var username: String
 
     @PostConstruct
     fun init() {
@@ -64,15 +64,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 }
     }
 
-    override fun getBotToken(): String? {
-        return token
-    }
+    override fun getBotToken(): String? = token
 
-    override fun getBotUsername(): String? {
-        return username
-    }
+    override fun getBotUsername(): String? = username
 
-    override fun onUpdateReceived(update: Update) {
+    override fun onUpdateReceived(update: Update): Unit {
         if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
         if (update.hasVote()) processVote(update)
     }
@@ -91,40 +87,41 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         val processMemeIfUnique = {
             runCatching {
                 execute(
-                        SendPhoto()
-                                .setChatId(chatId)
-                                .setPhoto(fileId)
-                                .setCaption(memeCaption)
-                                .setReplyMarkup(createMarkup(emptyMap(), false))
-                )
+                    SendPhoto()
+                        .setChatId(chatId)
+                        .setPhoto(fileId)
+                        .setCaption(memeCaption)
+                        .setReplyMarkup(createMarkup(emptyMap(), false)))
+            }.onSuccess { sentMemeMessage ->
+                val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
+                log.info("Sent meme=$meme")
+                memeRepository.save(meme)
+            }.onFailure { throwable ->
+                log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.cause)
             }
-                    .onSuccess { sentMemeMessage ->
-                        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
-                        log.info("Sent meme=$meme")
-                        memeRepository.save(meme)
-                    }
-                    .onFailure { throwable -> log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.cause) }
         }
 
         val processMemeIfExists = { existingMemeId: String ->
             runCatching {
                 execute(
-                        SendPhoto()
-                                .setChatId(chatId)
-                                .setPhoto(fileId)
-                                .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsernameOrSenderId))
-                                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
+                    SendPhoto()
+                        .setChatId(chatId)
+                        .setPhoto(fileId)
+                        .setCaption(String.format("@%s попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...", authorUsernameOrSenderId))
+                        .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
                 )
-            }.onFailure { throwable: Throwable -> log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.cause) }
+            }.onFailure { throwable: Throwable ->
+                log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.cause)
+            }
         }
 
         runCatching { downloadFromFileId(fileId) }
-                .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
-                .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
-                .onFailure { throwable: Throwable ->
-                    log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.message)
-                    processMemeIfUnique()
-                }
+            .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
+            .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
+            .onFailure { throwable: Throwable ->
+                log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.message)
+                processMemeIfUnique()
+            }
     }
 
     private fun processVote(update: Update) {
@@ -156,10 +153,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         runCatching {
             execute(
                     EditMessageReplyMarkup()
-                            .setMessageId(messageId)
-                            .setChatId(targetChatId)
-                            .setInlineMessageId(update.callbackQuery.inlineMessageId)
-                            .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
+                        .setMessageId(messageId)
+                        .setChatId(targetChatId)
+                        .setInlineMessageId(update.callbackQuery.inlineMessageId)
+                        .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
             )
         }
                 .onSuccess { log.info("Processed vote=$voteEntity") }
@@ -172,9 +169,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             runCatching {
                 execute<Message, SendMessage>(
                         SendMessage()
-                                .setChatId(targetChatId)
-                                .setReplyToMessageId(update.callbackQuery.message.messageId)
-                                .setText(replyText)
+                            .setChatId(targetChatId)
+                            .setReplyToMessageId(update.callbackQuery.message.messageId)
+                            .setText(replyText)
                 )
             }
                     .onSuccess { log.info("Successful reply for explaining") }
@@ -205,20 +202,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         )
     }
 
-    @Throws(TelegramApiException::class, IOException::class)
-    private fun downloadFromFileId(fileId: String): java.io.File {
+    private fun downloadFromFileId(fileId: String): File {
         val getFile = GetFile()
         getFile.fileId = fileId
-
         val file = execute(getFile)
-        val inputStream = URL(file.getFileUrl(botToken!!)).openStream()
 
-        val tempFile = File.createTempFile("telegram-photo-", "")
-        tempFile.deleteOnExit()
-        FileOutputStream(tempFile).use { out -> IOUtils.copy(inputStream, out) }
-
-        inputStream.close()
-
-        return tempFile
+        return URL(file.getFileUrl(botToken)).openStream().use { inputStream ->
+            val tempFile = File.createTempFile("telegram-photo-", "").also {
+                it.deleteOnExit()
+                FileOutputStream(it).use { out -> IOUtils.copy(inputStream, out) }
+            }
+            tempFile
+        }
     }
 }

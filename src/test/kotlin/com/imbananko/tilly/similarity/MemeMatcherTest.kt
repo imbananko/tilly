@@ -1,6 +1,5 @@
 package com.imbananko.tilly.similarity
 
-import io.vavr.control.Option
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
@@ -39,7 +38,7 @@ class MemeMatcherTest {
         val fileId = file.name
         memeMatcher.addMeme(fileId, file)
 
-        assertEquals(fileId, memeMatcher.checkMemeExists(fileId, file).get().get())
+        assertEquals(Result.success(fileId), memeMatcher.checkMemeExists(fileId, file))
     }
 
     @ParameterizedTest
@@ -47,10 +46,9 @@ class MemeMatcherTest {
     fun `Memes with a difference in text should be distinguished`(changedMeme: File) {
         val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not fount")
         memeMatcher.addMeme(originalMeme.name, originalMeme)
-        val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme).get()
+        val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme)
 
-        assertEquals(Option.none<String>(),
-                memeMatch,
+        assertEquals(Result.success(null), memeMatch,
                 "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
     }
 }

@@ -13,9 +13,11 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
     fun exists(vote: VoteEntity): Boolean =
             template.queryForObject(queries.getFromConfOrFail("voteExists"), getParams(vote), Boolean::class.java)!!
 
-    fun insertOrUpdate(vote: VoteEntity) = template.update(queries.getFromConfOrFail("insertOrUpdateVote"), getParams(vote))
+    fun insertOrUpdate(vote: VoteEntity): Int = template.update(queries.getFromConfOrFail("insertOrUpdateVote"), getParams(vote))
 
-    fun delete(vote: VoteEntity) = template.update(queries.getFromConfOrFail("deleteVote"), getParams(vote))
+    fun delete(vote: VoteEntity): Unit {
+        template.update(queries.getFromConfOrFail("deleteVote"), getParams(vote))
+    }
 
     fun getStats(chatId: Long, messageId: Int): Map<VoteValue, Int> =
             template.query(
@@ -24,10 +26,9 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
             ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
 
 
-    private fun getParams(vote: VoteEntity): MapSqlParameterSource {
-        return MapSqlParameterSource("chatId", vote.chatId)
+    private fun getParams(vote: VoteEntity): MapSqlParameterSource =
+        MapSqlParameterSource("chatId", vote.chatId)
                 .addValue("messageId", vote.messageId)
                 .addValue("voterId", vote.voterId)
                 .addValue("value", vote.voteValue.name)
-    }
 }

@@ -12,13 +12,13 @@ import java.util.*
 class UserRepository(private val template: NamedParameterJdbcTemplate, private val queries: SqlQueries) {
     private val userCache: WeakHashMap<Int, User> = WeakHashMap()
 
-    fun saveIfNotExists(user: User) {
-        userCache.computeIfAbsent(user.id) { ignore ->
+    fun saveIfNotExists(user: User): Unit {
+        userCache.computeIfAbsent(user.id) {
             template.update(queries.getFromConfOrFail("insertUserIfNotExists"),
-                    MapSqlParameterSource("userId", user.id)
-                            .addValue("username", user.userName)
-                            .addValue("firstName", user.firstName)
-                            .addValue("lastName", user.lastName))
+                MapSqlParameterSource("userId", user.id)
+                    .addValue("username", user.userName)
+                    .addValue("firstName", user.firstName)
+                    .addValue("lastName", user.lastName))
             user
         }
     }

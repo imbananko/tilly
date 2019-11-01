@@ -5,7 +5,7 @@ data class MemeEntity(val chatId: Long,
                       val senderId: Int,
                       val fileId: String)
 
-class VoteEntity(
+data class VoteEntity(
         val chatId: Long,
         val messageId: Int,
         val voterId: Int,

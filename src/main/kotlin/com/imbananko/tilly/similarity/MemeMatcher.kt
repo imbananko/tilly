@@ -10,7 +10,7 @@ class MemeMatcher {
     private val normalizedHammingDistance = .02
 
     private val matcher = ConsecutiveMatcher(true).also {
-        it.addHashingAlgorithm(PerceptiveHash(128), .02, true)
+        it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
     }
 
     @Synchronized
