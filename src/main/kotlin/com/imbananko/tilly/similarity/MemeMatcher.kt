@@ -18,8 +18,8 @@ class MemeMatcher {
 
     fun checkMemeExists(memeId: String, imageFile: File): Result<String?> = runCatching {
         matcher.getMatchingImages(imageFile).poll()
-                ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
-                ?.value
-                .also { if (it == null) matcher.addImage(memeId, imageFile) }
+            ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
+            ?.value
+            .also { if (it == null) matcher.addImage(memeId, imageFile) }
     }
 }

@@ -47,17 +47,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     @PostConstruct
     fun init() {
         memeRepository
-                .load(chatId)
-                .parallelStream()
-                .forEach { me ->
-                    try {
-                        memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
-                    } catch (e: TelegramApiException) {
-                        log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
-                    } catch (e: IOException) {
-                        log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
-                    }
+            .load(chatId)
+            .parallelStream()
+            .forEach { me ->
+                try {
+                    memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
+                } catch (e: TelegramApiException) {
+                    log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
+                } catch (e: IOException) {
+                    log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
                 }
+            }
     }
 
     override fun getBotToken(): String? = token
@@ -132,15 +132,15 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
 
         val wasExplained = message
-                .replyMarkup
-                .keyboard[0][1]
-                .callbackData
-                .contains("EXPLAINED")
+            .replyMarkup
+            .keyboard[0][1]
+            .callbackData
+            .contains("EXPLAINED")
 
         val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
 
         if (voteSender.userName == memeSenderFromCaption ||
-                memeRepository.getMemeSender(targetChatId, messageId) == voteSender.id) return
+            memeRepository.getMemeSender(targetChatId, messageId) == voteSender.id) return
 
         if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
         else voteRepository.insertOrUpdate(voteEntity)
@@ -151,15 +151,15 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
         runCatching {
             execute(
-                    EditMessageReplyMarkup()
-                        .setMessageId(messageId)
-                        .setChatId(targetChatId)
-                        .setInlineMessageId(update.callbackQuery.inlineMessageId)
-                        .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
+                EditMessageReplyMarkup()
+                    .setMessageId(messageId)
+                    .setChatId(targetChatId)
+                    .setInlineMessageId(update.callbackQuery.inlineMessageId)
+                    .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
             )
         }
-                .onSuccess { log.info("Processed vote=$voteEntity") }
-                .onFailure { throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.message) }
+            .onSuccess { log.info("Processed vote=$voteEntity") }
+            .onFailure { throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.message) }
 
         if (shouldMarkExplained) {
 
@@ -167,22 +167,22 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
             runCatching {
                 execute<Message, SendMessage>(
-                        SendMessage()
-                            .setChatId(targetChatId)
-                            .setReplyToMessageId(update.callbackQuery.message.messageId)
-                            .setText(replyText)
+                    SendMessage()
+                        .setChatId(targetChatId)
+                        .setReplyToMessageId(update.callbackQuery.message.messageId)
+                        .setText(replyText)
                 )
             }
-                    .onSuccess { log.info("Successful reply for explaining") }
-                    .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
+                .onSuccess { log.info("Successful reply for explaining") }
+                .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
         }
     }
 
     private fun createMarkup(stats: Map<VoteValue, Int>, markExplained: Boolean): InlineKeyboardMarkup {
         fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
             val callbackData =
-                    if (voteValue == EXPLAIN && markExplained) voteValue.name + " EXPLAINED"
-                    else voteValue.name
+                if (voteValue == EXPLAIN && markExplained) voteValue.name + " EXPLAINED"
+                else voteValue.name
 
             return InlineKeyboardButton().also {
                 it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
@@ -191,13 +191,13 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         }
 
         return InlineKeyboardMarkup().setKeyboard(
+            listOf(
                 listOf(
-                        listOf(
-                                createVoteInlineKeyboardButton(UP, stats.getOrDefault(UP, 0)),
-                                createVoteInlineKeyboardButton(EXPLAIN, stats.getOrDefault(EXPLAIN, 0)),
-                                createVoteInlineKeyboardButton(DOWN, stats.getOrDefault(DOWN, 0))
-                        )
+                    createVoteInlineKeyboardButton(UP, stats.getOrDefault(UP, 0)),
+                    createVoteInlineKeyboardButton(EXPLAIN, stats.getOrDefault(EXPLAIN, 0)),
+                    createVoteInlineKeyboardButton(DOWN, stats.getOrDefault(DOWN, 0))
                 )
+            )
         )
     }
 }

@@ -1,7 +1,6 @@
 package com.imbananko.tilly.repository
 
 import com.imbananko.tilly.utility.SqlQueries
-import com.imbananko.tilly.utility.getFromConfOrFail
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.stereotype.Repository

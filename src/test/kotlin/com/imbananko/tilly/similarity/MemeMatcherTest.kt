@@ -13,7 +13,7 @@ class MemeMatcherTest {
     companion object {
         @JvmStatic
         val memes = listOf("meme_changed_less.jpg", "meme_changed_more.jpg", "original_meme.jpg")
-                .map { it to loadMeme(it) }.toMap()
+            .map { it to loadMeme(it) }.toMap()
 
         @JvmStatic
         fun imageProvider() = memes.values.stream()
@@ -23,8 +23,8 @@ class MemeMatcherTest {
 
         @JvmStatic
         fun loadMeme(memeName: String) =
-                File(this::class.java.classLoader.getResource(memeName)?.file
-                        ?: error("meme not found: $memeName"))
+            File(this::class.java.classLoader.getResource(memeName)?.file
+                ?: error("meme not found: $memeName"))
     }
 
     @BeforeEach
@@ -49,6 +49,6 @@ class MemeMatcherTest {
         val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme)
 
         assertEquals(Result.success(null), memeMatch,
-                "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
+            "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
     }
 }
