@@ -9,8 +9,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 
-val voteValues = setOf(*VoteValue.values())
-
 fun SqlQueries?.getFromConfOrFail(key: String): String =
         if (this == null) error("SqlQueries object should not be null")
         else this.queries[key] ?: error("Configuration should contain `$key`")
@@ -21,7 +19,7 @@ fun Update.hasPhoto() = this.hasMessage() && this.message.hasPhoto()
 
 fun Update.hasVote() =
         this.hasCallbackQuery() && runCatching {
-            voteValues.contains(extractVoteValue())
+            setOf(*VoteValue.values()).contains(extractVoteValue())
         }.getOrDefault(false)
 
 fun Update.extractVoteValue() =
