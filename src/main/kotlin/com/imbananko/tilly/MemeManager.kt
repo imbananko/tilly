@@ -28,7 +28,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.io.IOException
-import java.util.*
 import javax.annotation.PostConstruct
 
 @Component
@@ -80,9 +79,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             ?: message.from.lastName
             ?: "еблан без ника, имени и фамилии"}](tg://user?id=${message.from.id})"
 
-        val memeCaption = (Optional.ofNullable(message.caption).map { it -> it.trim { it <= ' ' } + "\n\n" }.orElse("")
-                + "Sender: "
-                + Optional.ofNullable(authorUsername).orElse("tg://user?id=" + message.from.id!!))
+        val memeCaption = (message?.caption?.trim { it <= ' ' }?.run { this + "\n\n" } ?: "") + "Sender: " + mention
 
         val processMemeIfUnique = {
             runCatching {
