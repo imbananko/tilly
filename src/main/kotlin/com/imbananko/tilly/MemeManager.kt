@@ -79,7 +79,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             ?: message.from.lastName
             ?: "мутный тип"}](tg://user?id=${message.from.id})"
 
-        val memeCaption = (message?.caption?.trim { it <= ' ' }?.run { this + "\n\n" } ?: "") + "Sender: " + mention
+        val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
 
         val processMemeIfUnique = {
             runCatching {
