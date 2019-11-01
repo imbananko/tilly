@@ -50,7 +50,7 @@ sql:
         chat_id = :chatId and message_id = :messageId
       group by value
     loadMemes: >
-      select file_id, sender_id, chat_id
+      select file_id, sender_id, chat_id, message_id
       from meme2
       where chat_id = :chat_id
     messageIdByFileId: >

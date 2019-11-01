@@ -8,18 +8,18 @@ buildscript {
     }
 }
 plugins {
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
     id 'org.springframework.boot' version '2.2.0.M5'
-    id 'java'
     id 'com.google.cloud.tools.jib' version '0.10.0'
-}
 
-apply plugin: 'io.spring.dependency-management'
-apply plugin: 'kotlin'
+}
 
 group = 'com.imbananko'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
 
+apply plugin: 'kotlin'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'org.springframework.boot'
 repositories {
     mavenCentral()
     maven { url 'https://repo.spring.io/milestone' }
@@ -30,11 +30,9 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.8'
     compile 'org.telegram:telegrambots-spring-boot-starter:4.4.0.1'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
-    compile group: 'io.vavr', name: 'vavr', version: '0.10.0'
     compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-jdbc', version: '2.1.8.RELEASE'
     compile "org.springframework.boot:spring-boot-configuration-processor"
     compile 'com.github.kilianB:JImageHash:3.0.0'
-    annotationProcessor 'org.projectlombok:lombok:1.18.8'
     testCompile 'org.junit.jupiter:junit-jupiter-api:5.5.2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.5.2'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -65,10 +63,13 @@ test {
 compileKotlin {
     kotlinOptions {
         jvmTarget = "11"
+        freeCompilerArgs = ["-Xallow-result-return-type"]
     }
+
 }
 compileTestKotlin {
     kotlinOptions {
         jvmTarget = "11"
+        freeCompilerArgs = ["-Xallow-result-return-type"]
     }
 }
