@@ -18,7 +18,7 @@ dependencies {
 
     implementation("org.telegram:telegrambots-spring-boot-starter:4.4.0.1")
     implementation("org.postgresql:postgresql:42.2.6")
-    implementation("org.springframework.boot:spring-boot-starter-data-jdbc:2.1.8.RELEASE")
+    implementation("org.springframework.boot:spring-boot-starter-data-jdbc:2.2.0.RELEASE")
     implementation("org.springframework.boot:spring-boot-configuration-processor")
     implementation("com.github.kilianB:JImageHash:3.0.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.2")

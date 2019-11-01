@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository
 @Repository
 class VoteRepository(private val template: NamedParameterJdbcTemplate, private val queries: SqlQueries) {
     fun exists(vote: VoteEntity): Boolean =
-            template.queryForObject(queries.getFromConfOrFail("voteExists"), getParams(vote), Boolean::class.java)!!
+        template.queryForObject(queries.getFromConfOrFail("voteExists"), getParams(vote), Boolean::class.java) ?: false
 
     fun insertOrUpdate(vote: VoteEntity): Int = template.update(queries.getFromConfOrFail("insertOrUpdateVote"), getParams(vote))
 

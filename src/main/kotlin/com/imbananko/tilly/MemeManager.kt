@@ -77,7 +77,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         val mention = "[${authorUsername
             ?: message.from.firstName
             ?: message.from.lastName
-            ?: "еблан без ника, имени и фамилии"}](tg://user?id=${message.from.id})"
+            ?: "мутный тип"}](tg://user?id=${message.from.id})"
 
         val memeCaption = (message?.caption?.trim { it <= ' ' }?.run { this + "\n\n" } ?: "") + "Sender: " + mention
 
@@ -106,7 +106,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                         .setChatId(chatId)
                         .setPhoto(fileId)
                         .setParseMode(ParseMode.MARKDOWN)
-                        .setCaption("$mention попытался отправить этот мем, несмотря на то, что его уже скидывали выше. Позор...")
+                        .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
                         .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
                 )
             }.onFailure { throwable: Throwable ->
