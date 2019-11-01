@@ -28,16 +28,13 @@ fun Update.extractVoteValue() =
         VoteValue.valueOf(this.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
 
 fun MemeManager.downloadFromFileId(fileId: String): File {
-    val file = GetFile().run {
-        this.fileId = fileId
-        execute(this)
-    }
+    val telegramFile = execute(GetFile().apply { this.fileId = fileId })
+    val tempFile = File.createTempFile("telegram-photo-", "").apply { this.deleteOnExit() }
 
-    return URL(file.getFileUrl(botToken)).openStream().use { inputStream ->
-        val tempFile = File.createTempFile("telegram-photo-", "").also {
-            it.deleteOnExit()
-            FileOutputStream(it).use { out -> IOUtils.copy(inputStream, out) }
+    FileOutputStream(tempFile)
+        .use { out ->
+            URL(telegramFile.getFileUrl(botToken)).openStream().use { IOUtils.copy(it, out) }
         }
-        tempFile
-    }
+
+    return tempFile
 }
