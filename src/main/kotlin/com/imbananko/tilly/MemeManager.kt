@@ -114,7 +114,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
         )
       }.onFailure { throwable: Throwable ->
-        log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.cause)
+        log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
       }
     }
 
@@ -122,7 +122,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
         .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
         .onFailure { throwable: Throwable ->
-          log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.message)
+          log.error("Failed to check if meme is unique, sending anyway. Exception=", throwable)
           processMemeIfUnique()
         }
   }
