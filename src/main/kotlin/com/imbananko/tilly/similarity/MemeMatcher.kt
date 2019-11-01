@@ -7,19 +7,19 @@ import java.io.File
 
 @Component
 class MemeMatcher {
-    private val normalizedHammingDistance = .02
+  private val normalizedHammingDistance = .02
 
-    private val matcher = ConsecutiveMatcher(true).also {
-        it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
-    }
+  private val matcher = ConsecutiveMatcher(true).also {
+    it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
+  }
 
-    @Synchronized
-    fun addMeme(fileId: String, imageFile: File) = matcher.addImage(fileId, imageFile)
+  @Synchronized
+  fun addMeme(fileId: String, imageFile: File) = matcher.addImage(fileId, imageFile)
 
-    fun checkMemeExists(memeId: String, imageFile: File): Result<String?> = runCatching {
-        matcher.getMatchingImages(imageFile).poll()
-            ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
-            ?.value
-            .also { if (it == null) matcher.addImage(memeId, imageFile) }
-    }
+  fun checkMemeExists(memeId: String, imageFile: File): Result<String?> = runCatching {
+    matcher.getMatchingImages(imageFile).poll()
+        ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
+        ?.value
+        .also { if (it == null) matcher.addImage(memeId, imageFile) }
+  }
 }

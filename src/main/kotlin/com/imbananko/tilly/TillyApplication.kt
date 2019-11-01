@@ -11,6 +11,6 @@ import org.telegram.telegrambots.ApiContextInitializer
 class TillyApplication
 
 fun main(args: Array<String>) {
-    ApiContextInitializer.init()
-    SpringApplication.run(TillyApplication::class.java, *args)
+  ApiContextInitializer.init()
+  SpringApplication.run(TillyApplication::class.java, *args)
 }
