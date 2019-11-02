@@ -68,7 +68,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   override fun getBotUsername(): String? = username
 
-  override fun onUpdateReceived(update: Update): Unit {
+  override fun onUpdateReceived(update: Update) {
     if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
     if (update.hasVote()) processVote(update)
   }

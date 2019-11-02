@@ -2,6 +2,7 @@ package com.imbananko.tilly.similarity
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.io.File
@@ -12,7 +13,7 @@ class MemeMatcherTest {
   @Suppress("unused")
   companion object {
     @JvmStatic
-    val memes = listOf("meme_changed_less.jpg", "meme_changed_more.jpg", "original_meme.jpg")
+    val memes = listOf("meme_changed_less.jpg", "meme_changed_more.jpg", "original_meme.jpg", "meme1.jpg", "meme2.jpg")
         .map { it to loadMeme(it) }.toMap()
 
     @JvmStatic
@@ -50,5 +51,16 @@ class MemeMatcherTest {
 
     assertEquals(null, memeMatch,
         "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
+  }
+
+  @Test
+  fun `Meme1 and Meme2 should be distinguished`() {
+    val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not fount")
+    val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not fount")
+    memeMatcher.addMeme(meme1.name, meme1)
+    val memeMatch = memeMatcher.checkMemeExists(meme2.name, meme2)
+
+    assertEquals(Result.success(null), memeMatch,
+        "Changed meme ${meme2.name} should be different from original one ${meme1.name}")
   }
 }
