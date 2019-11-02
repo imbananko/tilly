@@ -13,6 +13,7 @@ import com.imbananko.tilly.utility.extractVoteValue
 import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
+import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -27,46 +28,42 @@ import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.net.URL
 import javax.annotation.PostConstruct
 
 @Component
-class MemeManager(private val memeRepository: MemeRepository, private val voteRepository: VoteRepository, private val memeMatcher: MemeMatcher) : TelegramLongPollingBot() {
+class MemeManager(private val memeRepository: MemeRepository,
+                  private val voteRepository: VoteRepository,
+                  private val memeMatcher: MemeMatcher) : TelegramLongPollingBot() {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
   @Value("\${target.chat.id}")
   private val chatId: Long = 0
-
   @Value("\${bot.token}")
   private lateinit var token: String
-
   @Value("\${bot.username}")
   private lateinit var username: String
 
+  override fun getBotToken(): String? = token
+  override fun getBotUsername(): String? = username
+
   @PostConstruct
-  fun init() {
+  fun init() = runBlocking {
     memeRepository
         .load(chatId)
         .parallelStream()
         .forEach { me ->
           try {
             memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
-          } catch (e: TelegramApiException) {
-            log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
-          } catch (e: IOException) {
-            log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
+            log.info("Added existing meme to MemeMatcher cache: {}", me)
+          } catch (ex: Exception) {
+            log.error("Failed to load file {}, skipping. Exception:", me.fileId, ex)
           }
         }
   }
-
-  override fun getBotToken(): String? = token
-
-  override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
     if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
