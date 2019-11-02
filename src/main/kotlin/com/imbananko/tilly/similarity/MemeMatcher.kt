@@ -16,10 +16,11 @@ class MemeMatcher {
   @Synchronized
   fun addMeme(fileId: String, imageFile: File) = matcher.addImage(fileId, imageFile)
 
-  fun checkMemeExists(memeId: String, imageFile: File): Result<String?> = runCatching {
-    matcher.getMatchingImages(imageFile).poll()
-        ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
-        ?.value
-        .also { if (it == null) matcher.addImage(memeId, imageFile) }
-  }
+  fun checkMemeExists(memeId: String, imageFile: File): String? =
+      matcher
+          .getMatchingImages(imageFile)
+          .poll()
+          ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
+          ?.value
+          .also { if (it == null) matcher.addImage(memeId, imageFile) }
 }

@@ -82,29 +82,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         ?: message.from.firstName
         ?: message.from.lastName
         ?: "мутный тип"}](tg://user?id=${message.from.id})"
-
     val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
-
-    val processMemeIfUnique = {
-      runCatching {
-        execute(
-            SendPhoto()
-                .setChatId(chatId)
-                .setPhoto(fileId)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setCaption(memeCaption)
-                .setReplyMarkup(createMarkup(emptyMap(), false)))
-      }.onSuccess { sentMemeMessage ->
-        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
-        log.info("Sent meme=$meme")
-        memeRepository.save(meme)
-      }.onFailure { throwable ->
-        log.error("Failed to send meme from message=" + message + ". Exception=" + throwable.cause)
+    try {
+      val existingMemeId = try {
+        val memeFile = downloadFromFileId(fileId)
+        memeMatcher.checkMemeExists(fileId, memeFile)
+      } catch (ex: Exception) {
+        log.error("failed to check if meme unique for message=$message", ex)
+        null
       }
-    }
-
-    val processMemeIfExists = { existingMemeId: String ->
-      runCatching {
+      if (existingMemeId != null) {
+        log.info("Blaming $mention for sending existing meme $fileId")
         execute(
             SendPhoto()
                 .setChatId(chatId)
@@ -113,18 +101,23 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
                 .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
         )
-      }.onFailure { throwable: Throwable ->
-        log.error("Failed to reply with existing meme from message=" + message + ". Exception=" + throwable.cause)
+        log.info("Blamed $mention for sending existing meme $fileId")
+      } else {
+        log.info("Sending unique meme={$mention, $fileId}")
+        val sentMemeMessage = execute(
+            SendPhoto()
+                .setChatId(chatId)
+                .setPhoto(fileId)
+                .setParseMode(ParseMode.MARKDOWN)
+                .setCaption(memeCaption)
+                .setReplyMarkup(createMarkup(emptyMap(), false)))
+        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
+        memeRepository.save(meme)
+        log.info("Sent unique meme $meme and saved to database")
       }
+    } catch (ex: Exception) {
+      log.error("Failed to process meme from message=$message. Exception=", ex)
     }
-
-    runCatching { downloadFromFileId(fileId) }
-        .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
-        .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
-        .onFailure { throwable: Throwable ->
-          log.error("Failed to check if meme is unique, sending anyway. Exception={}", throwable.message)
-          processMemeIfUnique()
-        }
   }
 
   private fun processVote(update: Update) {

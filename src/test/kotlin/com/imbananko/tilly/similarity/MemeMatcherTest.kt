@@ -38,7 +38,7 @@ class MemeMatcherTest {
     val fileId = file.name
     memeMatcher.addMeme(fileId, file)
 
-    assertEquals(Result.success(fileId), memeMatcher.checkMemeExists(fileId, file))
+    assertEquals(fileId, memeMatcher.checkMemeExists(fileId, file))
   }
 
   @ParameterizedTest
@@ -48,7 +48,7 @@ class MemeMatcherTest {
     memeMatcher.addMeme(originalMeme.name, originalMeme)
     val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme)
 
-    assertEquals(Result.success(null), memeMatch,
+    assertEquals(null, memeMatch,
         "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
   }
 }
