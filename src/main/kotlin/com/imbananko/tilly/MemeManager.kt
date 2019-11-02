@@ -83,12 +83,13 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         ?: message.from.lastName
         ?: "мутный тип"}](tg://user?id=${message.from.id})"
     val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
+
     try {
       val existingMemeId = try {
         val memeFile = downloadFromFileId(fileId)
         memeMatcher.checkMemeExists(fileId, memeFile)
       } catch (ex: Exception) {
-        log.error("failed to check if meme unique for message=$message", ex)
+        log.error("Failed to check if meme unique for message=$message", ex)
         null
       }
       if (existingMemeId != null) {
