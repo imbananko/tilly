@@ -60,7 +60,7 @@ class MemeMatcherTest {
     memeMatcher.addMeme(meme1.name, meme1)
     val memeMatch = memeMatcher.checkMemeExists(meme2.name, meme2)
 
-    assertEquals(Result.success(null), memeMatch,
+    assertEquals(null, memeMatch,
         "Changed meme ${meme2.name} should be different from original one ${meme1.name}")
   }
 }
