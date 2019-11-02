@@ -209,10 +209,12 @@ class MemeManager(private val memeRepository: MemeRepository,
 
   private fun processExplanation(update: Update) {
     thread {
-      val senderId = update.message.from.id
-      val chatId = update.message.chatId
-      val explainReplyMessageId = update.message.replyToMessage.messageId
-      explanationRepository.deleteExplanation(senderId, chatId, explainReplyMessageId)
+      runCatching {
+        val senderId = update.message.from.id
+        val chatId = update.message.chatId
+        val explainReplyMessageId = update.message.replyToMessage.messageId
+        explanationRepository.deleteExplanation(senderId, chatId, explainReplyMessageId)
+      }.onFailure { log.error("Can't process explanation because of", it) }
     }
   }
 
