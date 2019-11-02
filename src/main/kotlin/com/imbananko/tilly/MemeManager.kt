@@ -13,7 +13,6 @@ import com.imbananko.tilly.utility.extractVoteValue
 import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
-import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -51,19 +50,18 @@ class MemeManager(private val memeRepository: MemeRepository,
   override fun getBotUsername(): String? = username
 
   @PostConstruct
-  fun init() = runBlocking {
-    memeRepository
-        .load(chatId)
-        .parallelStream()
-        .forEach { me ->
-          try {
-            memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
-            log.info("Added existing meme to MemeMatcher cache: {}", me)
-          } catch (ex: Exception) {
-            log.error("Failed to load file {}, skipping. Exception:", me.fileId, ex)
+  fun init() =
+      memeRepository
+          .load(chatId)
+          .parallelStream()
+          .forEach { me ->
+            try {
+              memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
+              log.info("Added existing meme to MemeMatcher cache: {}", me)
+            } catch (ex: Exception) {
+              log.error("Failed to load file {}, skipping. Exception:", me.fileId, ex)
+            }
           }
-        }
-  }
 
   override fun onUpdateReceived(update: Update) {
     if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
