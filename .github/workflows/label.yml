@@ -12,5 +12,5 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
-    - name: Run tests on PR
+    - name: Run tests
       run: ./gradlew test bootJar
