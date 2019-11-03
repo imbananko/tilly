@@ -14,7 +14,7 @@ fun Update.hasVote(): Boolean =
     }.getOrDefault(false)
 
 fun Update.canBeExplanation(): Boolean =
-    this.hasMessage() && this.message.replyToMessage != null && this.message.replyToMessage.from.bot && runCatching {
+    this.hasMessage() && this.message?.replyToMessage?.from?.bot ?: false && runCatching {
       this.message.replyToMessage.text.endsWith("поясни за мем, на это у тебя есть сутки")
     }.getOrDefault(false)
 

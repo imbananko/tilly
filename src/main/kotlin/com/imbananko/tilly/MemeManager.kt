@@ -88,9 +88,13 @@ class MemeManager(private val memeRepository: MemeRepository,
   override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
-    if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
-    if (update.hasVote()) processVote(update)
-    if (update.canBeExplanation()) processExplanation(update)
+    if (update.isP2PChat() && update.hasPhoto()) {
+      processMeme(update)
+    } else if (update.hasVote()) {
+      processVote(update)
+    } else if (update.canBeExplanation()) {
+      processExplanation(update)
+    }
   }
 
   private fun processMeme(update: Update) {
