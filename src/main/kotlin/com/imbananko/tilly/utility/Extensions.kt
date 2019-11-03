@@ -1,8 +1,6 @@
 package com.imbananko.tilly.utility
 
 import com.imbananko.tilly.model.VoteValue
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
-import org.telegram.telegrambots.meta.api.objects.ChatMember
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 
@@ -22,14 +20,5 @@ fun Update.canBeExplanation(): Boolean =
 
 fun Update.extractVoteValue(): VoteValue =
     VoteValue.valueOf(this.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
-
-fun Update.hasPermissions(execute: (GetChatMember) -> ChatMember, chatIdOpt: Long? = null): Boolean {
-  val userId = this.message?.from?.id ?: this.callbackQuery?.from?.id
-  val chatId = chatIdOpt ?: this.callbackQuery?.message?.chatId
-
-  return runCatching {
-    execute(GetChatMember().apply { this.setChatId(chatId); this.setUserId(userId) }).canSendMessages ?: true
-  }.getOrDefault(false)
-}
 
 fun User.mention(): String = "[${userName ?: firstName ?: "мутный тип"}](tg://user?id=$id)"

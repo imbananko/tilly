@@ -60,13 +60,13 @@ sql:
       order by created_at desc
       limit 1
     addExplanation: >
-      insert into existing_explanation(user_id, chat_id, message_id, explain_reply_message_id, explain_till)
+      insert into explanation_request(user_id, chat_id, message_id, explain_reply_message_id, explain_till)
       values (:userId, :chatId, :messageId, :explainReplyMessageId, :explainTill)
     listExpiredExplanations: >
-      select * from existing_explanation
+      select * from explanation_request
       where explain_till < timezone('MSK'::text, now())
     deleteExplanation: >
-      delete from existing_explanation
+      delete from explanation_request
       where
         user_id = :userId
         and chat_id = :chatId

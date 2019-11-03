@@ -16,7 +16,6 @@ import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
 import com.imbananko.tilly.utility.canBeExplanation
-import com.imbananko.tilly.utility.hasPermissions
 import com.imbananko.tilly.utility.mention
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -91,14 +90,30 @@ class MemeManager(private val memeRepository: MemeRepository,
   override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
-    if (update.isP2PChat() && update.hasPhoto() && update.hasPermissions({ execute(it) }, chatId)) processMeme(update)
-    if (update.hasVote() && update.hasPermissions({ execute(it) })) processVote(update)
+    if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
+    if (update.hasVote()) processVote(update)
     if (update.canBeExplanation()) processExplanation(update)
   }
 
   private fun processMeme(update: Update) {
     val message = update.message
     val messageFrom = message.from
+    val targetChatId = this.chatId
+    val canSendMeme = runCatching {
+      execute(GetChatMember().apply { this.setChatId(targetChatId); this.setUserId(messageFrom.id) }).canSendMessages ?: true
+    }.getOrDefault(false)
+
+    if (!canSendMeme) {
+      execute(
+          SendMessage()
+              .setChatId(message.chatId)
+              .setReplyToMessageId(message.messageId)
+              .setText("К сожаленю, у тебя нет прав отправлять мемы, поэтому этот мем обработан не будет")
+      )
+
+      return
+    }
+
     val fileId = message.photo[0].fileId
     val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + messageFrom.mention()
 
@@ -106,7 +121,7 @@ class MemeManager(private val memeRepository: MemeRepository,
       runCatching {
         execute(
             SendPhoto()
-                .setChatId(chatId)
+                .setChatId(targetChatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption(memeCaption)
@@ -124,11 +139,11 @@ class MemeManager(private val memeRepository: MemeRepository,
       runCatching {
         execute(
             SendPhoto()
-                .setChatId(chatId)
+                .setChatId(targetChatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption("${messageFrom.mention()} попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
-                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
+                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, targetChatId))
         )
       }.onFailure { throwable: Throwable ->
         log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
@@ -254,17 +269,12 @@ class MemeManager(private val memeRepository: MemeRepository,
   }
 
   private fun processExpiredExplanation(explanation: ExplanationEntity) {
-    val userMention = execute(GetChatMember().apply {
-      this.setChatId(explanation.chatId)
-      this.setUserId(explanation.userId)
-    }).user.mention()
-
     val banMessage = execute<Message, SendMessage>(
         SendMessage()
             .setChatId(explanation.chatId)
             .setParseMode(ParseMode.MARKDOWN)
             .setReplyToMessageId(explanation.explainReplyMessageId)
-            .setText("К сожалению, я вынужден отправить $userMention в бан потому, что мем не был пояснен")
+            .setText("Время вышло. К сожалению, я вынужден отправить [тебя](tg://user?id=${explanation.userId}) в бан")
     )
     runCatching {
       execute(RestrictChatMember(explanation.chatId, explanation.userId).apply {
@@ -272,12 +282,12 @@ class MemeManager(private val memeRepository: MemeRepository,
         this.setPermissions(ChatPermissions())
       })
     }.onFailure { ex ->
-      log.error("Can't ban user $userMention because of", ex)
+      log.error("Can't ban user ${explanation.userId} because of", ex)
       execute(SendMessage()
           .setChatId(explanation.chatId)
           .setParseMode(ParseMode.MARKDOWN)
           .setReplyToMessageId(banMessage.messageId)
-          .setText("Забанить $userMention не получилось, потому что либо у меня нет прав на это, либо $userMention является админом")
+          .setText("Забанить не получилось, потому что либо у меня нет прав на это, либо пользователь является админом")
       )
     }
     explanationRepository.deleteExplanation(explanation.userId, explanation.chatId, explanation.explainReplyMessageId)

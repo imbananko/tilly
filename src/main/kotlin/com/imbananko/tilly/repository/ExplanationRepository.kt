@@ -21,17 +21,16 @@ class ExplanationRepository(private val template: NamedParameterJdbcTemplate, pr
     )
   }
 
-  fun listExpiredExplanations(): List<ExplanationEntity> {
-    return template.query(queries.getFromConfOrFail("listExpiredExplanations")) { rs: ResultSet, _: Int ->
-      ExplanationEntity(
-          rs.getInt("user_id"),
-          rs.getLong("chat_id"),
-          rs.getInt("message_id"),
-          rs.getInt("explain_reply_message_id"),
-          rs.getTimestamp("explain_till").toLocalDateTime().toInstant(ZoneOffset.ofHours(3))
-      )
-    }
-  }
+  fun listExpiredExplanations(): List<ExplanationEntity> =
+      template.query(queries.getFromConfOrFail("listExpiredExplanations")) { rs: ResultSet, _: Int ->
+        ExplanationEntity(
+            rs.getInt("user_id"),
+            rs.getLong("chat_id"),
+            rs.getInt("message_id"),
+            rs.getInt("explain_reply_message_id"),
+            rs.getTimestamp("explain_till").toLocalDateTime().toInstant(ZoneOffset.ofHours(3))
+        )
+      }
 
   fun deleteExplanation(userId: Int, chatId: Long, explainReplyMessageId: Int) {
     template.update(queries.getFromConfOrFail("deleteExplanation"),
