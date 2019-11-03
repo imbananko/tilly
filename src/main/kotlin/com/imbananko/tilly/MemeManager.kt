@@ -77,7 +77,7 @@ class MemeManager(private val memeRepository: MemeRepository,
         }
   }
 
-  @Scheduled(fixedRate = 1800000) // 30 minutes
+  @Scheduled(fixedRate = 30 * 60 * 1000)
   private fun listenExpiredExplanations() {
     explanationRepository.listExpiredExplanations()
         .forEach { processExpiredExplanation(it) }
