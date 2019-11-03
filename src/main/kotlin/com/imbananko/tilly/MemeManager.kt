@@ -79,10 +79,8 @@ class MemeManager(private val memeRepository: MemeRepository,
 
   @Scheduled(fixedRate = 1800000) // 30 minutes
   private fun listenExpiredExplanations() {
-    thread {
-      explanationRepository.listExpiredExplanations()
-          .forEach { processExpiredExplanation(it) }
-    }
+    explanationRepository.listExpiredExplanations()
+        .forEach { processExpiredExplanation(it) }
   }
 
   override fun getBotToken(): String? = token
@@ -108,7 +106,7 @@ class MemeManager(private val memeRepository: MemeRepository,
           SendMessage()
               .setChatId(message.chatId)
               .setReplyToMessageId(message.messageId)
-              .setText("К сожаленю, у тебя нет прав отправлять мемы, поэтому этот мем обработан не будет")
+              .setText("К сожалению, у тебя нет прав отправлять мемы, поэтому этот мем обработан не будет")
       )
 
       return
