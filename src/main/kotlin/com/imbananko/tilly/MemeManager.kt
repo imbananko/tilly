@@ -1,13 +1,11 @@
 package com.imbananko.tilly
 
-import com.imbananko.tilly.model.ExplanationEntity
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.model.VoteValue.DOWN
 import com.imbananko.tilly.model.VoteValue.EXPLAIN
 import com.imbananko.tilly.model.VoteValue.UP
-import com.imbananko.tilly.repository.ExplanationRepository
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
@@ -15,42 +13,29 @@ import com.imbananko.tilly.utility.extractVoteValue
 import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
-import com.imbananko.tilly.utility.canBeExplanation
-import com.imbananko.tilly.utility.mention
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
-import org.telegram.telegrambots.meta.api.methods.groupadministration.RestrictChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
-import org.telegram.telegrambots.meta.api.objects.ChatPermissions
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.net.URL
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import javax.annotation.PostConstruct
-import kotlin.concurrent.thread
 
-@EnableScheduling
 @Component
-class MemeManager(private val memeRepository: MemeRepository,
-                  private val voteRepository: VoteRepository,
-                  private val explanationRepository: ExplanationRepository,
-                  private val memeMatcher: MemeMatcher) : TelegramLongPollingBot() {
+class MemeManager(private val memeRepository: MemeRepository, private val voteRepository: VoteRepository, private val memeMatcher: MemeMatcher) : TelegramLongPollingBot() {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
@@ -64,23 +49,19 @@ class MemeManager(private val memeRepository: MemeRepository,
   private lateinit var username: String
 
   @PostConstruct
-  private fun init() {
+  fun init() {
     memeRepository
         .load(chatId)
         .parallelStream()
         .forEach { me ->
           try {
             memeMatcher.addMeme(me.fileId, downloadFromFileId(me.fileId))
-          } catch (e: Exception) {
+          } catch (e: TelegramApiException) {
+            log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
+          } catch (e: IOException) {
             log.error("Failed to load file {}: {}, skipping...", me.fileId, e.message)
           }
         }
-  }
-
-  @Scheduled(fixedRate = 30 * 60 * 1000)
-  private fun listenExpiredExplanations() {
-    explanationRepository.listExpiredExplanations()
-        .forEach { processExpiredExplanation(it) }
   }
 
   override fun getBotToken(): String? = token
@@ -88,48 +69,33 @@ class MemeManager(private val memeRepository: MemeRepository,
   override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
-    if (update.isP2PChat() && update.hasPhoto()) {
-      processMeme(update)
-    } else if (update.hasVote()) {
-      processVote(update)
-    } else if (update.canBeExplanation()) {
-      processExplanation(update)
-    }
+    if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
+    if (update.hasVote()) processVote(update)
   }
+
 
   private fun processMeme(update: Update) {
     val message = update.message
-    val messageFrom = message.from
-    val targetChatId = this.chatId
-    val canSendMeme = runCatching {
-      execute(GetChatMember().apply { this.setChatId(targetChatId); this.setUserId(messageFrom.id) }).canSendMessages ?: true
-    }.getOrDefault(false)
-
-    if (!canSendMeme) {
-      execute(
-          SendMessage()
-              .setChatId(message.chatId)
-              .setReplyToMessageId(message.messageId)
-              .setText("К сожалению, у тебя нет прав отправлять мемы, поэтому этот мем обработан не будет")
-      )
-
-      return
-    }
-
     val fileId = message.photo[0].fileId
-    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + messageFrom.mention()
+    val authorUsername = message.from.userName
+    val mention = "[${authorUsername
+        ?: message.from.firstName
+        ?: message.from.lastName
+        ?: "мутный тип"}](tg://user?id=${message.from.id})"
+
+    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
 
     val processMemeIfUnique = {
       runCatching {
         execute(
             SendPhoto()
-                .setChatId(targetChatId)
+                .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption(memeCaption)
                 .setReplyMarkup(createMarkup(emptyMap(), false)))
       }.onSuccess { sentMemeMessage ->
-        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, messageFrom.id, fileId)
+        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
         log.info("Sent meme=$meme")
         memeRepository.save(meme)
       }.onFailure { throwable ->
@@ -141,11 +107,11 @@ class MemeManager(private val memeRepository: MemeRepository,
       runCatching {
         execute(
             SendPhoto()
-                .setChatId(targetChatId)
+                .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setCaption("${messageFrom.mention()} попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
-                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, targetChatId))
+                .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
+                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
         )
       }.onFailure { throwable: Throwable ->
         log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
@@ -164,10 +130,10 @@ class MemeManager(private val memeRepository: MemeRepository,
   private fun processVote(update: Update) {
     val message = update.callbackQuery.message
     val targetChatId = message.chatId
-    val voteSender = update.callbackQuery.from
-
     val messageId = message.messageId
     val vote = update.extractVoteValue()
+    val voteSender = update.callbackQuery.from
+    val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
 
     val wasExplained = message
         .replyMarkup
@@ -177,8 +143,8 @@ class MemeManager(private val memeRepository: MemeRepository,
 
     val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
 
-    val memeSenderId = memeRepository.getMemeSender(targetChatId, messageId)
-    if (memeSenderId == voteSender.id) return
+    if (voteSender.userName == memeSenderFromCaption ||
+        memeRepository.getMemeSender(targetChatId, messageId) == voteSender.id) return
 
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
@@ -201,8 +167,7 @@ class MemeManager(private val memeRepository: MemeRepository,
 
     if (shouldMarkExplained) {
 
-      val replyText = "[${update.callbackQuery.message.caption.replace("Sender: ", "")}](tg://user?id=$memeSenderId)" +
-          ", поясни за мем, на это у тебя есть сутки"
+      val replyText = update.callbackQuery.message.caption.replaceFirst("Sender: ".toRegex(), "@") + ", поясни за мем"
 
       runCatching {
         execute<Message, SendMessage>(
@@ -210,28 +175,10 @@ class MemeManager(private val memeRepository: MemeRepository,
                 .setChatId(targetChatId)
                 .setReplyToMessageId(update.callbackQuery.message.messageId)
                 .setText(replyText)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setReplyMarkup(ForceReplyKeyboard().apply { this.selective = true })
         )
-      }.mapCatching { replyMessage ->
-        thread {
-          val explainTill = Instant.now().plus(1, ChronoUnit.DAYS)
-          val explanation = ExplanationEntity(memeSenderId, targetChatId, messageId, replyMessage.messageId, explainTill)
-          explanationRepository.save(explanation)
-          log.info("Successful reply for explaining")
-        }
-      }.onFailure { throwable -> log.error("Failed to reply for explaining. Exception=", throwable) }
-    }
-  }
-
-  private fun processExplanation(update: Update) {
-    thread {
-      runCatching {
-        val senderId = update.message.from.id
-        val chatId = update.message.chatId
-        val explainReplyMessageId = update.message.replyToMessage.messageId
-        explanationRepository.deleteExplanation(senderId, chatId, explainReplyMessageId)
-      }.onFailure { log.error("Can't process explanation because of", it) }
+      }
+          .onSuccess { log.info("Successful reply for explaining") }
+          .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
     }
   }
 
@@ -268,30 +215,5 @@ class MemeManager(private val memeRepository: MemeRepository,
         }
 
     return tempFile
-  }
-
-  private fun processExpiredExplanation(explanation: ExplanationEntity) {
-    val banMessage = execute<Message, SendMessage>(
-        SendMessage()
-            .setChatId(explanation.chatId)
-            .setParseMode(ParseMode.MARKDOWN)
-            .setReplyToMessageId(explanation.explainReplyMessageId)
-            .setText("Время вышло. К сожалению, я вынужден отправить [тебя](tg://user?id=${explanation.userId}) в бан")
-    )
-    runCatching {
-      execute(RestrictChatMember(explanation.chatId, explanation.userId).apply {
-        this.setUntilDate(Instant.now().plus(1, ChronoUnit.DAYS))
-        this.setPermissions(ChatPermissions())
-      })
-    }.onFailure { ex ->
-      log.error("Can't ban user ${explanation.userId} because of", ex)
-      execute(SendMessage()
-          .setChatId(explanation.chatId)
-          .setParseMode(ParseMode.MARKDOWN)
-          .setReplyToMessageId(banMessage.messageId)
-          .setText("Забанить не получилось, потому что либо у меня нет прав на это, либо пользователь является админом")
-      )
-    }
-    explanationRepository.deleteExplanation(explanation.userId, explanation.chatId, explanation.explainReplyMessageId)
   }
 }

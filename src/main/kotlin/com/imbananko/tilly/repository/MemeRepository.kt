@@ -12,7 +12,7 @@ import java.util.*
 class MemeRepository(private val template: NamedParameterJdbcTemplate, private val queries: SqlQueries) {
   private val memeSenderCache: WeakHashMap<Int, Int> = WeakHashMap()
 
-  fun save(memeEntity: MemeEntity) {
+  fun save(memeEntity: MemeEntity): Unit {
     template.update(queries.getFromConfOrFail("insertMeme"),
         MapSqlParameterSource("chatId", memeEntity.chatId)
             .addValue("messageId", memeEntity.messageId)
@@ -22,7 +22,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
     memeSenderCache[Objects.hash(memeEntity.chatId, memeEntity.messageId)] = memeEntity.senderId
   }
 
-  fun getMemeSender(chatId: Long, messageId: Int): Int =
+  fun getMemeSender(chatId: Long, messageId: Int): Int? =
       memeSenderCache.computeIfAbsent(Objects.hash(chatId, messageId)) {
         template.queryForObject(
             queries.getFromConfOrFail("findMemeSender"),
