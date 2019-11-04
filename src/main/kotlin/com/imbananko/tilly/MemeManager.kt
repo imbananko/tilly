@@ -73,7 +73,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   @Scheduled(cron = "0 0 12 * * TUE")
   private fun memeOfTheWeek() {
     runCatching {
-      val memeOfTheWeek: MemeEntity? = this.memeRepository.getMemeOfTheWeek(chatId).getOrNull(0)
+      val memeOfTheWeek: MemeEntity? = memeRepository.findMemeOfTheWeek(chatId)
 
       if (memeOfTheWeek != null) {
         val winner = execute(GetChatMember().apply {

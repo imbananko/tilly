@@ -16,4 +16,5 @@ fun Update.hasVote() =
 fun Update.extractVoteValue() =
     VoteValue.valueOf(this.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
 
-fun User.mention() = "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
+fun User.mention(): String =
+    "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
