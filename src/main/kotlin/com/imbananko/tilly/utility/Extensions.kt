@@ -2,6 +2,7 @@ package com.imbananko.tilly.utility
 
 import com.imbananko.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.User
 
 fun Update.isP2PChat() = this.hasMessage() && this.message.chat.isUserChat
 
@@ -14,3 +15,5 @@ fun Update.hasVote() =
 
 fun Update.extractVoteValue() =
     VoteValue.valueOf(this.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
+
+fun User.mention() = "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
