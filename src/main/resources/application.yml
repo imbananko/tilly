@@ -70,4 +70,4 @@ sql:
       from meme m join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
       where m.chat_id = :chatId and m.created_at > timezone('MSK'::text, now()) - interval '7 days'
       group by m.chat_id, m.message_id
-      order by up_count desc, explain_count, down_count, m.created_at desc;
+      order by up_count desc, down_count, explain_count, m.created_at desc;
