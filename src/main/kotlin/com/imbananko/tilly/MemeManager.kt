@@ -70,7 +70,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         }
   }
 
-  @Scheduled(cron = "0 0 12 * * TUE")
+  @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() {
     runCatching {
       val memeOfTheWeek: MemeEntity? = memeRepository.findMemeOfTheWeek(chatId)
