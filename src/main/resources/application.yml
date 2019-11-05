@@ -52,10 +52,24 @@ sql:
     loadMemes: >
       select file_id, sender_id, chat_id, message_id
       from meme
-      where chat_id = :chat_id
+      where chat_id = :chatId
     messageIdByFileId: >
       select message_id
       from meme
       where chat_id = :chat_id and file_id = :file_id
       order by created_at desc
+      limit 1
+    getMemeOfTheWeek: >
+      select m.chat_id,
+             m.message_id,
+             m.sender_id,
+             m.file_id,
+             count(value) filter (where value = 'UP') as up_count,
+             count(value) filter (where value = 'EXPLAIN') as explain_count,
+             count(value) filter (where value = 'DOWN') as down_count
+      from meme m
+          join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
+      where m.chat_id = :chatId and m.created_at > timezone('MSK'::text, now()) - interval '7 days'
+      group by m.chat_id, m.message_id
+      order by up_count desc, down_count, explain_count, m.created_at desc
       limit 1

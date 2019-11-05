@@ -34,13 +34,24 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
   fun load(chatId: Long): List<MemeEntity> =
       template.query(
           queries.getFromConfOrFail("loadMemes"),
-          MapSqlParameterSource("chat_id", chatId)
+          MapSqlParameterSource("chatId", chatId)
       ) { rs: ResultSet, _: Int ->
         MemeEntity(rs.getLong("chat_id"),
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"))
       }
+
+  fun findMemeOfTheWeek(chatId: Long): MemeEntity? =
+      template.query(
+          queries.getFromConfOrFail("getMemeOfTheWeek"),
+          MapSqlParameterSource("chatId", chatId)
+      ) { rs: ResultSet, _: Int ->
+        MemeEntity(rs.getLong("chat_id"),
+            rs.getInt("message_id"),
+            rs.getInt("sender_id"),
+            rs.getString("file_id"))
+      }.getOrNull(0)
 
   fun messageIdByFileId(fileId: String, chatId: Long): Int? = template.query(queries.getFromConfOrFail("messageIdByFileId"),
       MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId)
