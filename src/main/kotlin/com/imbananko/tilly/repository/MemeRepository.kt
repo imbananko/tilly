@@ -53,6 +53,13 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getString("file_id"))
       }.getOrNull(0)
 
+  fun migrateMeme(chatId: Long, oldMessageId: Int, newMessageId: Int) {
+    template.update(queries.getFromConfOrFail("migrateMeme"),
+        MapSqlParameterSource("chatId", chatId)
+            .addValue("oldMessageId", oldMessageId)
+            .addValue("newMessageId", newMessageId))
+  }
+
   fun messageIdByFileId(fileId: String, chatId: Long): Int? = template.query(queries.getFromConfOrFail("messageIdByFileId"),
       MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId)
   ) { rs, _ -> rs.getInt("message_id") }[0]

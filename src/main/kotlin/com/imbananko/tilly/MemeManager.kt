@@ -80,13 +80,34 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           this.setChatId(memeOfTheWeek.chatId)
           this.setUserId(memeOfTheWeek.senderId)
         }).user
-        val memeOfTheWeekMessage = execute(
-            SendMessage()
-                .setChatId(chatId)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setReplyToMessageId(memeOfTheWeek.messageId)
-                .setText("Поздравляем ${winner.mention()} с мемом недели!")
-        )
+        val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
+        val memeOfTheWeekMessage = runCatching {
+          execute(
+              SendMessage()
+                  .setChatId(chatId)
+                  .setParseMode(ParseMode.MARKDOWN)
+                  .setReplyToMessageId(memeOfTheWeek.messageId)
+                  .setText(congratulationText)
+          )
+        }.getOrElse { error ->
+          log.error("Can't reply to meme of the week because of", error)
+          log.info("Send meme of the week as new message")
+
+          val statistics = voteRepository.getStats(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
+          val fallbackMemeOfTheWeekMessage = execute(
+              SendPhoto()
+                  .setChatId(chatId)
+                  .setPhoto(memeOfTheWeek.fileId)
+                  .setParseMode(ParseMode.MARKDOWN)
+                  .setCaption(congratulationText)
+                  .setReplyMarkup(createMarkup(statistics, statistics.getOrDefault(EXPLAIN, 0) >= 3))
+          )
+
+          memeRepository.migrateMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
+          voteRepository.migrateVotes(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
+
+          fallbackMemeOfTheWeekMessage
+        }
         execute(PinChatMessage(memeOfTheWeekMessage.chatId, memeOfTheWeekMessage.messageId))
       } else {
         execute(
