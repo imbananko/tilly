@@ -73,3 +73,11 @@ sql:
       group by m.chat_id, m.message_id
       order by up_count desc, down_count, explain_count, m.created_at desc
       limit 1
+    migrateVotes: >
+      update vote
+      set message_id = :newMessageId
+      where chat_id = :chatId and message_id = :oldMessageId
+    migrateMeme: >
+      update meme
+      set message_id = :newMessageId
+      where chat_id = :chatId and message_id = :oldMessageId
