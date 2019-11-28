@@ -1,6 +1,7 @@
 package com.imbananko.tilly.utility
 
 import com.imbananko.tilly.model.VoteValue
+import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 
