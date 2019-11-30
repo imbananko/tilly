@@ -145,7 +145,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setCaption(memeCaption)
+                //.setCaption(memeCaption)
                 .setReplyMarkup(createMarkup(emptyMap(), false)))
       }.onSuccess { sentMemeMessage ->
         val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
@@ -219,8 +219,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
     if (shouldMarkExplained) {
 
-      val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
-      val replyText = "[$memeSenderFromCaption](tg://user?id=$memeSenderId), поясни за мем"
+      //val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
+      val replyText = "Непонятно, помогите плез!"
 
       runCatching {
         execute<Message, SendMessage>(
