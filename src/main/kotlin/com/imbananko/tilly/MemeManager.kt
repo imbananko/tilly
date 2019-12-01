@@ -136,7 +136,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val fileId = message.photo[0].fileId
     val mention = message.from.mention()
 
-    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
+//    anonymous week
+//    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
+    val memeCaption = message.caption?.trim()
 
     val processMemeIfUnique = {
       runCatching {
@@ -145,7 +147,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
-                //.setCaption(memeCaption)
+                .setCaption(memeCaption)
                 .setReplyMarkup(createMarkup(emptyMap(), false)))
       }.onSuccess { sentMemeMessage ->
         val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
