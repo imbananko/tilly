@@ -104,7 +104,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           )
 
           memeRepository.migrateMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
-          voteRepository.migrateVotes(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
 
           fallbackMemeOfTheWeekMessage
         }

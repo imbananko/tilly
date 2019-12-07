@@ -24,13 +24,6 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
           MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId)
       ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
 
-  fun migrateVotes(chatId: Long, oldMessageId: Int, newMessageId: Int) {
-    template.update(queries.getFromConfOrFail("migrateVotes"),
-        MapSqlParameterSource("chatId", chatId)
-            .addValue("oldMessageId", oldMessageId)
-            .addValue("newMessageId", newMessageId))
-  }
-
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =
       MapSqlParameterSource("chatId", vote.chatId)
           .addValue("messageId", vote.messageId)
