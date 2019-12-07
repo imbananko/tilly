@@ -9,11 +9,7 @@ import com.imbananko.tilly.model.VoteValue.UP
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
-import com.imbananko.tilly.utility.extractVoteValue
-import com.imbananko.tilly.utility.hasPhoto
-import com.imbananko.tilly.utility.hasVote
-import com.imbananko.tilly.utility.isP2PChat
-import com.imbananko.tilly.utility.mention
+import com.imbananko.tilly.utility.*
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -78,7 +74,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       if (memeOfTheWeek != null) {
         val winner = execute(GetChatMember().apply {
           this.setChatId(memeOfTheWeek.chatId)
-          this.setUserId(memeOfTheWeek.senderId)
+          this.userId = memeOfTheWeek.senderId
         }).user
         val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
         val memeOfTheWeekMessage = runCatching {
@@ -135,8 +131,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val fileId = message.photo[0].fileId
     val mention = message.from.mention()
 
-//    anonymous week
-//    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
     val memeCaption = message.caption?.trim()
 
     val processMemeIfUnique = {
@@ -196,8 +190,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
     val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
 
-    val memeSenderId = memeRepository.getMemeSender(targetChatId, messageId);
-    if (memeSenderId == voteSender.id) return
+    val memeSenderId = memeRepository.getMemeSender(targetChatId, messageId)
+    if (memeSenderId == voteSender.id || message.isOld()) return
 
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
@@ -219,16 +213,12 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .onFailure { throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.message) }
 
     if (shouldMarkExplained) {
-
-      //val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
-      val replyText = "Непонятно, помогите плез!"
-
       runCatching {
         execute<Message, SendMessage>(
             SendMessage()
                 .setChatId(targetChatId)
                 .setReplyToMessageId(update.callbackQuery.message.messageId)
-                .setText(replyText)
+                .setText("Непонятно, помогите плез!")
                 .setParseMode(ParseMode.MARKDOWN)
         )
       }
