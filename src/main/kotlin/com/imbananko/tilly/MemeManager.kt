@@ -33,6 +33,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -157,27 +158,33 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
     }
 
-    val processMemeIfExists = { existingMemeId: String? ->
+    val processMemeIfExists = { existingMemeId: String ->
       runCatching {
-        if (existingMemeId == null) {
-
-        } else execute(
-            SendPhoto()
-                .setChatId(chatId)
-                .setPhoto(fileId)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
-                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
-        )
-      }.onFailure { throwable: Throwable ->
-        log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
+        val massageId = memeRepository.messageIdByFileId(existingMemeId, chatId)
+        execute(SendPhoto()
+            .setChatId(chatId)
+            .setPhoto(fileId)
+            .setParseMode(ParseMode.MARKDOWN)
+            .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
+            .setReplyToMessageId(massageId))
+      }.onFailure { ex ->
+        if (ex is TelegramApiRequestException) {
+          log.warn("Failed to reply with existing meme from message=$message. Sending message without reply.")
+          execute(SendPhoto()
+              .setChatId(chatId)
+              .setPhoto(fileId)
+              .setParseMode(ParseMode.MARKDOWN)
+              .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор..."))
+        } else {
+          throw ex
+        }
       }
     }
 
     runCatching { downloadFromFileId(fileId) }
         .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile) }
-        .mapCatching { memeId ->
-          if (memeId.isSuccess && memeId.getOrNull()!=null processMemeIfExists(memeId.getOrThrow())
+        .onSuccess { memeId ->
+          if (memeId != null) processMemeIfExists(memeId)
           else processMemeIfUnique()
         }
         .onFailure { err ->

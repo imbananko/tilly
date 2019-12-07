@@ -1,6 +1,7 @@
 package com.imbananko.tilly.similarity
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -39,7 +40,7 @@ class MemeMatcherTest {
     val fileId = file.name
     memeMatcher.addMeme(fileId, file)
 
-    assertEquals(Result.success(fileId), memeMatcher.checkMemeExists(fileId, file))
+    assertEquals(fileId, memeMatcher.checkMemeExists(fileId, file))
   }
 
   @ParameterizedTest
@@ -49,8 +50,7 @@ class MemeMatcherTest {
     memeMatcher.addMeme(originalMeme.name, originalMeme)
     val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme)
 
-    assertEquals(Result.success(null), memeMatch,
-        "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
+    assertNull(memeMatch, "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
   }
 
   @Test
@@ -60,7 +60,6 @@ class MemeMatcherTest {
     memeMatcher.addMeme(meme1.name, meme1)
     val memeMatch = memeMatcher.checkMemeExists(meme2.name, meme2)
 
-    assertEquals(Result.success(null), memeMatch,
-        "Changed meme ${meme2.name} should be different from original one ${meme1.name}")
+    assertNull(memeMatch, "Changed meme ${meme2.name} should be different from original one ${meme1.name}")
   }
 }
