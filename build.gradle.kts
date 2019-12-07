@@ -6,57 +6,63 @@ version = "0.0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
-    mavenCentral()
-    maven(url = "https://repo.spring.io/milestone")
-    maven(url = "https://jcenter.bintray.com")
+  mavenCentral()
+  jcenter()
+  maven(url = "https://repo.spring.io/milestone")
+  maven(url = "https://jcenter.bintray.com")
+  maven(url = "https://dl.bintray.com/arrow-kt/arrow-kt/")
+  maven(url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/")
 }
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.50")
+  implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.50")
 
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.50")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.50")
+  implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.50")
+  implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.50")
 
-    implementation("org.telegram:telegrambots-spring-boot-starter:4.4.0.1")
-    implementation("org.postgresql:postgresql:42.2.6")
-    implementation("org.springframework.boot:spring-boot-starter-data-jdbc:2.2.0.RELEASE")
-    implementation("org.springframework.boot:spring-boot-configuration-processor")
-    implementation("com.github.kilianB:JImageHash:3.0.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.2")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+  implementation("org.telegram:telegrambots-spring-boot-starter:4.4.0.1")
+  implementation("org.postgresql:postgresql:42.2.6")
+  implementation("org.springframework.boot:spring-boot-starter-data-jdbc:2.2.0.RELEASE")
+  implementation("org.springframework.boot:spring-boot-configuration-processor")
+  implementation("com.github.kilianB:JImageHash:3.0.0")
+  implementation("io.arrow-kt:arrow-fx:0.10.3")
+  implementation("io.arrow-kt:arrow-optics:0.10.3")
+  implementation("io.arrow-kt:arrow-syntax:0.10.3")
+  testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.2")
+  testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
 }
 
 plugins {
-    id("com.google.cloud.tools.jib") version "0.10.0"
-    id("org.springframework.boot") version "2.2.0.RELEASE"
-    id("io.spring.dependency-management") version "1.0.8.RELEASE"
-    kotlin("jvm") version "1.3.50"
-    kotlin("plugin.spring") version "1.3.50"
+  id("com.google.cloud.tools.jib") version "0.10.0"
+  id("org.springframework.boot") version "2.2.0.RELEASE"
+  id("io.spring.dependency-management") version "1.0.8.RELEASE"
+  kotlin("jvm") version "1.3.61"
+  kotlin("plugin.spring") version "1.3.61"
 }
 
 tasks.getByName<BootJar>("bootJar") {
-    val archiveFileName = "${project.name}.jar"
+  val archiveFileName = "${project.name}.jar"
 }
 
 jib {
-    from {
-        image = "openjdk:11-jre-slim"
+  from {
+    image = "openjdk:11-jre-slim"
+  }
+  to {
+    auth {
+      username =
+          if (project.hasProperty("dockerUser"))
+            project.property("dockerUser") as String
+          else "dumb"
+      password =
+          if (project.hasProperty("dockerPassword"))
+            project.property("dockerPassword") as String
+          else "dumb"
     }
-    to {
-        auth {
-            username =
-                if (project.hasProperty("dockerUser"))
-                    project.property("dockerUser") as String
-                else "dumb"
-            password =
-                if (project.hasProperty("dockerPassword"))
-                    project.property("dockerPassword") as String
-                else "dumb"
-        }
-        val imageVersion =
-            if (project.hasProperty("tag")) project.property("tag") as String
-            else "latest"
-        image = "registry.hub.docker.com/imbananko/${project.name}:$imageVersion"
-    }
+    val imageVersion =
+        if (project.hasProperty("tag")) project.property("tag") as String
+        else "latest"
+    image = "registry.hub.docker.com/imbananko/${project.name}:$imageVersion"
+  }
 }
 
 tasks.withType<Test> {

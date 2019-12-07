@@ -78,7 +78,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       if (memeOfTheWeek != null) {
         val winner = execute(GetChatMember().apply {
           this.setChatId(memeOfTheWeek.chatId)
-          this.setUserId(memeOfTheWeek.senderId)
+          this.userId = memeOfTheWeek.senderId
         }).user
         val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
         val memeOfTheWeekMessage = runCatching {
@@ -157,9 +157,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
     }
 
-    val processMemeIfExists = { existingMemeId: String ->
+    val processMemeIfExists = { existingMemeId: String? ->
       runCatching {
-        execute(
+        if (existingMemeId == null) {
+
+        } else execute(
             SendPhoto()
                 .setChatId(chatId)
                 .setPhoto(fileId)
@@ -173,11 +175,13 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
 
     runCatching { downloadFromFileId(fileId) }
-        .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
-        .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
-        .onFailure { throwable: Throwable ->
-          log.error("Failed to check if meme is unique, sending anyway. Exception=", throwable)
-          processMemeIfUnique()
+        .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile) }
+        .mapCatching { memeId ->
+          if (memeId.isSuccess && memeId.getOrNull()!=null processMemeIfExists(memeId.getOrThrow())
+          else processMemeIfUnique()
+        }
+        .onFailure { err ->
+          log.error("Failed to process meme. Exception=", err)
         }
   }
 
