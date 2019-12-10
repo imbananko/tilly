@@ -191,7 +191,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
 
     val memeSenderId = memeRepository.getMemeSender(targetChatId, messageId)
-    if (memeSenderId == voteSender.id || message.isOld()) return
+    if (message.isOld() || memeSenderId == voteSender.id) return
 
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
