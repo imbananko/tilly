@@ -5,7 +5,6 @@ import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.time.Instant
-import java.time.Instant
 
 fun Update.isP2PChat() = this.hasMessage() && this.message.chat.isUserChat
 

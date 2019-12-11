@@ -12,6 +12,7 @@ import com.imbananko.tilly.similarity.MemeMatcher
 import com.imbananko.tilly.utility.extractVoteValue
 import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
+import com.imbananko.tilly.utility.isOld
 import com.imbananko.tilly.utility.isP2PChat
 import com.imbananko.tilly.utility.mention
 import com.imbananko.tilly.utility.print
