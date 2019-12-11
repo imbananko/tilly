@@ -14,6 +14,7 @@ import com.imbananko.tilly.utility.hasPhoto
 import com.imbananko.tilly.utility.hasVote
 import com.imbananko.tilly.utility.isP2PChat
 import com.imbananko.tilly.utility.mention
+import com.imbananko.tilly.utility.print
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -154,7 +155,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         log.info("Sent meme=$meme")
         memeRepository.save(meme)
       }.onFailure { throwable ->
-        log.error("Failed to send meme from message=$message. Exception=", throwable)
+        log.error("Failed to send meme from message=${message.print()}. Exception=", throwable)
       }
     }
 
@@ -176,7 +177,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         )
       }.onFailure { ex ->
         if (ex is TelegramApiRequestException) {
-          log.warn("Failed to reply with existing meme from message=$message. Sending message without reply.")
+          log.warn("Failed to reply with existing meme from message=${message.print()}. Sending message without reply.")
           execute(sendWithoutReply())
         } else {
           throw ex
