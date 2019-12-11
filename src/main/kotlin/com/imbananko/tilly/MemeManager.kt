@@ -137,8 +137,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val fileId = message.photo[0].fileId
     val mention = message.from.mention()
 
-//    anonymous week
-//    val memeCaption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + mention
     val memeCaption = message.caption?.trim()
 
     val processMemeIfUnique = {
@@ -210,8 +208,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
     val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
 
-    val memeSenderId = memeRepository.getMemeSender(targetChatId, messageId);
-    if (memeSenderId == voteSender.id) return
+    if (message.isOld() || memeRepository.getMemeSender(targetChatId, messageId) == voteSender.id) return
 
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
@@ -233,16 +230,12 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .onFailure { throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.message) }
 
     if (shouldMarkExplained) {
-
-      //val memeSenderFromCaption = message.caption.split("Sender: ".toRegex()).dropLastWhile { it.isEmpty() }[1]
-      val replyText = "Непонятно, помогите плез!"
-
       runCatching {
         execute<Message, SendMessage>(
             SendMessage()
                 .setChatId(targetChatId)
                 .setReplyToMessageId(update.callbackQuery.message.messageId)
-                .setText(replyText)
+                .setText("Непонятно, помогите плез!")
                 .setParseMode(ParseMode.MARKDOWN)
         )
       }
