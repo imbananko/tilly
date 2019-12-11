@@ -27,6 +27,7 @@ class MemeMatcher {
           if (it == null) matcher.addImage(memeId, imageFile)
           else log.info("Meme $memeId is not unique")
         }
-  }.onFailure { log.error("Failed to check if meme $memeId unique. Exception=", it) }
-      .getOrNull()
+  }.onFailure {
+    log.error("Failed to check if meme $memeId unique. Exception=", it)
+  }.getOrNull()
 }
