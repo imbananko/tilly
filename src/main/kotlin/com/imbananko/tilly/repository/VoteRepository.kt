@@ -18,10 +18,16 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
     template.update(queries.getFromConfOrFail("deleteVote"), getParams(vote))
   }
 
-  fun getStats(chatId: Long, messageId: Int): Map<VoteValue, Int> =
+  fun getStatsByMeme(chatId: Long, messageId: Int): Map<VoteValue, Int> =
       template.query(
-          queries.getFromConfOrFail("findVoteStats"),
+          queries.getFromConfOrFail("findMemeStats"),
           MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId)
+      ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
+
+  fun getStatsByUser(chatId: Long, userId: Int): Map<VoteValue, Int> =
+      template.query(
+          queries.getFromConfOrFail("findUserStats"),
+          MapSqlParameterSource("chatId", chatId).addValue("userId", userId)
       ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
 
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =

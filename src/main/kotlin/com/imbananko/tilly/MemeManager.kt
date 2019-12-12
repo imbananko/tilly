@@ -32,6 +32,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.lang.StringBuilder
 import java.net.URL
 import javax.annotation.PostConstruct
 
@@ -89,7 +90,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           log.error("Can't reply to meme of the week because of", error)
           log.info("Send meme of the week as new message")
 
-          val statistics = voteRepository.getStats(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
+          val statistics = voteRepository.getStatsByMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
           val fallbackMemeOfTheWeekMessage = execute(
               SendPhoto()
                   .setChatId(chatId)
@@ -121,10 +122,18 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
-    if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
+    if (update.hasMeme()) processMeme(update)
     if (update.hasVote()) processVote(update)
+    if (update.hasStatsCommand()) sendStats(update)
   }
 
+  private fun sendStats(update: Update) {
+    execute(
+        SendMessage()
+            .setChatId(update.message.chatId)
+            .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
+    )
+  }
 
   private fun processMeme(update: Update) {
     val message = update.message
@@ -195,8 +204,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
 
-
-    val statistics = voteRepository.getStats(targetChatId, messageId)
+    val statistics = voteRepository.getStatsByMeme(targetChatId, messageId)
     val shouldMarkExplained = vote == EXPLAIN && !wasExplained && statistics.getOrDefault(EXPLAIN, 0) == 3
 
     runCatching {
@@ -224,6 +232,16 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           .onSuccess { log.info("Successful reply for explaining") }
           .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
     }
+  }
+
+  private fun formatStatsMessage(stats: Map<VoteValue, Int>): String {
+    val stringBuilder =
+        if (stats.isEmpty()) StringBuilder("You have no statistics yet!")
+        else StringBuilder("Your statistics: \n\n")
+    stats.forEach { (value, count) ->
+      stringBuilder.append(value.emoji).append(": ").append(count).append("\n")
+    }
+    return stringBuilder.toString()
   }
 
   private fun createMarkup(stats: Map<VoteValue, Int>, markExplained: Boolean): InlineKeyboardMarkup {

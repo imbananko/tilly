@@ -43,11 +43,17 @@ sql:
         chat_id = :chatId
         and message_id = :messageId
         and voter_id = :voterId
-    findVoteStats: >
+    findMemeStats: >
       select value, count(value)
       from vote
       where
         chat_id = :chatId and message_id = :messageId
+      group by value
+    findUserStats: >
+      select value, count(value)
+      from vote
+      where
+        chat_id = :chatId and voter_id = :userId
       group by value
     loadMemes: >
       select file_id, sender_id, chat_id, message_id
