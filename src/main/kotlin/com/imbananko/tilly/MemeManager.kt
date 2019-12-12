@@ -3,19 +3,11 @@ package com.imbananko.tilly
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
-import com.imbananko.tilly.model.VoteValue.DOWN
-import com.imbananko.tilly.model.VoteValue.EXPLAIN
-import com.imbananko.tilly.model.VoteValue.UP
+import com.imbananko.tilly.model.VoteValue.*
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
-import com.imbananko.tilly.utility.extractVoteValue
-import com.imbananko.tilly.utility.hasPhoto
-import com.imbananko.tilly.utility.hasVote
-import com.imbananko.tilly.utility.isOld
-import com.imbananko.tilly.utility.isP2PChat
-import com.imbananko.tilly.utility.mention
-import com.imbananko.tilly.utility.print
+import com.imbananko.tilly.utility.*
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -40,6 +32,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URL
+import java.util.*
 import javax.annotation.PostConstruct
 
 @EnableScheduling
@@ -96,7 +89,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           log.error("Can't reply to meme of the week because of", error)
           log.info("Send meme of the week as new message")
 
-          val statistics = voteRepository.getStats(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
+          val statistics = voteRepository.getStatsByMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
           val fallbackMemeOfTheWeekMessage = execute(
               SendPhoto()
                   .setChatId(chatId)
@@ -128,10 +121,25 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
-    if (update.isP2PChat() && update.hasPhoto()) processMeme(update)
+    if (update.hasMeme()) processMeme(update)
     if (update.hasVote()) processVote(update)
+    if (update.hasStatsCommand()) sendStats(update)
   }
 
+  private fun sendStats(update: Update) {
+    runCatching {
+      execute(
+          SendMessage()
+              .setChatId(update.message.chatId)
+              .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
+      )
+    }.onSuccess {
+      log.debug("Sent stats to user=${update.message.from.id}")
+    }.onFailure { throwable ->
+      log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
+    }
+
+  }
 
   private fun processMeme(update: Update) {
     val message = update.message
@@ -214,8 +222,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
     else voteRepository.insertOrUpdate(voteEntity)
 
-
-    val statistics = voteRepository.getStats(targetChatId, messageId)
+    val statistics = voteRepository.getStatsByMeme(targetChatId, messageId)
     val shouldMarkExplained = vote == EXPLAIN && !wasExplained && statistics.getOrDefault(EXPLAIN, 0) == 3
 
     runCatching {
@@ -243,6 +250,22 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           .onSuccess { log.info("Successful reply for explaining") }
           .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
     }
+  }
+
+  private fun formatStatsMessage(stats: Map<Int, HashMap<VoteValue, Int>>): String {
+    val stringBuilder =
+        if (stats.isEmpty()) StringBuilder("You have no statistics yet!")
+        else StringBuilder("Your statistics: \n\n")
+            .append("Memes sent: ").append(stats.size).append("\n\n")
+
+    stats.values.flatMap { it.entries }.fold(HashMap<VoteValue, Int>(), { map, entry ->
+      map.merge(entry.key, entry.value) { prev, current -> prev + current }
+      map
+    }).toSortedMap().forEach { (value, count) ->
+      stringBuilder.append(value.emoji).append(": ").append(count).append("\n")
+    }
+
+    return stringBuilder.toString()
   }
 
   private fun createMarkup(stats: Map<VoteValue, Int>, markExplained: Boolean): InlineKeyboardMarkup {
