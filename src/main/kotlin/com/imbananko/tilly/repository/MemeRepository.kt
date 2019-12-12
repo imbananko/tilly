@@ -62,5 +62,5 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
 
   fun messageIdByFileId(fileId: String, chatId: Long): Int? = template.query(queries.getFromConfOrFail("messageIdByFileId"),
       MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId)
-  ) { rs, _ -> rs.getInt("message_id") }[0]
+  ) { rs, _ -> rs.getInt("message_id") }.getOrNull(0)
 }

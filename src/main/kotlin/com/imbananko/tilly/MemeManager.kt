@@ -9,7 +9,13 @@ import com.imbananko.tilly.model.VoteValue.UP
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
-import com.imbananko.tilly.utility.*
+import com.imbananko.tilly.utility.extractVoteValue
+import com.imbananko.tilly.utility.hasPhoto
+import com.imbananko.tilly.utility.hasVote
+import com.imbananko.tilly.utility.isOld
+import com.imbananko.tilly.utility.isP2PChat
+import com.imbananko.tilly.utility.mention
+import com.imbananko.tilly.utility.print
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -29,6 +35,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -147,31 +154,43 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         log.info("Sent meme=$meme")
         memeRepository.save(meme)
       }.onFailure { throwable ->
-        log.error("Failed to send meme from message=$message. Exception=", throwable)
+        log.error("Failed to send meme from message=${message.print()}. Exception=", throwable)
       }
     }
 
+    fun blameWithoutReply(): SendPhoto =
+        SendPhoto()
+            .setChatId(chatId)
+            .setPhoto(fileId)
+            .setParseMode(ParseMode.MARKDOWN)
+            .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
+
+    fun blameWithReply(messageId: Int): SendPhoto =
+        blameWithoutReply().setReplyToMessageId(messageId)
+
     val processMemeIfExists = { existingMemeId: String ->
       runCatching {
-        execute(
-            SendPhoto()
-                .setChatId(chatId)
-                .setPhoto(fileId)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
-                .setReplyToMessageId(memeRepository.messageIdByFileId(existingMemeId, chatId))
+        execute(memeRepository.messageIdByFileId(existingMemeId, chatId)?.run {
+          blameWithReply(this)
+        } ?: blameWithoutReply()
         )
-      }.onFailure { throwable: Throwable ->
-        log.error("Failed to reply with existing meme from message=$message. Exception=", throwable)
+      }.onFailure { ex ->
+        if (ex is TelegramApiRequestException) {
+          log.warn("Failed to reply with existing meme from message=${message.print()}. Sending message without reply.")
+          execute(blameWithoutReply())
+        } else {
+          throw ex
+        }
       }
     }
 
     runCatching { downloadFromFileId(fileId) }
-        .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile).getOrThrow()!! }
-        .mapCatching { memeId -> processMemeIfExists(memeId).getOrThrow() }
-        .onFailure { throwable: Throwable ->
-          log.error("Failed to check if meme is unique, sending anyway. Exception=", throwable)
-          processMemeIfUnique()
+        .mapCatching { memeFile -> memeMatcher.checkMemeExists(fileId, memeFile) }
+        .onSuccess { memeId ->
+          if (memeId != null) processMemeIfExists(memeId)
+          else processMemeIfUnique()
+        }.onFailure { err ->
+          log.error("Failed to process meme. Exception=", err)
         }
   }
 

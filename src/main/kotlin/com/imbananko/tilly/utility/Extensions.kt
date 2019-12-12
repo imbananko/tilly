@@ -21,4 +21,7 @@ fun Update.extractVoteValue() =
 fun User.mention(): String =
     "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
 
+fun Message.print(): String =
+    "Message(messageId=${this.messageId},chatId=${this.chatId},userId=${this.from?.id},userName=${this.from?.userName})"
+
 fun Message.isOld(): Boolean = Instant.ofEpochSecond(this.date.toLong()) < Instant.now().minusSeconds(60 * 60 * 24 * 7)
