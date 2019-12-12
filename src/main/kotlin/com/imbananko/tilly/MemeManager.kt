@@ -158,26 +158,26 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
     }
 
-    fun sendWithoutReply(): SendPhoto =
+    fun blameWithoutReply(): SendPhoto =
         SendPhoto()
             .setChatId(chatId)
             .setPhoto(fileId)
             .setParseMode(ParseMode.MARKDOWN)
             .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
 
-    fun sendWithReply(messageId: Int): SendPhoto =
-        sendWithoutReply().setReplyToMessageId(messageId)
+    fun blameWithReply(messageId: Int): SendPhoto =
+        blameWithoutReply().setReplyToMessageId(messageId)
 
     val processMemeIfExists = { existingMemeId: String ->
       runCatching {
         execute(memeRepository.messageIdByFileId(existingMemeId, chatId)?.run {
-          sendWithReply(this)
-        } ?: sendWithoutReply()
+          blameWithReply(this)
+        } ?: blameWithoutReply()
         )
       }.onFailure { ex ->
         if (ex is TelegramApiRequestException) {
           log.warn("Failed to reply with existing meme from message=${message.print()}. Sending message without reply.")
-          execute(sendWithoutReply())
+          execute(blameWithoutReply())
         } else {
           throw ex
         }
