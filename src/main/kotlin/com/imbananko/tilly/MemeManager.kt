@@ -3,9 +3,7 @@ package com.imbananko.tilly
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
-import com.imbananko.tilly.model.VoteValue.DOWN
-import com.imbananko.tilly.model.VoteValue.EXPLAIN
-import com.imbananko.tilly.model.VoteValue.UP
+import com.imbananko.tilly.model.VoteValue.*
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
@@ -32,8 +30,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.lang.StringBuilder
 import java.net.URL
+import java.util.*
 import javax.annotation.PostConstruct
 
 @EnableScheduling
@@ -234,13 +232,19 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun formatStatsMessage(stats: Map<VoteValue, Int>): String {
+  private fun formatStatsMessage(stats: Map<Int, HashMap<VoteValue, Int>>): String {
     val stringBuilder =
         if (stats.isEmpty()) StringBuilder("You have no statistics yet!")
         else StringBuilder("Your statistics: \n\n")
-    stats.forEach { (value, count) ->
+            .append("Memes sent: ").append(stats.size).append("\n\n")
+
+    stats.values.flatMap { it.entries }.fold(HashMap<VoteValue, Int>(), { map, entry ->
+      map.merge(entry.key, entry.value) { prev, current -> prev + current }
+      map
+    }).toSortedMap().forEach { (value, count) ->
       stringBuilder.append(value.emoji).append(": ").append(count).append("\n")
     }
+
     return stringBuilder.toString()
   }
 

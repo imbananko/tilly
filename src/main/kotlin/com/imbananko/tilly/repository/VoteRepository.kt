@@ -2,6 +2,7 @@ package com.imbananko.tilly.repository
 
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
+import com.imbananko.tilly.model.VoteValue.*
 import com.imbananko.tilly.utility.SqlQueries
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
@@ -22,13 +23,20 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
       template.query(
           queries.getFromConfOrFail("findMemeStats"),
           MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId)
-      ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
+      ) { rs, _ -> valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
 
-  fun getStatsByUser(chatId: Long, userId: Int): Map<VoteValue, Int> =
+  fun getStatsByUser(chatId: Long, userId: Int): Map<Int, HashMap<VoteValue, Int>> =
       template.query(
           queries.getFromConfOrFail("findUserStats"),
           MapSqlParameterSource("chatId", chatId).addValue("userId", userId)
-      ) { rs, _ -> VoteValue.valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
+      ) { rs, _ ->
+        rs.getInt("message_id") to
+            HashMap<VoteValue, Int>(
+                mapOf(
+                    UP to rs.getInt(UP.name),
+                    EXPLAIN to rs.getInt(EXPLAIN.name),
+                    DOWN to rs.getInt(DOWN.name)))
+      }.toMap()
 
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =
       MapSqlParameterSource("chatId", vote.chatId)
