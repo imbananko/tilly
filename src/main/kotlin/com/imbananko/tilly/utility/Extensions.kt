@@ -6,17 +6,11 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.time.Instant
 
-fun Update.hasMeme() = this.hasMessage()
-    && this.message.chat.isUserChat
-    && this.message.hasPhoto()
+fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
-fun Update.hasStatsCommand() = this.hasMessage()
-    && this.message.chat.isUserChat
-    && this.message.isCommand
-    && this.message.text == "/stats"
+fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand && this.message.text == "/stats"
 
-fun Update.hasVote() =
-    this.hasCallbackQuery() && runCatching {
+fun Update.hasVote() = this.hasCallbackQuery() && runCatching {
       setOf(*VoteValue.values()).contains(extractVoteValue())
     }.getOrDefault(false)
 
