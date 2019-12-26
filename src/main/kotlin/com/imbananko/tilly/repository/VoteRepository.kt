@@ -1,5 +1,6 @@
 package com.imbananko.tilly.repository
 
+import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
@@ -36,6 +37,11 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
             EXPLAIN to rs.getInt(EXPLAIN.name),
             DOWN to rs.getInt(DOWN.name))
       }.toList()
+
+  fun getVotes(meme: MemeEntity): Map<Int, VoteValue> =
+    template.query(queries.getFromConfOrFail("findMemeStats"),
+        MapSqlParameterSource("chatId", meme.chatId).addValue("messageId", meme.messageId)
+    ) { rs, _ -> rs.getInt("voter_id") to VoteValue.valueOf(rs.getString("value")) }.toMap()
 
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =
       MapSqlParameterSource("chatId", vote.chatId)

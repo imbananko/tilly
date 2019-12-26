@@ -4,7 +4,8 @@ data class MemeEntity(
     val chatId: Long,
     val messageId: Int,
     val senderId: Int,
-    val fileId: String
+    val fileId: String,
+    val askedExplanation: Boolean
 )
 
 data class VoteEntity(

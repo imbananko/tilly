@@ -22,8 +22,10 @@ sql:
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    findMemeSender: >
-      select sender_id from meme where chat_id = :chatId and message_id = :messageId
+    findMeme: >
+      select chat_id, message_id, sender_id, file_id, asked_explanation
+      from meme
+      where chat_id = :chatId and message_id = :messageId
     voteExists: >
       select exists(
         select 1 from vote
@@ -60,8 +62,16 @@ sql:
       where m.sender_id = :userId
         and m.chat_id = :chatId
       group by m.message_id
+    findMemeStats: >
+      select voter_id, value
+      from vote
+      where chat_id = :chatId and message_id = :messageId
+    markAsAsked: >
+      update meme
+      set asked_explanation = true
+      where chat_id = :chatId and message_id = :messageId
     loadMemes: >
-      select file_id, sender_id, chat_id, message_id
+      select file_id, sender_id, chat_id, message_id, asked_explanation
       from meme
       where chat_id = :chatId
     messageIdByFileId: >

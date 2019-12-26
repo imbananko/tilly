@@ -22,13 +22,15 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
     memeSenderCache[Objects.hash(memeEntity.chatId, memeEntity.messageId)] = memeEntity.senderId
   }
 
-  fun getMemeSender(chatId: Long, messageId: Int): Int? =
-      memeSenderCache.computeIfAbsent(Objects.hash(chatId, messageId)) {
-        template.queryForObject(
-            queries.getFromConfOrFail("findMemeSender"),
-            MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId),
-            Int::class.java
-        )
+  fun findMeme(chatId: Long, messageId: Int): MemeEntity? =
+      template.queryForObject(queries.getFromConfOrFail("findMeme"),
+          MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId))
+      { rs, _ ->
+        MemeEntity(rs.getLong("chat_id"),
+            rs.getInt("message_id"),
+            rs.getInt("sender_id"),
+            rs.getString("file_id"),
+            rs.getBoolean("asked_explanation"))
       }
 
   fun load(chatId: Long): List<MemeEntity> =
@@ -39,7 +41,8 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getLong("chat_id"),
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
-            rs.getString("file_id"))
+            rs.getString("file_id"),
+            rs.getBoolean("asked_explanation"))
       }
 
   fun findMemeOfTheWeek(chatId: Long): MemeEntity? =
@@ -50,7 +53,8 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getLong("chat_id"),
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
-            rs.getString("file_id"))
+            rs.getString("file_id"),
+            rs.getBoolean("asked_explanation"))
       }
 
   fun findMemesOfTheYear(chatId: Long): List<MemeEntity> =
@@ -74,4 +78,9 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
   fun messageIdByFileId(fileId: String, chatId: Long): Int? = template.query(queries.getFromConfOrFail("messageIdByFileId"),
       MapSqlParameterSource("chat_id", chatId).addValue("file_id", fileId)
   ) { rs, _ -> rs.getInt("message_id") }.getOrNull(0)
+
+  fun markAsAsked(meme: MemeEntity) {
+    template.update(queries.getFromConfOrFail("markAsAsked"),
+        MapSqlParameterSource("chatId", meme.chatId).addValue("messageId", meme.messageId))
+  }
 }

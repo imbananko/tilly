@@ -102,7 +102,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setPhoto(memeOfTheWeek.fileId)
                   .setParseMode(ParseMode.MARKDOWN)
                   .setCaption(congratulationText)
-                  .setReplyMarkup(createMarkup(statistics, statistics.getOrDefault(EXPLAIN, 0) >= 3))
+                  .setReplyMarkup(createMarkup(statistics))
           )
 
           memeRepository.migrateMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
@@ -181,11 +181,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption(memeCaption)
-                .setReplyMarkup(createMarkup(emptyMap(), false)))
+                .setReplyMarkup(createMarkup(emptyMap())))
       }.onSuccess { sentMemeMessage ->
-        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId)
-        log.info("Sent meme=$meme")
-        memeRepository.save(meme)
+        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId, false)
+        memeRepository.save(meme).also { log.info("Sent meme=$meme") }
       }.onFailure { throwable ->
         log.error("Failed to send meme from message=${message.print()}. Exception=", throwable)
       }
@@ -228,42 +227,29 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   }
 
   private fun processVote(update: Update) {
-    val message = update.callbackQuery.message
-    val targetChatId = message.chatId
-    val messageId = message.messageId
-    val vote = update.extractVoteValue()
-    val voteSender = update.callbackQuery.from
+    val targetChatId = update.callbackQuery.message.chatId
+    val messageId = update.callbackQuery.message.messageId
 
-    val wasExplained = message
-        .replyMarkup
-        .keyboard[0][1]
-        .callbackData
-        .contains("EXPLAINED")
+    val vote = VoteEntity(targetChatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
+    val meme = memeRepository.findMeme(targetChatId, messageId)!!
 
-    val voteEntity = VoteEntity(targetChatId, messageId, voteSender.id, vote)
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
-    if (message.isOld() || memeRepository.getMemeSender(targetChatId, messageId) == voteSender.id) return
+    val votes = voteRepository.getVotes(meme).toMutableMap().also { map ->
+      map.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new } }.toMap()
 
-    if (voteRepository.exists(voteEntity)) voteRepository.delete(voteEntity)
-    else voteRepository.insertOrUpdate(voteEntity)
-
-    val statistics = voteRepository.getStatsByMeme(targetChatId, messageId)
-    val shouldMarkExplained = vote == EXPLAIN && !wasExplained && statistics.getOrDefault(EXPLAIN, 0) == 3
+    val shouldAskToExplain = !meme.askedExplanation && votes.values.filter { vote.voteValue == EXPLAIN }.size >= 3
 
     runCatching {
       execute(
           EditMessageReplyMarkup()
-              .setMessageId(messageId)
               .setChatId(targetChatId)
+              .setMessageId(messageId)
               .setInlineMessageId(update.callbackQuery.inlineMessageId)
-              .setReplyMarkup(createMarkup(statistics, wasExplained || shouldMarkExplained))
+              .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
       )
-    }
-        .onSuccess { log.info("Processed vote=$voteEntity") }
-        .onFailure { throwable -> log.error("Failed to process vote=" + voteEntity + ". Exception=" + throwable.message) }
 
-    if (shouldMarkExplained) {
-      runCatching {
+      if (shouldAskToExplain)
         execute<Message, SendMessage>(
             SendMessage()
                 .setChatId(targetChatId)
@@ -271,10 +257,13 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setText("Непонятно, помогите плез!")
                 .setParseMode(ParseMode.MARKDOWN)
         )
-      }
-          .onSuccess { log.info("Successful reply for explaining") }
-          .onFailure { throwable -> log.error("Failed to reply for explaining. Exception=" + throwable.message) }
     }
+        .onSuccess {
+          if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+          if (shouldAskToExplain) memeRepository.markAsAsked(meme)
+          log.info("Processed vote=$vote")
+        }
+        .onFailure { throwable -> log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message) }
   }
 
   private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
@@ -295,15 +284,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
 
 
-  private fun createMarkup(stats: Map<VoteValue, Int>, markExplained: Boolean): InlineKeyboardMarkup {
+  private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
     fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
-      val callbackData =
-          if (voteValue == EXPLAIN && markExplained) voteValue.name + " EXPLAINED"
-          else voteValue.name
-
       return InlineKeyboardButton().also {
         it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
-        it.callbackData = callbackData
+        it.callbackData = voteValue.name
       }
     }
 
