@@ -127,19 +127,16 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (update.hasStatsCommand()) sendStats(update)
   }
 
-  private fun sendStats(update: Update) {
-    runCatching {
-      execute(
-          SendMessage()
-              .setChatId(update.message.chatId)
-              .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
-      )
-    }.onSuccess {
-      log.debug("Sent stats to user=${update.message.from.id}")
-    }.onFailure { throwable ->
-      log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
-    }
-
+  private fun sendStats(update: Update) = runCatching {
+    execute(
+        SendMessage()
+            .setChatId(update.message.chatId)
+            .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
+    )
+  }.onSuccess {
+    log.debug("Sent stats to user=${update.message.from.id}")
+  }.onFailure { throwable ->
+    log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
   }
 
   private fun processMeme(update: Update) {
