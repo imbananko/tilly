@@ -19,3 +19,5 @@ enum class VoteValue(val emoji: String) {
   EXPLAIN("\uD83E\uDD14"),
   DOWN("\uD83D\uDCA9")
 }
+
+class MemeStatsEntry(vararg val countByValue: Pair<VoteValue, Int>)

@@ -43,12 +43,23 @@ sql:
         chat_id = :chatId
         and message_id = :messageId
         and voter_id = :voterId
-    findVoteStats: >
+    findMemeStats: >
       select value, count(value)
       from vote
       where
         chat_id = :chatId and message_id = :messageId
       group by value
+    findUserStats: >
+      select m.message_id,
+             count(v.value) filter ( where value = 'UP')      as UP,
+             count(v.value) filter ( where value = 'EXPLAIN' ) as EXPLAIN,
+             count(v.value) filter ( where value = 'DOWN' )    as DOWN
+      from meme m
+               left join vote v
+                         on m.chat_id = v.chat_id and m.message_id = v.message_id
+      where m.sender_id = :userId
+        and m.chat_id = :chatId
+      group by m.message_id
     loadMemes: >
       select file_id, sender_id, chat_id, message_id
       from meme
@@ -69,7 +80,7 @@ sql:
              count(value) filter (where value = 'DOWN') as down_count
       from meme m
           join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
-      where m.chat_id = :chatId and m.created_at > timezone('MSK'::text, now()) - interval '7 days'
+      where m.chat_id = :chatId and m.created_at > current_timestamp - interval '7 days'
       group by m.chat_id, m.message_id
       order by up_count desc, down_count, explain_count, m.created_at desc
       limit 1
