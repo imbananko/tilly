@@ -249,27 +249,23 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun formatStatsMessage(stats: List<MemeStatsEntry>): String {
-    val stringBuilder =
-        if (stats.isEmpty()) {
-          StringBuilder("You have no statistics yet!")
-        } else {
-          StringBuilder("Your statistics: \n\n")
-              .append("Memes sent: ").append(stats.size).append("\n\n")
-              .also {
-                stats
-                    .flatMap { it.countByValue.asIterable() }
-                    .groupBy({ it.first }, { it.second })
-                    .mapValues { it.value.sum() }
-                    .toSortedMap()
-                    .forEach { (value, sum) ->
-                      it.append(value).append(": ").append(sum).append("\n")
-                    }
-              }
-        }
+  private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
+      if (stats.isEmpty())
+        "You have no statistics yet!"
+      else
+        """
+          Your statistics:
+          
+          Memes sent: ${stats.size}
+        """.trimIndent() +
+            stats
+                .flatMap { it.countByValue.asIterable() }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { it.value.sum() }
+                .toList()
+                .sortedBy { it.first }
+                .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-    return stringBuilder.toString()
-  }
 
   private fun createMarkup(stats: Map<VoteValue, Int>, markExplained: Boolean): InlineKeyboardMarkup {
     fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
