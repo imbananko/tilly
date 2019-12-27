@@ -254,16 +254,23 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   private fun formatStatsMessage(stats: Map<Int, HashMap<VoteValue, Int>>): String {
     val stringBuilder =
-        if (stats.isEmpty()) StringBuilder("You have no statistics yet!")
-        else StringBuilder("Your statistics: \n\n")
-            .append("Memes sent: ").append(stats.size).append("\n\n")
-
-    stats.values.flatMap { it.entries }.fold(HashMap<VoteValue, Int>(), { map, entry ->
-      map.merge(entry.key, entry.value) { prev, current -> prev + current }
-      map
-    }).toSortedMap().forEach { (value, count) ->
-      stringBuilder.append(value.emoji).append(": ").append(count).append("\n")
-    }
+        if (stats.isEmpty()) {
+          StringBuilder("You have no statistics yet!")
+        } else {
+          StringBuilder("Your statistics: \n\n")
+              .append("Memes sent: ").append(stats.size).append("\n\n")
+              .also {
+                stats.values
+                    .flatMap { it.entries }
+                    .fold(HashMap<VoteValue, Int>(), { map, entry ->
+                      map.merge(entry.key, entry.value) { prev, current -> prev + current }
+                      map
+                    })
+                    .toSortedMap().forEach { (value, count) ->
+                      it.append(value.emoji).append(": ").append(count).append("\n")
+                    }
+              }
+        }
 
     return stringBuilder.toString()
   }
