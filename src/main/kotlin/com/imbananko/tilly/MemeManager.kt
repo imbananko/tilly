@@ -1,7 +1,7 @@
 package com.imbananko.tilly
 
 import com.imbananko.tilly.model.MemeEntity
-import com.imbananko.tilly.model.StatsEntry
+import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.model.VoteValue.*
@@ -33,7 +33,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URL
-import java.util.*
 import javax.annotation.PostConstruct
 
 @EnableScheduling
@@ -250,7 +249,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun formatStatsMessage(stats: List<StatsEntry>): String {
+  private fun formatStatsMessage(stats: List<MemeStatsEntry>): String {
     val stringBuilder =
         if (stats.isEmpty()) {
           StringBuilder("You have no statistics yet!")
@@ -259,14 +258,12 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
               .append("Memes sent: ").append(stats.size).append("\n\n")
               .also {
                 stats
-                    .flatMap { it.counts.asIterable() }
-                    .fold(HashMap<VoteValue, Int>(), { map, pair ->
-                      map.merge(pair.first, pair.second) { old, new -> old + new }
-                      map
-                    })
+                    .flatMap { it.countByValue.asIterable() }
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues { it.value.sum() }
                     .toSortedMap()
-                    .forEach { (value, count) ->
-                      it.append(value.emoji).append(": ").append(count).append("\n")
+                    .forEach { (value, sum) ->
+                      it.append(value).append(": ").append(sum).append("\n")
                     }
               }
         }
