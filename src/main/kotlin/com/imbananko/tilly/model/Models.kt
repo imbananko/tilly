@@ -19,3 +19,5 @@ enum class VoteValue(val emoji: String) {
   EXPLAIN("\uD83E\uDD14"),
   DOWN("\uD83D\uDCA9")
 }
+
+class StatsEntry(vararg val counts: Pair<VoteValue, Int>)

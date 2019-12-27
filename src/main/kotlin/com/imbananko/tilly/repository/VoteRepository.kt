@@ -1,5 +1,6 @@
 package com.imbananko.tilly.repository
 
+import com.imbananko.tilly.model.StatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.model.VoteValue.*
@@ -25,18 +26,16 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
           MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId)
       ) { rs, _ -> valueOf(rs.getString("value")) to rs.getLong("count").toInt() }.toMap()
 
-  fun getStatsByUser(chatId: Long, userId: Int): Map<Int, HashMap<VoteValue, Int>> =
+  fun getStatsByUser(chatId: Long, userId: Int): List<StatsEntry> =
       template.query(
           queries.getFromConfOrFail("findUserStats"),
           MapSqlParameterSource("chatId", chatId).addValue("userId", userId)
       ) { rs, _ ->
-        rs.getInt("message_id") to
-            HashMap<VoteValue, Int>(
-                mapOf(
-                    UP to rs.getInt(UP.name),
-                    EXPLAIN to rs.getInt(EXPLAIN.name),
-                    DOWN to rs.getInt(DOWN.name)))
-      }.toMap()
+        StatsEntry(
+            UP to rs.getInt(UP.name),
+            EXPLAIN to rs.getInt(EXPLAIN.name),
+            DOWN to rs.getInt(DOWN.name))
+      }.toList()
 
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =
       MapSqlParameterSource("chatId", vote.chatId)

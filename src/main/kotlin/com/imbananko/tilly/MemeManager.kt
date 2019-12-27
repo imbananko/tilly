@@ -1,6 +1,7 @@
 package com.imbananko.tilly
 
 import com.imbananko.tilly.model.MemeEntity
+import com.imbananko.tilly.model.StatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.model.VoteValue.*
@@ -252,7 +253,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun formatStatsMessage(stats: Map<Int, HashMap<VoteValue, Int>>): String {
+  private fun formatStatsMessage(stats: List<StatsEntry>): String {
     val stringBuilder =
         if (stats.isEmpty()) {
           StringBuilder("You have no statistics yet!")
@@ -260,13 +261,14 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           StringBuilder("Your statistics: \n\n")
               .append("Memes sent: ").append(stats.size).append("\n\n")
               .also {
-                stats.values
-                    .flatMap { it.entries }
-                    .fold(HashMap<VoteValue, Int>(), { map, entry ->
-                      map.merge(entry.key, entry.value) { prev, current -> prev + current }
+                stats
+                    .flatMap { it.counts.asIterable() }
+                    .fold(HashMap<VoteValue, Int>(), { map, pair ->
+                      map.merge(pair.first, pair.second) { old, new -> old + new }
                       map
                     })
-                    .toSortedMap().forEach { (value, count) ->
+                    .toSortedMap()
+                    .forEach { (value, count) ->
                       it.append(value.emoji).append(": ").append(count).append("\n")
                     }
               }
