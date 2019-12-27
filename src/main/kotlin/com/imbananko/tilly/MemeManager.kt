@@ -263,7 +263,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                     .mapValues { it.value.sum() }
                     .toSortedMap()
                     .forEach { (value, sum) ->
-                      it.append(value).append(": ").append(sum).append("\n")
+                      it.append(value.emoji).append(": ").append(sum).append("\n")
                     }
               }
         }
