@@ -20,11 +20,13 @@ import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
+import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException
@@ -114,6 +116,33 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
         .onSuccess { log.info("Successful send meme of the week") }
         .onFailure { throwable -> log.error("Can't send meme of the week because of", throwable) }
+  }
+
+  @Scheduled(cron = "0 0 20 31 12 *")
+  private fun sendMemesOfTheYear() {
+    runCatching {
+      execute(SendMessage(chatId, "Топ мемсы прошедшего года:"))
+      execute(
+          SendMediaGroup(chatId, memeRepository.findMemesOfTheYear(chatId).map { meme ->
+            InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
+                .setParseMode(ParseMode.MARKDOWN)
+          })
+
+      )
+    }
+        .onSuccess { log.info("Successful send memes of the year") }
+        .onFailure { throwable -> log.error("Can't send memes of the year because of", throwable) }
+  }
+
+  private fun formatMemeTheYearCaption(meme: MemeEntity): String {
+    val userMention = execute(GetChatMember()
+        .setChatId(meme.chatId)
+        .setUserId(meme.senderId))
+        .user.mention()
+    val votes = voteRepository.getStatsByMeme(meme.chatId, meme.messageId)
+        .map { entry -> entry.key.emoji + " " + entry.value }
+        .joinToString(prefix = "(", postfix = ")", separator = ", ")
+    return "$userMention $votes"
   }
 
   override fun getBotToken(): String? = token
