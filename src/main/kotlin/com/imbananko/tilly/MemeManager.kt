@@ -52,6 +52,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   @Value("\${bot.username}")
   private lateinit var username: String
 
+  override fun getBotToken(): String? = token
+
+  override fun getBotUsername(): String? = username
+
   @PostConstruct
   private fun init() {
     memeRepository
@@ -120,6 +124,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   @Scheduled(cron = "0 0 20 31 12 *")
   private fun sendMemesOfTheYear() {
+    fun formatMemeTheYearCaption(meme: MemeEntity): String {
+      val userMention = execute(GetChatMember()
+          .setChatId(meme.chatId)
+          .setUserId(meme.senderId))
+          .user.mention()
+      val votes = voteRepository.getStatsByMeme(meme.chatId, meme.messageId)
+          .map { entry -> entry.key.emoji + " " + entry.value }
+          .joinToString(prefix = "(", postfix = ")", separator = ", ")
+      return "$userMention $votes"
+    }
+
     runCatching {
       execute(SendMessage(chatId, "Топ мемсы прошедшего года:"))
       execute(
@@ -127,27 +142,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
                 .setParseMode(ParseMode.MARKDOWN)
           })
-
       )
     }
         .onSuccess { log.info("Successful send memes of the year") }
         .onFailure { throwable -> log.error("Can't send memes of the year because of", throwable) }
   }
-
-  private fun formatMemeTheYearCaption(meme: MemeEntity): String {
-    val userMention = execute(GetChatMember()
-        .setChatId(meme.chatId)
-        .setUserId(meme.senderId))
-        .user.mention()
-    val votes = voteRepository.getStatsByMeme(meme.chatId, meme.messageId)
-        .map { entry -> entry.key.emoji + " " + entry.value }
-        .joinToString(prefix = "(", postfix = ")", separator = ", ")
-    return "$userMention $votes"
-  }
-
-  override fun getBotToken(): String? = token
-
-  override fun getBotUsername(): String? = username
 
   override fun onUpdateReceived(update: Update) {
     if (update.hasMeme()) processMeme(update)
