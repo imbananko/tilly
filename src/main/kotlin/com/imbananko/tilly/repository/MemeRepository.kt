@@ -43,7 +43,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
       }
 
   fun findMemeOfTheWeek(chatId: Long): MemeEntity? =
-      template.query(
+      template.queryForObject(
           queries.getFromConfOrFail("getMemeOfTheWeek"),
           MapSqlParameterSource("chatId", chatId)
       ) { rs: ResultSet, _: Int ->
@@ -51,7 +51,18 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"))
-      }.getOrNull(0)
+      }
+
+  fun findMemesOfTheYear(chatId: Long): List<MemeEntity> =
+      template.query(
+          queries.getFromConfOrFail("getMemesOfTheYear"),
+          MapSqlParameterSource("chatId", chatId)
+      ) { rs: ResultSet, _: Int ->
+        MemeEntity(rs.getLong("chat_id"),
+            rs.getInt("message_id"),
+            rs.getInt("sender_id"),
+            rs.getString("file_id"))
+      }.toList()
 
   fun migrateMeme(chatId: Long, oldMessageId: Int, newMessageId: Int) {
     template.update(queries.getFromConfOrFail("migrateMeme"),

@@ -84,6 +84,20 @@ sql:
       group by m.chat_id, m.message_id
       order by up_count desc, down_count, explain_count, m.created_at desc
       limit 1
+    getMemesOfTheYear: >
+      select m.message_id,
+             m.sender_id,
+             m.chat_id,
+             m.file_id,
+             count(value) filter (where value = 'UP') as up_count,
+             count(value) filter (where value = 'EXPLAIN') as explain_count,
+             count(value) filter (where value = 'DOWN') as down_count
+      from meme m
+               join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
+      where m.chat_id = :chatId
+      group by m.chat_id, m.message_id, m.sender_id, m.file_id
+      order by up_count desc, down_count, explain_count
+      limit 10
     migrateMeme: >
       update meme
       set message_id = :newMessageId
