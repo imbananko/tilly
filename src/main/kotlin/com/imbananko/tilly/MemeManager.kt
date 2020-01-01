@@ -95,7 +95,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           log.error("Can't reply to meme of the week because of", error)
           log.info("Send meme of the week as new message")
 
-          val statistics = voteRepository.getStatsByMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId)
+          val statistics = voteRepository.getVotes(memeOfTheWeek)
+              .groupingBy { vote -> vote.voteValue }
+              .eachCount()
           val fallbackMemeOfTheWeekMessage = execute(
               SendPhoto()
                   .setChatId(chatId)
@@ -129,7 +131,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           .setChatId(meme.chatId)
           .setUserId(meme.senderId))
           .user.mention()
-      val votes = voteRepository.getStatsByMeme(meme.chatId, meme.messageId)
+      val votes = voteRepository.getVotes(meme)
+          .groupingBy { vote -> vote.voteValue }
+          .eachCount()
           .map { entry -> entry.key.emoji + " " + entry.value }
           .joinToString(prefix = "(", postfix = ")", separator = ", ")
       return "$userMention $votes"
@@ -154,16 +158,35 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (update.hasStatsCommand()) sendStats(update)
   }
 
-  private fun sendStats(update: Update) = runCatching {
-    execute(
-        SendMessage()
-            .setChatId(update.message.chatId)
-            .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
-    )
-  }.onSuccess {
-    log.debug("Sent stats to user=${update.message.from.id}")
-  }.onFailure { throwable ->
-    log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
+  private fun sendStats(update: Update) {
+    fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
+        if (stats.isEmpty())
+          "You have no statistics yet!"
+        else
+          """
+          Your statistics:
+          
+          Memes sent: ${stats.size}
+        """.trimIndent() +
+              stats
+                  .flatMap { it.counts.asIterable() }
+                  .groupBy({ it.first }, { it.second })
+                  .mapValues { it.value.sum() }
+                  .toList()
+                  .sortedBy { it.first }
+                  .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
+
+    runCatching {
+      execute(
+          SendMessage()
+              .setChatId(update.message.chatId)
+              .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
+      )
+    }.onSuccess {
+      log.debug("Sent stats to user=${update.message.from.id}")
+    }.onFailure { throwable ->
+      log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
+    }
   }
 
   private fun processMeme(update: Update) {
@@ -231,14 +254,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val messageId = update.callbackQuery.message.messageId
 
     val vote = VoteEntity(targetChatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
-    val meme = memeRepository.findMeme(targetChatId, messageId)!!
+    val meme = memeRepository.findMeme(targetChatId, messageId) ?: return
 
-    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
-    val votes = voteRepository.getVotes(meme).toMutableMap().also { map ->
-      map.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new } }.toMap()
+    val votes = voteRepository.getVotes(meme)
+        .associate { Pair(it.voterId, it.voteValue) }
+        .toMutableMap().also {
+          it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
+        }
 
-    val shouldAskToExplain = !meme.askedExplanation && votes.values.filter { vote.voteValue == EXPLAIN }.size >= 3
+    val shouldRequestExplanation = !meme.explanationRequested && votes.values.filter { vote.voteValue == EXPLAIN }.size >= 3
 
     runCatching {
       execute(
@@ -249,7 +275,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
               .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
       )
 
-      if (shouldAskToExplain)
+      if (shouldRequestExplanation)
         execute<Message, SendMessage>(
             SendMessage()
                 .setChatId(targetChatId)
@@ -260,29 +286,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
         .onSuccess {
           if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
-          if (shouldAskToExplain) memeRepository.markAsAsked(meme)
+          if (shouldRequestExplanation) memeRepository.markAsAsked(meme)
           log.info("Processed vote=$vote")
         }
         .onFailure { throwable -> log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message) }
   }
-
-  private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
-      if (stats.isEmpty())
-        "You have no statistics yet!"
-      else
-        """
-          Your statistics:
-          
-          Memes sent: ${stats.size}
-        """.trimIndent() +
-            stats
-                .flatMap { it.countByValue.asIterable() }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { it.value.sum() }
-                .toList()
-                .sortedBy { it.first }
-                .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
-
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
     fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
