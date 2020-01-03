@@ -256,7 +256,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val vote = VoteEntity(targetChatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
     val meme = memeRepository.findMeme(targetChatId, messageId) ?: return
 
-//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -286,7 +286,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
         .onSuccess {
           if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
-          if (shouldRequestExplanation) memeRepository.markAsAsked(meme)
+          if (shouldRequestExplanation) memeRepository.markRequested(meme)
           log.info("Processed vote=$vote")
         }
         .onFailure { throwable -> log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message) }

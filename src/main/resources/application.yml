@@ -52,7 +52,7 @@ sql:
       select chat_id, message_id, voter_id, value
       from vote
       where chat_id = :chatId and message_id = :messageId
-    markAsAsked: >
+    markMemeRequested: >
       update meme
       set explanation_requested = true
       where chat_id = :chatId and message_id = :messageId
