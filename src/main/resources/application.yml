@@ -22,16 +22,10 @@ sql:
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    findMemeSender: >
-      select sender_id from meme where chat_id = :chatId and message_id = :messageId
-    voteExists: >
-      select exists(
-        select 1 from vote
-        where
-          chat_id = :chatId
-          and message_id = :messageId
-          and voter_id = :voterId
-          and value = :value::vote_value)
+    findMeme: >
+      select chat_id, message_id, sender_id, file_id, explanation_requested
+      from meme
+      where chat_id = :chatId and message_id = :messageId
     insertOrUpdateVote: >
       insert into vote(chat_id, message_id, voter_id, value)
       values (:chatId, :messageId, :voterId, :value::vote_value)
@@ -43,12 +37,6 @@ sql:
         chat_id = :chatId
         and message_id = :messageId
         and voter_id = :voterId
-    findMemeStats: >
-      select value, count(value)
-      from vote
-      where
-        chat_id = :chatId and message_id = :messageId
-      group by value
     findUserStats: >
       select m.message_id,
              count(v.value) filter ( where value = 'UP')      as UP,
@@ -60,8 +48,16 @@ sql:
       where m.sender_id = :userId
         and m.chat_id = :chatId
       group by m.message_id
+    findMemeVotes: >
+      select chat_id, message_id, voter_id, value
+      from vote
+      where chat_id = :chatId and message_id = :messageId
+    markMemeRequested: >
+      update meme
+      set explanation_requested = true
+      where chat_id = :chatId and message_id = :messageId
     loadMemes: >
-      select file_id, sender_id, chat_id, message_id
+      select file_id, sender_id, chat_id, message_id, explanation_requested
       from meme
       where chat_id = :chatId
     messageIdByFileId: >
