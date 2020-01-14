@@ -264,7 +264,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
         }
 
-    val shouldRequestExplanation = !meme.explanationRequested && votes.values.filter { vote.voteValue == EXPLAIN }.size >= 3
+    val shouldRequestExplanation = !meme.explanationRequested && votes.values.filter { it == EXPLAIN }.size >= 3
 
     runCatching {
       execute(
