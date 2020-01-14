@@ -21,7 +21,6 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
   { rs, _ ->
     MemeStatsEntry(
         UP to rs.getInt(UP.name),
-        EXPLAIN to rs.getInt(EXPLAIN.name),
         DOWN to rs.getInt(DOWN.name))
   }.toList()
 

@@ -4,7 +4,8 @@ import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
-import com.imbananko.tilly.model.VoteValue.*
+import com.imbananko.tilly.model.VoteValue.DOWN
+import com.imbananko.tilly.model.VoteValue.UP
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.similarity.MemeMatcher
@@ -23,8 +24,8 @@ import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
-import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -45,6 +46,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   @Value("\${target.chat.id}")
   private val chatId: Long = 0
+
+  @Value("\${target.channel.id}")
+  private val channelId: Long = 0
 
   @Value("\${bot.token}")
   private lateinit var token: String
@@ -75,50 +79,45 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() {
     runCatching {
-      val memeOfTheWeek: MemeEntity? = memeRepository.findMemeOfTheWeek(chatId)
+      val meme: MemeEntity? = memeRepository.findMemeOfTheWeek(chatId)
 
-      if (memeOfTheWeek != null) {
-        val winner = execute(GetChatMember().apply {
-          this.setChatId(memeOfTheWeek.chatId)
-          this.userId = memeOfTheWeek.senderId
-        }).user
-        val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
-        val memeOfTheWeekMessage = runCatching {
-          execute(
-              SendMessage()
-                  .setChatId(chatId)
-                  .setParseMode(ParseMode.MARKDOWN)
-                  .setReplyToMessageId(memeOfTheWeek.messageId)
-                  .setText(congratulationText)
-          )
-        }.getOrElse { error ->
-          log.error("Can't reply to meme of the week because of", error)
-          log.info("Send meme of the week as new message")
+      meme ?: return
 
-          val statistics = voteRepository.getVotes(memeOfTheWeek)
-              .groupingBy { vote -> vote.voteValue }
-              .eachCount()
-          val fallbackMemeOfTheWeekMessage = execute(
-              SendPhoto()
-                  .setChatId(chatId)
-                  .setPhoto(memeOfTheWeek.fileId)
-                  .setParseMode(ParseMode.MARKDOWN)
-                  .setCaption(congratulationText)
-                  .setReplyMarkup(createMarkup(statistics))
-          )
-
-          memeRepository.migrateMeme(memeOfTheWeek.chatId, memeOfTheWeek.messageId, fallbackMemeOfTheWeekMessage.messageId)
-
-          fallbackMemeOfTheWeekMessage
-        }
-        execute(PinChatMessage(memeOfTheWeekMessage.chatId, memeOfTheWeekMessage.messageId))
-      } else {
+      val winner = execute(
+          GetChatMember()
+              .setChatId(channelId)
+              .setUserId(meme.senderId))
+          .user
+      val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
+      val memeOfTheWeekMessage = runCatching {
         execute(
             SendMessage()
-                .setChatId(chatId)
-                .setText("К сожалению, мемов на этой неделе не было...")
+                .setChatId(channelId)
+                .setParseMode(ParseMode.MARKDOWN)
+                .setReplyToMessageId(meme.messageId)
+                .setText(congratulationText)
         )
+      }.getOrElse { error ->
+        log.error("Can't reply to meme of the week because of", error)
+        log.info("Send meme of the week as new message")
+
+        val statistics = voteRepository.getVotes(meme)
+            .groupingBy { vote -> vote.voteValue }
+            .eachCount()
+        val fallbackMemeOfTheWeekMessage = execute(
+            SendPhoto()
+                .setChatId(channelId)
+                .setPhoto(meme.fileId)
+                .setParseMode(ParseMode.MARKDOWN)
+                .setCaption(congratulationText)
+                .setReplyMarkup(createMarkup(statistics))
+        )
+
+        memeRepository.update(meme, meme.copy(chatId = meme.chatId, messageId = fallbackMemeOfTheWeekMessage.messageId))
+
+        fallbackMemeOfTheWeekMessage
       }
+      execute(PinChatMessage(memeOfTheWeekMessage.chatId, memeOfTheWeekMessage.messageId))
     }
         .onSuccess { log.info("Successful send meme of the week") }
         .onFailure { throwable -> log.error("Can't send meme of the week because of", throwable) }
@@ -140,9 +139,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
 
     runCatching {
-      execute(SendMessage(chatId, "Топ мемсы прошедшего года:"))
+      execute(SendMessage(channelId, "Топ мемсы прошедшего года:"))
       execute(
-          SendMediaGroup(chatId, memeRepository.findMemesOfTheYear(chatId).map { meme ->
+          SendMediaGroup(channelId, memeRepository.findMemesOfTheYear(channelId).map { meme ->
             InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
                 .setParseMode(ParseMode.MARKDOWN)
           })
@@ -180,7 +179,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       execute(
           SendMessage()
               .setChatId(update.message.chatId)
-              .setText(formatStatsMessage(voteRepository.getStatsByUser(chatId, update.message.from.id)))
+              .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.message.from.id)))
       )
     }.onSuccess {
       log.debug("Sent stats to user=${update.message.from.id}")
@@ -205,9 +204,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption(memeCaption)
                 .setReplyMarkup(createMarkup(emptyMap())))
-      }.onSuccess { sentMemeMessage ->
-        val meme = MemeEntity(sentMemeMessage.chatId, sentMemeMessage.messageId, message.from.id, message.photo[0].fileId, false)
-        memeRepository.save(meme).also { log.info("Sent meme=$meme") }
+      }.onSuccess { sentMessage ->
+        memeRepository.save(MemeEntity(sentMessage.chatId, sentMessage.messageId, sentMessage.from.id, sentMessage.photo[0].fileId))
+            .also { log.info("Sent meme=$it") }
       }.onFailure { throwable ->
         log.error("Failed to send meme from message=${message.print()}. Exception=", throwable)
       }
@@ -250,11 +249,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   }
 
   private fun processVote(update: Update) {
-    val targetChatId = update.callbackQuery.message.chatId
+    val targetChatOrChannelId = update.callbackQuery.message.chatId
     val messageId = update.callbackQuery.message.messageId
 
-    val vote = VoteEntity(targetChatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
-    val meme = memeRepository.findMeme(targetChatId, messageId) ?: return
+    var vote = VoteEntity(targetChatOrChannelId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
+    val meme = memeRepository.findMeme(targetChatOrChannelId, messageId) ?: return
 
     if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
@@ -264,32 +263,55 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
         }
 
-    val shouldRequestExplanation = !meme.explanationRequested && votes.values.filter { it == EXPLAIN }.size >= 3
+    if (targetChatOrChannelId == chatId && isEnoughForChannel(votes)) {
+      runCatching {
+        execute(
+            DeleteMessage()
+                .setChatId(meme.chatId)
+                .setMessageId(meme.messageId))
+      }.onSuccess {
+        log.info("Deleted meme from chat=$meme")
+      }.onFailure { throwable ->
+        log.error("Failed to delete meme=$meme from chat. Exception=", throwable)
+      }
 
-    runCatching {
-      execute(
-          EditMessageReplyMarkup()
-              .setChatId(targetChatId)
-              .setMessageId(messageId)
-              .setInlineMessageId(update.callbackQuery.inlineMessageId)
-              .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
-      )
-
-      if (shouldRequestExplanation)
-        execute<Message, SendMessage>(
-            SendMessage()
-                .setChatId(targetChatId)
-                .setReplyToMessageId(update.callbackQuery.message.messageId)
-                .setText("Непонятно, помогите плез!")
+      runCatching {
+        execute(
+            SendPhoto()
+                .setChatId(channelId)
+                .setPhoto(meme.fileId)
                 .setParseMode(ParseMode.MARKDOWN)
+                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
+      }.onSuccess { message ->
+        log.info("Sent meme to channel=$meme")
+        memeRepository.update(meme, meme.copy(chatId = message.chatId, messageId = message.messageId))
+
+        vote = vote.copy(chatId = message.chatId, messageId = message.messageId)
+      }.onFailure { throwable ->
+        log.error("Failed to send meme=$meme to channel. Exception=", throwable)
+        return
+      }
+    } else {
+      runCatching {
+        execute(
+            EditMessageReplyMarkup()
+                .setChatId(targetChatOrChannelId)
+                .setMessageId(messageId)
+                .setInlineMessageId(update.callbackQuery.inlineMessageId)
+                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
         )
+      }.onFailure { throwable ->
+        log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+        return
+      }
     }
-        .onSuccess {
-          if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
-          if (shouldRequestExplanation) memeRepository.markRequested(meme)
-          log.info("Processed vote=$vote")
-        }
-        .onFailure { throwable -> log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message) }
+
+    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+    log.info("Processed vote=$vote")
+  }
+
+  private fun isEnoughForChannel(votes: MutableMap<Int, VoteValue>): Boolean {
+    return votes.values.filter { it == UP }.size >= 5
   }
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
@@ -304,7 +326,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         listOf(
             listOf(
                 createVoteInlineKeyboardButton(UP, stats.getOrDefault(UP, 0)),
-                createVoteInlineKeyboardButton(EXPLAIN, stats.getOrDefault(EXPLAIN, 0)),
                 createVoteInlineKeyboardButton(DOWN, stats.getOrDefault(DOWN, 0))
             )
         )

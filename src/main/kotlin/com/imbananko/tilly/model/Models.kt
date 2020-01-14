@@ -4,8 +4,7 @@ data class MemeEntity(
     val chatId: Long,
     val messageId: Int,
     val senderId: Int,
-    val fileId: String,
-    val explanationRequested: Boolean
+    val fileId: String
 )
 
 data class VoteEntity(
@@ -17,7 +16,6 @@ data class VoteEntity(
 
 enum class VoteValue(val emoji: String) {
   UP("\uD83D\uDC8E"),
-  EXPLAIN("\uD83E\uDD14"),
   DOWN("\uD83D\uDCA9")
 }
 
