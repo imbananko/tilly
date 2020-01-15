@@ -96,5 +96,13 @@ sql:
       limit 10
     migrateMeme: >
       update meme
-      set message_id = :newMessageId
-      where chat_id = :chatId and message_id = :oldMessageId
+      set
+        message_id = :newMessageId,
+        chat_id = :newChatId,
+        sender_id = :newSenderId,
+        file_id = :newFileId
+      where
+        chat_id = :oldChatId
+        and message_id = :oldMessageId
+        and sender_id = :oldSenderId
+        and file_id = :oldFileId
