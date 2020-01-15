@@ -311,7 +311,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   }
 
   private fun isEnoughForChannel(votes: MutableMap<Int, VoteValue>): Boolean {
-    return votes.values.filter { it == UP }.size >= 5
+    return votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
   }
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
