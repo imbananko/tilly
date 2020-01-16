@@ -205,7 +205,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setCaption(memeCaption)
                 .setReplyMarkup(createMarkup(emptyMap())))
       }.onSuccess { sentMessage ->
-        memeRepository.save(MemeEntity(sentMessage.chatId, sentMessage.messageId, sentMessage.from.id, sentMessage.photo[0].fileId))
+        memeRepository.save(MemeEntity(sentMessage.chatId, sentMessage.messageId, message.from.id, sentMessage.photo[0].fileId))
             .also { log.info("Sent meme=$it") }
       }.onFailure { throwable ->
         log.error("Failed to send meme from message=${message.print()}. Exception=", throwable)
