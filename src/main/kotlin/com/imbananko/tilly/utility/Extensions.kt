@@ -10,17 +10,9 @@ fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this
 
 fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand && this.message.text == "/stats"
 
-fun Update.hasChannelVote() = this.hasCallbackQuery()
-    && this.callbackQuery.message.isChannelMessage
-    && runCatching {
-  setOf(*VoteValue.values()).contains(extractVoteValue())
-}.getOrDefault(false)
-
-fun Update.hasChatVote() = this.hasCallbackQuery()
-    && (this.callbackQuery.message.isGroupMessage || this.callbackQuery.message.isSuperGroupMessage)
-    && runCatching {
-  setOf(*VoteValue.values()).contains(extractVoteValue())
-}.getOrDefault(false)
+fun Update.hasVote() = this.hasCallbackQuery() && runCatching {
+      setOf(*VoteValue.values()).contains(extractVoteValue())
+    }.getOrDefault(false)
 
 fun Update.extractVoteValue() =
     VoteValue.valueOf(this.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
