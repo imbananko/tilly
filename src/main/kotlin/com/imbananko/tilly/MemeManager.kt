@@ -161,7 +161,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processChatVote(update: Update) {
     val messageId = update.callbackQuery.message.messageId
 
-    val vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
+    var vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
     val meme = memeRepository.findMeme(chatId, messageId) ?: return
 
     if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
@@ -196,10 +196,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }.onSuccess { message ->
         log.info("Sent meme to channel=$meme")
         memeRepository.update(meme, meme.copy(chatId = message.chatId, messageId = message.messageId))
+        vote = vote.copy(chatId = message.chatId, messageId = message.messageId)
 
-        val channelVote = vote.copy(chatId = message.chatId, messageId = message.messageId)
-        if (votes.containsKey(channelVote.voterId)) voteRepository.insertOrUpdate(channelVote) else voteRepository.delete(channelVote)
-        log.info("Processed vote=$vote")
       }.onFailure { throwable ->
         log.error("Failed to send meme=$meme to channel. Exception=", throwable)
         return
@@ -217,6 +215,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
       }
     }
+    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+    log.info("Processed chat vote=$vote")
   }
 
   private fun processChannelVote(update: Update) {
@@ -338,9 +338,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         }
   }
 
-  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean {
-    return votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
-  }
+  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
+      votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
 
   private fun getMemeCaption(update: Update): String =
       (update.message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + update.message.from.mention()
