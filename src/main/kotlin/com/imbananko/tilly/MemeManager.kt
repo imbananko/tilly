@@ -153,8 +153,101 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   override fun onUpdateReceived(update: Update) {
     if (update.hasMeme()) processMeme(update)
-    if (update.hasVote()) processVote(update)
+    if (update.hasChannelVote()) processChannelVote(update)
+    if (update.hasChatVote()) processChatVote(update)
     if (update.hasStatsCommand()) sendStats(update)
+  }
+
+  private fun processChatVote(update: Update) {
+    val messageId = update.callbackQuery.message.messageId
+
+    var vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
+    val meme = memeRepository.findMeme(chatId, messageId) ?: return
+
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+
+    val votes = voteRepository.getVotes(meme)
+        .associate { Pair(it.voterId, it.voteValue) }
+        .toMutableMap().also {
+          it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
+        }
+
+    if (readyForShipment(votes)) {
+      runCatching {
+        execute(
+            DeleteMessage()
+                .setChatId(chatId)
+                .setMessageId(meme.messageId))
+      }.onSuccess {
+        log.info("Deleted meme from chat=$meme")
+      }.onFailure { throwable ->
+        log.error("Failed to delete meme=$meme from chat. Exception=", throwable)
+        return
+      }
+
+      runCatching {
+        execute(
+            SendPhoto()
+                .setChatId(channelId)
+                .setPhoto(meme.fileId)
+                .setCaption(getMemeCaption(update))
+                .setParseMode(ParseMode.MARKDOWN)
+                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
+      }.onSuccess { message ->
+        log.info("Sent meme to channel=$meme")
+        memeRepository.update(meme, meme.copy(chatId = message.chatId, messageId = message.messageId))
+        vote = vote.copy(chatId = message.chatId, messageId = message.messageId)
+
+      }.onFailure { throwable ->
+        log.error("Failed to send meme=$meme to channel. Exception=", throwable)
+        return
+      }
+    } else {
+      runCatching {
+        execute(
+            EditMessageReplyMarkup()
+                .setChatId(chatId)
+                .setMessageId(messageId)
+                .setInlineMessageId(update.callbackQuery.inlineMessageId)
+                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
+        )
+      }.onFailure { throwable ->
+        log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+      }
+    }
+    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+    log.info("Processed chat vote=$vote")
+  }
+
+  private fun processChannelVote(update: Update) {
+    val messageId = update.callbackQuery.message.messageId
+
+    val vote = VoteEntity(channelId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
+    val meme = memeRepository.findMeme(channelId, messageId) ?: return
+
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+
+    val votes = voteRepository.getVotes(meme)
+        .associate { Pair(it.voterId, it.voteValue) }
+        .toMutableMap().also {
+          it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
+        }
+
+    runCatching {
+      execute(
+          EditMessageReplyMarkup()
+              .setChatId(channelId)
+              .setMessageId(messageId)
+              .setInlineMessageId(update.callbackQuery.inlineMessageId)
+              .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
+      )
+    }.onFailure { throwable ->
+      log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+      return
+    }.onSuccess {
+      if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+      log.info("Processed channel vote=$vote")
+    }
   }
 
   private fun sendStats(update: Update) {
@@ -191,9 +284,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processMeme(update: Update) {
     val message = update.message
     val fileId = message.photo[0].fileId
-    val mention = message.from.mention()
-
-    val memeCaption = message.caption?.trim()
 
     val processMemeIfUnique = {
       runCatching {
@@ -202,7 +292,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setCaption(memeCaption)
+                .setCaption(getMemeCaption(update))
                 .setReplyMarkup(createMarkup(emptyMap())))
       }.onSuccess { sentMessage ->
         memeRepository.save(MemeEntity(sentMessage.chatId, sentMessage.messageId, message.from.id, sentMessage.photo[0].fileId))
@@ -217,7 +307,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             .setChatId(chatId)
             .setPhoto(fileId)
             .setParseMode(ParseMode.MARKDOWN)
-            .setCaption("$mention попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
+            .setCaption("${message.from.mention()} попытался отправить этот мем, не смотря на то, что его уже скидывали выше. Позор...")
 
     fun blameWithReply(messageId: Int): SendPhoto =
         blameWithoutReply().setReplyToMessageId(messageId)
@@ -248,71 +338,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         }
   }
 
-  private fun processVote(update: Update) {
-    val targetChatOrChannelId = update.callbackQuery.message.chatId
-    val messageId = update.callbackQuery.message.messageId
+  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
+      votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
 
-    var vote = VoteEntity(targetChatOrChannelId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
-    val meme = memeRepository.findMeme(targetChatOrChannelId, messageId) ?: return
-
-    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
-
-    val votes = voteRepository.getVotes(meme)
-        .associate { Pair(it.voterId, it.voteValue) }
-        .toMutableMap().also {
-          it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
-        }
-
-    if (targetChatOrChannelId == chatId && isEnoughForChannel(votes)) {
-      runCatching {
-        execute(
-            DeleteMessage()
-                .setChatId(meme.chatId)
-                .setMessageId(meme.messageId))
-      }.onSuccess {
-        log.info("Deleted meme from chat=$meme")
-      }.onFailure { throwable ->
-        log.error("Failed to delete meme=$meme from chat. Exception=", throwable)
-      }
-
-      runCatching {
-        execute(
-            SendPhoto()
-                .setChatId(channelId)
-                .setPhoto(meme.fileId)
-                .setParseMode(ParseMode.MARKDOWN)
-                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
-      }.onSuccess { message ->
-        log.info("Sent meme to channel=$meme")
-        memeRepository.update(meme, meme.copy(chatId = message.chatId, messageId = message.messageId))
-
-        vote = vote.copy(chatId = message.chatId, messageId = message.messageId)
-      }.onFailure { throwable ->
-        log.error("Failed to send meme=$meme to channel. Exception=", throwable)
-        return
-      }
-    } else {
-      runCatching {
-        execute(
-            EditMessageReplyMarkup()
-                .setChatId(targetChatOrChannelId)
-                .setMessageId(messageId)
-                .setInlineMessageId(update.callbackQuery.inlineMessageId)
-                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
-        )
-      }.onFailure { throwable ->
-        log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
-        return
-      }
-    }
-
-    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
-    log.info("Processed vote=$vote")
-  }
-
-  private fun isEnoughForChannel(votes: MutableMap<Int, VoteValue>): Boolean {
-    return votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
-  }
+  private fun getMemeCaption(update: Update): String =
+      (update.message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + update.message.from.mention()
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
     fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
