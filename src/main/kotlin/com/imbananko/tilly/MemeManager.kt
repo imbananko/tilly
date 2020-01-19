@@ -186,11 +186,16 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
 
       runCatching {
+        val caption = {
+          val captionParts = update.callbackQuery.message.caption.split("Sender: ")
+          val username = captionParts[1]
+          captionParts[0] + "Sender: " + "[$username](tg://user?id=${meme.senderId})"
+        }
         execute(
             SendPhoto()
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
-                .setCaption(update.callbackQuery.message.caption)
+                .setCaption(caption())
                 .setParseMode(ParseMode.MARKDOWN)
                 .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
       }.onSuccess { message ->
