@@ -190,7 +190,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             SendPhoto()
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
-                .setCaption(getMemeCaption(update))
+                .setCaption(update.callbackQuery.message.caption)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
       }.onSuccess { message ->
@@ -284,6 +284,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processMeme(update: Update) {
     val message = update.message
     val fileId = message.photo[0].fileId
+    val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + message.from.mention()
 
     val processMemeIfUnique = {
       runCatching {
@@ -292,7 +293,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setChatId(chatId)
                 .setPhoto(fileId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setCaption(getMemeCaption(update))
+                .setCaption(caption)
                 .setReplyMarkup(createMarkup(emptyMap())))
       }.onSuccess { sentMessage ->
         memeRepository.save(MemeEntity(sentMessage.chatId, sentMessage.messageId, message.from.id, sentMessage.photo[0].fileId))
@@ -340,9 +341,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
       votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
-
-  private fun getMemeCaption(update: Update): String =
-      (update.message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + update.message.from.mention()
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
     fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
