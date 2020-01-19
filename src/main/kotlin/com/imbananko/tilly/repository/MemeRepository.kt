@@ -60,10 +60,10 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findMemeOfTheWeek(chatId: Long): MemeEntity? =
+  fun findMemeOfTheWeek(channelId: Long): MemeEntity? =
       template.queryForObject(
           queries.getFromConfOrFail("getMemeOfTheWeek"),
-          MapSqlParameterSource("chatId", chatId)
+          MapSqlParameterSource("channelId", channelId)
       ) { rs: ResultSet, _: Int ->
         MemeEntity(rs.getLong("chat_id"),
             rs.getInt("message_id"),

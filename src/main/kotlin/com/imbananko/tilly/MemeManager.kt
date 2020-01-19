@@ -93,7 +93,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             SendMessage()
                 .setChatId(channelId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setReplyToMessageId(meme.messageId)
+                .setReplyToMessageId(meme.channelMessageId)
                 .setText(congratulationText)
         )
       }.getOrElse { error ->
