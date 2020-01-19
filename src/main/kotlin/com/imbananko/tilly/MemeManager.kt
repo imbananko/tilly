@@ -189,7 +189,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         val caption = {
           val captionParts = update.callbackQuery.message.caption.split("Sender: ")
           val username = captionParts[1]
-          captionParts[0] + "Sender: " + "[$username](tg://user?id=${meme.senderId})"
+          captionParts[0] + "Sender: [$username](tg://user?id=${meme.senderId})"
         }
         execute(
             SendPhoto()
