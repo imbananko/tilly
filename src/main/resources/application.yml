@@ -50,7 +50,7 @@ sql:
                left join vote v
                          on m.chat_id = v.chat_id and m.message_id = v.message_id
       where m.sender_id = :userId
-        and m.chat_id = :chatId
+        and (m.chat_id = :chatId or m.channel_id = :chatId)
       group by m.message_id
     findMemeVotes: >
       select chat_id, message_id, voter_id, value
