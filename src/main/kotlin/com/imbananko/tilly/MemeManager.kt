@@ -24,7 +24,6 @@ import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
@@ -94,7 +93,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             SendMessage()
                 .setChatId(channelId)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setReplyToMessageId(meme.messageId)
+                .setReplyToMessageId(meme.channelMessageId)
                 .setText(congratulationText)
         )
       }.getOrElse { error ->
@@ -113,7 +112,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setReplyMarkup(createMarkup(statistics))
         )
 
-        memeRepository.update(meme, meme.copy(chatId = meme.chatId, messageId = fallbackMemeOfTheWeekMessage.messageId))
+        memeRepository.update(meme, meme.copy(channelId = meme.channelId, channelMessageId = fallbackMemeOfTheWeekMessage.messageId))
 
         fallbackMemeOfTheWeekMessage
       }
@@ -161,8 +160,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processChatVote(update: Update) {
     val messageId = update.callbackQuery.message.messageId
 
-    var vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
-    val meme = memeRepository.findMeme(chatId, messageId) ?: return
+    val meme = memeRepository.findMemeByChat(chatId, messageId) ?: return
+    val vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
     if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
@@ -171,20 +170,19 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .toMutableMap().also {
           it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
         }
+    val markup = createMarkup(votes.values.groupingBy { it }.eachCount())
 
-    if (readyForShipment(votes)) {
-      runCatching {
-        execute(
-            DeleteMessage()
-                .setChatId(chatId)
-                .setMessageId(meme.messageId))
-      }.onSuccess {
-        log.info("Deleted meme from chat=$meme")
-      }.onFailure { throwable ->
-        log.error("Failed to delete meme=$meme from chat. Exception=", throwable)
-        return
-      }
-
+    runCatching {
+      execute(
+          EditMessageReplyMarkup()
+              .setChatId(chatId)
+              .setMessageId(messageId)
+              .setReplyMarkup(markup)
+      )
+    }.onFailure { throwable ->
+      log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+    }
+    if (meme.channelId == null && readyForShipment(votes)) {
       runCatching {
         val caption = update.callbackQuery.message.caption.split("Sender: ").run {
           val username = this[1]
@@ -196,24 +194,22 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setPhoto(meme.fileId)
                 .setCaption(caption)
                 .setParseMode(ParseMode.MARKDOWN)
-                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount())))
+                .setReplyMarkup(markup)
+        )
       }.onSuccess { message ->
         log.info("Sent meme to channel=$meme")
-        memeRepository.update(meme, meme.copy(chatId = message.chatId, messageId = message.messageId))
-        vote = vote.copy(chatId = message.chatId, messageId = message.messageId)
-
+        memeRepository.update(meme, meme.copy(channelId = message.chatId, channelMessageId = message.messageId))
       }.onFailure { throwable ->
         log.error("Failed to send meme=$meme to channel. Exception=", throwable)
         return
       }
-    } else {
+    } else if (meme.channelId != null) {
       runCatching {
         execute(
             EditMessageReplyMarkup()
-                .setChatId(chatId)
-                .setMessageId(messageId)
-                .setInlineMessageId(update.callbackQuery.inlineMessageId)
-                .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
+                .setChatId(meme.channelId)
+                .setMessageId(meme.channelMessageId)
+                .setReplyMarkup(markup)
         )
       }.onFailure { throwable ->
         log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
@@ -226,8 +222,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processChannelVote(update: Update) {
     val messageId = update.callbackQuery.message.messageId
 
-    val vote = VoteEntity(channelId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
-    val meme = memeRepository.findMeme(channelId, messageId) ?: return
+    val meme = memeRepository.findMemeByChannel(channelId, messageId) ?: return
+    val vote = VoteEntity(meme.chatId, meme.messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
     if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
@@ -238,13 +234,18 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         }
 
     runCatching {
+      val markup = createMarkup(votes.values.groupingBy { it }.eachCount())
       execute(
           EditMessageReplyMarkup()
               .setChatId(channelId)
               .setMessageId(messageId)
-              .setInlineMessageId(update.callbackQuery.inlineMessageId)
-              .setReplyMarkup(createMarkup(votes.values.groupingBy { it }.eachCount()))
+              .setReplyMarkup(markup)
       )
+      execute(
+          EditMessageReplyMarkup()
+              .setChatId(meme.chatId)
+              .setMessageId(meme.messageId)
+              .setReplyMarkup(markup))
     }.onFailure { throwable ->
       log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
       return

@@ -22,10 +22,14 @@ sql:
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    findMeme: >
-      select chat_id, message_id, sender_id, file_id, explanation_requested
+    findMemeByChat: >
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
       from meme
       where chat_id = :chatId and message_id = :messageId
+    findMemeByChannel: >
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
+      from meme
+      where channel_id = :channelId and channel_message_id = :channelMessageId
     insertOrUpdateVote: >
       insert into vote(chat_id, message_id, voter_id, value)
       values (:chatId, :messageId, :voterId, :value::vote_value)
@@ -46,7 +50,7 @@ sql:
                left join vote v
                          on m.chat_id = v.chat_id and m.message_id = v.message_id
       where m.sender_id = :userId
-        and m.chat_id = :chatId
+        and (m.chat_id = :chatId or m.channel_id = :chatId)
       group by m.message_id
     findMemeVotes: >
       select chat_id, message_id, voter_id, value
@@ -57,7 +61,7 @@ sql:
       set explanation_requested = true
       where chat_id = :chatId and message_id = :messageId
     loadMemes: >
-      select file_id, sender_id, chat_id, message_id, explanation_requested
+      select file_id, sender_id, chat_id, message_id, channel_id, channel_message_id
       from meme
       where chat_id = :chatId
     messageIdByFileId: >
@@ -71,12 +75,14 @@ sql:
              m.message_id,
              m.sender_id,
              m.file_id,
+             m.channel_id,
+             m.channel_message_id,
              count(value) filter (where value = 'UP') as up_count,
              count(value) filter (where value = 'EXPLAIN') as explain_count,
              count(value) filter (where value = 'DOWN') as down_count
       from meme m
           join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
-      where m.chat_id = :chatId and m.created_at > current_timestamp - interval '7 days'
+      where (m.chat_id = :channelId or m.channel_id= :channelId) and m.created_at > current_timestamp - interval '7 days'
       group by m.chat_id, m.message_id
       order by up_count desc, down_count, explain_count, m.created_at desc
       limit 1
@@ -94,15 +100,19 @@ sql:
       group by m.chat_id, m.message_id, m.sender_id, m.file_id
       order by up_count desc, down_count, explain_count
       limit 10
-    migrateMeme: >
+    updateMeme: >
       update meme
       set
         message_id = :newMessageId,
         chat_id = :newChatId,
         sender_id = :newSenderId,
-        file_id = :newFileId
+        file_id = :newFileId,
+        channel_id = :newChannelId,
+        channel_message_id = :newChannelMessageId
       where
         chat_id = :oldChatId
         and message_id = :oldMessageId
         and sender_id = :oldSenderId
         and file_id = :oldFileId
+        and (channel_id = :oldChannelId or channel_id is null)
+        and (channel_message_id = :oldChannelMessageId or channel_message_id is null)
