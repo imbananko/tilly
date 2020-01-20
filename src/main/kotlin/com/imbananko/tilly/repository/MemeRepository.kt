@@ -96,9 +96,9 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
               .addValue("newSenderId", new.senderId)
               .addValue("oldFileId", old.fileId)
               .addValue("newFileId", new.fileId)
-              .addValue("oldChannelId", old.channelId ?: 0L)
+              .addValue("oldChannelId", old.channelId)
               .addValue("newChannelId", new.channelId)
-              .addValue("oldChannelMessageId", old.channelMessageId ?: 0)
+              .addValue("oldChannelMessageId", old.channelMessageId)
               .addValue("newChannelMessageId", new.channelMessageId)
       )
 
