@@ -160,7 +160,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun processChatVote(update: Update) {
     val messageId = update.callbackQuery.message.messageId
 
-    val meme = memeRepository.findMeme(chatId, messageId) ?: return
+    val meme = memeRepository.findMemeByChat(chatId, messageId) ?: return
     val vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
     if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
