@@ -22,7 +22,7 @@ sql:
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    findMeme: >
+    findMemeByChat: >
       select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
       from meme
       where chat_id = :chatId and message_id = :messageId
