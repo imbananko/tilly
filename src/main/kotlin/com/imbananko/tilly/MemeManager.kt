@@ -241,11 +241,13 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
               .setMessageId(messageId)
               .setReplyMarkup(markup)
       )
-      execute(
-          EditMessageReplyMarkup()
-              .setChatId(meme.chatId)
-              .setMessageId(meme.messageId)
-              .setReplyMarkup(markup))
+      if (meme.chatId != meme.channelId) {
+        execute(
+            EditMessageReplyMarkup()
+                .setChatId(meme.chatId)
+                .setMessageId(meme.messageId)
+                .setReplyMarkup(markup))
+      }
     }.onFailure { throwable ->
       log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
       return
