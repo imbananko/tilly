@@ -112,7 +112,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setReplyMarkup(createMarkup(statistics))
         )
 
-        memeRepository.update(meme, meme.copy(chatId = meme.chatId, messageId = fallbackMemeOfTheWeekMessage.messageId))
+        memeRepository.update(meme, meme.copy(channelId = meme.channelId, channelMessageId = fallbackMemeOfTheWeekMessage.messageId))
 
         fallbackMemeOfTheWeekMessage
       }
