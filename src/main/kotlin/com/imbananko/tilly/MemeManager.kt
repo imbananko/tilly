@@ -198,7 +198,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         )
       }.onSuccess { message ->
         log.info("Sent meme to channel=$meme")
-        memeRepository.updateChannel(meme, channelId = message.chatId, channelMessageId = message.messageId)
+        memeRepository.update(meme, meme.copy(channelId = message.chatId, channelMessageId = message.messageId))
       }.onFailure { throwable ->
         log.error("Failed to send meme=$meme to channel. Exception=", throwable)
         return

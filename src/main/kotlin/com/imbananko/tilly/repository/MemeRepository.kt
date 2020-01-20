@@ -87,7 +87,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
       }.toList()
 
   fun update(old: MemeEntity, new: MemeEntity) =
-      template.update(queries.getFromConfOrFail("migrateMeme"),
+      template.update(queries.getFromConfOrFail("updateMeme"),
           MapSqlParameterSource("oldChatId", old.chatId)
               .addValue("newChatId", new.chatId)
               .addValue("oldMessageId", old.messageId)
@@ -96,14 +96,10 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
               .addValue("newSenderId", new.senderId)
               .addValue("oldFileId", old.fileId)
               .addValue("newFileId", new.fileId)
-      )
-
-  fun updateChannel(meme: MemeEntity, channelId: Long, channelMessageId: Int) =
-      template.update(queries.getFromConfOrFail("updateChannel"),
-          MapSqlParameterSource("chatId", meme.chatId)
-              .addValue("messageId", meme.messageId)
-              .addValue("channelId", channelId)
-              .addValue("channelMessageId", channelMessageId)
+              .addValue("oldChannelId", old.channelId ?: 0L)
+              .addValue("newChannelId", new.channelId)
+              .addValue("oldChannelMessageId", old.channelMessageId ?: 0)
+              .addValue("newChannelMessageId", new.channelMessageId)
       )
 
   fun messageIdByFileId(fileId: String, chatId: Long): Int? = template.query(queries.getFromConfOrFail("messageIdByFileId"),
