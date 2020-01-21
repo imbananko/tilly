@@ -26,6 +26,10 @@ sql:
       select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
       from meme
       where chat_id = :chatId and message_id = :messageId
+    findMemeByFileId: >
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
+      from meme
+      where file_id = :fileId
     findMemeByChannel: >
       select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
       from meme
@@ -56,20 +60,10 @@ sql:
       select chat_id, message_id, voter_id, value
       from vote
       where chat_id = :chatId and message_id = :messageId
-    markMemeRequested: >
-      update meme
-      set explanation_requested = true
-      where chat_id = :chatId and message_id = :messageId
-    loadMemes: >
+    findAllChatMemes: >
       select file_id, sender_id, chat_id, message_id, channel_id, channel_message_id
       from meme
       where chat_id = :chatId
-    messageIdByFileId: >
-      select message_id
-      from meme
-      where chat_id = :chat_id and file_id = :file_id
-      order by created_at desc
-      limit 1
     getMemeOfTheWeek: >
       select m.chat_id,
              m.message_id,

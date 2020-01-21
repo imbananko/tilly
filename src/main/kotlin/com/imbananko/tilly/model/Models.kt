@@ -6,8 +6,10 @@ data class MemeEntity(
     val senderId: Int,
     val fileId: String,
     val channelId: Long? = null,
-    val channelMessageId: Int? = null
-)
+    val channelMessageId: Int? = null) {
+
+  fun isPublishedOnChannel(): Boolean = channelId != null && channelMessageId != null
+}
 
 data class VoteEntity(
     val chatId: Long,
