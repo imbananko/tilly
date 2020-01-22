@@ -331,7 +331,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setMessageId(it.messageId)
                   .disableNotification()
               )
-          }
+          } ?: execute(SendMessage()
+              .setChatId(update.message.chatId)
+              .setReplyToMessageId(update.message.messageId)
+              .setText("К сожалению, мем уже был отправлен ранее!")
+              .disableNotification())
         }.onFailure {
           log.error("Failed to forward original meme. Exception=", it)
         }.onSuccess {
