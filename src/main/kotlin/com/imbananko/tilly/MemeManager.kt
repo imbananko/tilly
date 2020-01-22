@@ -30,8 +30,10 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
-import java.io.File
+import java.io.File.createTempFile
 import java.io.FileOutputStream
+import java.lang.System.currentTimeMillis
+import java.lang.Thread.currentThread
 import java.net.URL
 import javax.annotation.PostConstruct
 
@@ -61,6 +63,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   private fun init() {
     memeRepository
         .findAllChatMemes(chatId)
+        .distinctBy { it.fileId }
         .parallelStream()
         .map { meme -> Pair(meme.fileId, downloadFromFileId(meme.fileId)) }
         .forEach { pair ->
@@ -301,7 +304,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setReplyMarkup(createMarkup(emptyMap())))
         }.onSuccess { message ->
           memeRepository.save(MemeEntity(chatId, message.messageId, message.from.id, message.photo[0].fileId)).also {
-            memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
+            downloadFromFileId(it.fileId).also { file ->
+              log.info(file.toString())
+              memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
+            }
             log.info("Sent meme=$it to chat")
           }
         }.onFailure {
@@ -364,9 +370,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
   }
 
   private fun downloadFromFileId(fileId: String) =
-      File.createTempFile("telegram-photo-", "").apply { this.deleteOnExit() }.also {
+      createTempFile("photo-", "-" + currentThread().id + "-" + currentTimeMillis()).apply { this.deleteOnExit() }.also {
         FileOutputStream(it).use { out ->
           URL(execute(GetFile().setFileId(fileId)).getFileUrl(botToken)).openStream().use { stream -> IOUtils.copy(stream, out) }
         }
+      }.also {
+        log.info("Successfully downloaded file=$it")
       }
 }
