@@ -66,11 +66,11 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .distinctBy { it.fileId }
         .parallelStream()
         .map { meme -> Pair(meme.fileId, downloadFromFileId(meme.fileId)) }
-        .forEach { pair ->
+        .forEach { (fileId, file) ->
           runCatching {
-            memeMatcher.addMeme(pair.first, pair.second)
+            memeMatcher.addMeme(fileId, file)
           }.onFailure { throwable: Throwable ->
-            log.error("Failed to load file {}. Exception=", pair.first, throwable)
+            log.error("Failed to load file {}. Exception=", fileId, throwable)
           }
         }
   }

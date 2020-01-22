@@ -40,7 +40,7 @@ class MemeMatcherTest {
     val fileId = file.name
     memeMatcher.addMeme(fileId, file)
 
-    assertEquals(fileId, memeMatcher.checkMemeExists(fileId, file))
+    assertEquals(fileId, memeMatcher.tryFindDuplicate(file))
   }
 
   @ParameterizedTest
@@ -48,7 +48,7 @@ class MemeMatcherTest {
   fun `Memes with a difference in text should be distinguished`(changedMeme: File) {
     val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not fount")
     memeMatcher.addMeme(originalMeme.name, originalMeme)
-    val memeMatch = memeMatcher.checkMemeExists(changedMeme.name, changedMeme)
+    val memeMatch = memeMatcher.tryFindDuplicate(changedMeme)
 
     assertNull(memeMatch, "Changed meme ${changedMeme.name} should be different from original one ${originalMeme.name}")
   }
@@ -58,7 +58,7 @@ class MemeMatcherTest {
     val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not fount")
     val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not fount")
     memeMatcher.addMeme(meme1.name, meme1)
-    val memeMatch = memeMatcher.checkMemeExists(meme2.name, meme2)
+    val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertNull(memeMatch, "Changed meme ${meme2.name} should be different from original one ${meme1.name}")
   }
