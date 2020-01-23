@@ -290,6 +290,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
   private fun processMeme(update: Update) {
     val message = update.message
+    val senderId = message.from.id
     val fileId = message.photo[0].fileId
     val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + message.from.mention()
 
@@ -302,8 +303,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setParseMode(ParseMode.MARKDOWN)
                   .setCaption(caption)
                   .setReplyMarkup(createMarkup(emptyMap())))
-        }.onSuccess { message ->
-          memeRepository.save(MemeEntity(chatId, message.messageId, message.from.id, message.photo[0].fileId)).also {
+        }.onSuccess { sentMessage ->
+          memeRepository.save(MemeEntity(chatId, sentMessage.messageId, senderId, fileId)).also {
             downloadFromFileId(it.fileId).also { file ->
               log.info(file.toString())
               memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
