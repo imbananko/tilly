@@ -348,7 +348,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             ?: sendMemeToChat()
       }
     }.onFailure { throwable ->
-      log.error("Failed to check duplicates for fileId=$fileId. Exception=", throwable)
+      log.error("Failed to check duplicates for fileId=$fileId. Message=${message.print()}. Exception=", throwable)
     }
   }
 
