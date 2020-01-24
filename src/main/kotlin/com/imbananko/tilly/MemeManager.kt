@@ -1,13 +1,13 @@
 package com.imbananko.tilly
 
 import com.imbananko.tilly.model.MemeEntity
-import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.model.VoteValue.DOWN
 import com.imbananko.tilly.model.VoteValue.UP
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
+import com.imbananko.tilly.service.CommandsService
 import com.imbananko.tilly.similarity.MemeMatcher
 import com.imbananko.tilly.utility.*
 import org.apache.commons.io.IOUtils
@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -39,7 +38,10 @@ import javax.annotation.PostConstruct
 
 @EnableScheduling
 @Component
-class MemeManager(private val memeRepository: MemeRepository, private val voteRepository: VoteRepository, private val memeMatcher: MemeMatcher) : TelegramLongPollingBot() {
+class MemeManager(private val memeRepository: MemeRepository,
+                  private val voteRepository: VoteRepository,
+                  private val memeMatcher: MemeMatcher,
+                  private val commandsService: CommandsService) : AutoWiringLongPollingBot() {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
@@ -154,7 +156,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (update.hasMeme()) processMeme(update)
     if (update.hasChannelVote()) processChannelVote(update)
     if (update.hasChatVote()) processChatVote(update)
-    if (update.hasStatsCommand()) sendStats(update)
+    if (update.hasStatsCommand()) commandsService.sendStats(update)
   }
 
   private fun processChatVote(update: Update) {
@@ -254,37 +256,6 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }.onSuccess {
       if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
       log.info("Processed channel vote=$vote")
-    }
-  }
-
-  private fun sendStats(update: Update) {
-    fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
-        if (stats.isEmpty())
-          "You have no statistics yet!"
-        else
-          """
-          Your statistics:
-          
-          Memes sent: ${stats.size}
-        """.trimIndent() +
-              stats
-                  .flatMap { it.counts.asIterable() }
-                  .groupBy({ it.first }, { it.second })
-                  .mapValues { it.value.sum() }
-                  .toList()
-                  .sortedBy { it.first }
-                  .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
-
-    runCatching {
-      execute(
-          SendMessage()
-              .setChatId(update.message.chatId)
-              .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.message.from.id)))
-      )
-    }.onSuccess {
-      log.debug("Sent stats to user=${update.message.from.id}")
-    }.onFailure { throwable ->
-      log.error("Failed to send stats to user=${update.message.from.id}. Exception=", throwable)
     }
   }
 
