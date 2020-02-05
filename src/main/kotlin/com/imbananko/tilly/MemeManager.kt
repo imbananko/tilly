@@ -184,16 +184,12 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
     if (meme.channelId == null && readyForShipment(votes)) {
       runCatching {
-        val caption = update.callbackQuery.message.caption.split("Sender: ").run {
-          val username = this[1]
-          this[0] + "Sender: [$username](tg://user?id=${meme.senderId})"
-        }
         execute(
             SendPhoto()
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
-                .setCaption(caption)
-                .setParseMode(ParseMode.MARKDOWN)
+                .setCaption(update.callbackQuery.message.caption.split("Sender: ").firstOrNull())
+                .setParseMode(ParseMode.HTML)
                 .setReplyMarkup(markup)
         )
       }.onSuccess { message ->
@@ -292,7 +288,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val message = update.message
     val senderId = message.from.id
     val fileId = message.photo[0].fileId
-    val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: " + message.from.mention()
+    val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") +
+            "Sender: " + (message.from.userName?.let { "@$it" } ?: message.from.firstName ?: message.from.lastName)
 
     fun sendMemeToChat() =
         runCatching {
@@ -300,7 +297,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
               SendPhoto()
                   .setChatId(chatId)
                   .setPhoto(fileId)
-                  .setParseMode(ParseMode.MARKDOWN)
+                  .setParseMode(ParseMode.HTML)
                   .setCaption(caption)
                   .setReplyMarkup(createMarkup(emptyMap())))
         }.onSuccess { sentMessage ->
