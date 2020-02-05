@@ -188,7 +188,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             SendPhoto()
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
-                .setCaption(update.callbackQuery.message.caption.split("Sender: ").first())
+                .setCaption(update.callbackQuery.message.caption.split("Sender: ").firstOrNull())
                 .setParseMode(ParseMode.MARKDOWN)
                 .setReplyMarkup(markup)
         )
@@ -288,7 +288,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val message = update.message
     val senderId = message.from.id
     val fileId = message.photo[0].fileId
-    val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") + "Sender: @" + message.from.userName
+    val caption = (message.caption?.trim()?.run { this + "\n\n" } ?: "") +
+            "Sender: " + (message.from.userName?.let { "@$it" } ?: message.from.firstName ?: message.from.lastName)
 
     fun sendMemeToChat() =
         runCatching {
