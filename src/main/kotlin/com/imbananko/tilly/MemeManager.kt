@@ -189,7 +189,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
                 .setCaption(update.callbackQuery.message.caption.split("Sender: ").firstOrNull())
-                .setParseMode(ParseMode.MARKDOWN)
+                .setParseMode(ParseMode.HTML)
                 .setReplyMarkup(markup)
         )
       }.onSuccess { message ->
