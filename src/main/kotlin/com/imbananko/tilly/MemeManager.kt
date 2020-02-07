@@ -185,9 +185,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (meme.channelId == null && readyForShipment(votes)) {
       runCatching {
         val originalCaption = update.callbackQuery.message.caption ?: ""
-        val captionForChannel =
-            if (originalCaption.contains("Sender: ")) originalCaption.split("Sender: ").firstOrNull()
-            else originalCaption
+        val captionForChannel = originalCaption.split("Sender: ").firstOrNull()
         execute(
             SendPhoto()
                 .setChatId(channelId)
