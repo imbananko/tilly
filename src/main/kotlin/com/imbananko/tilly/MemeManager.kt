@@ -289,7 +289,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val message = update.message
     val senderId = message.from.id
     val fileId = message.photo[0].fileId
-    val isChatMember = runCatching { execute(GetChatMember().setChatId(chatId).setUserId(senderId)).memberField }.getOrDefault(false)
+    val isChatMember = runCatching { execute(GetChatMember().setChatId(chatId).setUserId(senderId)).user }.isSuccess
     val caption = (message.caption?.trim()?.run { this + if (isChatMember) "" else "\n\n" } ?: "") +
         if (isChatMember) ""
         else "Sender: " + (message.from.userName?.let { "@$it" } ?: message.from.firstName ?: message.from.lastName)
