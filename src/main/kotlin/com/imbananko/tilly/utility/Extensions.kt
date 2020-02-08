@@ -1,6 +1,7 @@
 package com.imbananko.tilly.utility
 
 import com.imbananko.tilly.model.VoteValue
+import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
@@ -31,3 +32,7 @@ fun Message.print(): String =
     "Message(messageId=${this.messageId},chatId=${this.chatId},userId=${this.from?.id},userName=${this.from?.userName})"
 
 fun Message.isOld(): Boolean = Instant.ofEpochSecond(this.date.toLong()) < Instant.now().minusSeconds(60 * 60 * 24 * 7)
+
+fun String.isChatUserStatus(): Boolean = chatUserStatuses.contains(this)
+
+private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER)
