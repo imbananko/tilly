@@ -5,6 +5,7 @@ data class MemeEntity(
     val messageId: Int,
     val senderId: Int,
     val fileId: String,
+    val privateMessageId: Int,
     val channelId: Long? = null,
     val channelMessageId: Int? = null) {
 

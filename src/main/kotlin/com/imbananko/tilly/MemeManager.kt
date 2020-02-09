@@ -25,6 +25,8 @@ import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
@@ -157,6 +159,17 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (update.hasStatsCommand()) sendStats(update)
   }
 
+  private fun updateCaptionInSenderChat(meme: MemeEntity, caption: String) =
+      runCatching {
+        execute(EditMessageCaption()
+            .setChatId(meme.senderId.toString())
+            .setMessageId(meme.privateMessageId)
+            .setCaption(caption)
+        )
+      }.onFailure {
+        log.error("Failed update caption in private chat=$chatId", it)
+      }
+
   private fun processChatVote(update: Update) {
     val messageId = update.callbackQuery.message.messageId
 
@@ -170,49 +183,59 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         .toMutableMap().also {
           it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
         }
-    val markup = createMarkup(votes.values.groupingBy { it }.eachCount())
+
+    val groupedUpVotes = votes.values.groupingBy { it }.eachCount()
+    val markup = createMarkup(groupedUpVotes)
 
     runCatching {
-      execute(
-          EditMessageReplyMarkup()
-              .setChatId(chatId)
-              .setMessageId(messageId)
-              .setReplyMarkup(markup)
-      )
-    }.onFailure { throwable ->
-      log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+      execute(EditMessageReplyMarkup()
+          .setChatId(chatId)
+          .setMessageId(messageId)
+          .setReplyMarkup(markup))
+    }.onFailure {
+      log.error("Failed to process vote=$vote", it)
     }
+
+    var privateCaptionPrefix = "мем на модерации. статистика: \n\n"
+
     if (meme.channelId == null && readyForShipment(votes)) {
       runCatching {
         val originalCaption = update.callbackQuery.message.caption ?: ""
         val captionForChannel = originalCaption.split("Sender: ").firstOrNull()
-        execute(
-            SendPhoto()
-                .setChatId(channelId)
-                .setPhoto(meme.fileId)
-                .setCaption(captionForChannel)
-                .setReplyMarkup(markup)
+        execute(SendPhoto()
+            .setChatId(channelId)
+            .setPhoto(meme.fileId)
+            .setCaption(captionForChannel)
+            .setReplyMarkup(markup)
         )
       }.onSuccess { message ->
-        log.info("Sent meme to channel=$meme")
         memeRepository.update(meme, meme.copy(channelId = message.chatId, channelMessageId = message.messageId))
-      }.onFailure { throwable ->
-        log.error("Failed to send meme=$meme to channel. Exception=", throwable)
+        log.info("Sent meme to channel=$meme")
+        privateCaptionPrefix = "мем отправлен на канал. статистика: \n\n"
+      }.onFailure {
+        log.error("Failed to send meme=$meme to channel", it)
         return
       }
     } else if (meme.channelId != null) {
       runCatching {
-        execute(
-            EditMessageReplyMarkup()
-                .setChatId(meme.channelId)
-                .setMessageId(meme.channelMessageId)
-                .setReplyMarkup(markup)
+        execute(EditMessageReplyMarkup()
+            .setChatId(meme.channelId)
+            .setMessageId(meme.channelMessageId)
+            .setReplyMarkup(markup)
         )
-      }.onFailure { throwable ->
-        log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
+      }.onFailure {
+        log.error("Failed to process vote=$vote", it)
+        return
       }
     }
+
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+
+    val caption = groupedUpVotes.entries.joinToString(
+        prefix = privateCaptionPrefix,
+        transform = { (value, sum) -> "${value.emoji}: $sum" })
+    updateCaptionInSenderChat(meme, caption)
+
     log.info("Processed chat vote=$vote")
   }
 
@@ -250,6 +273,12 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       return
     }.onSuccess {
       if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+
+      val caption = votes.values.groupingBy { it }.eachCount().entries.joinToString(
+          prefix = "мем отправлен на канал. статистика: \n\n",
+          transform = { (value, sum) -> "${value.emoji}: $sum" })
+      updateCaptionInSenderChat(meme, caption)
+
       log.info("Processed channel vote=$vote")
     }
   }
@@ -298,6 +327,18 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
         if (isChatMember) ""
         else "Sender: " + (message.from.userName?.let { "@$it" } ?: message.from.firstName ?: message.from.lastName)
 
+    val privateMessageId =
+        runCatching {
+          execute(DeleteMessage()
+              .setChatId(message.chatId)
+              .setMessageId(message.messageId))
+
+          execute(SendPhoto()
+              .setPhoto(fileId)
+              .setChatId(message.chatId)
+              .setCaption(message.caption))
+        }.getOrThrow().messageId
+
     fun sendMemeToChat() =
         runCatching {
           execute(
@@ -307,7 +348,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setCaption(caption)
                   .setReplyMarkup(createMarkup(emptyMap())))
         }.onSuccess { sentMessage ->
-          memeRepository.save(MemeEntity(chatId, sentMessage.messageId, senderId, fileId)).also {
+          memeRepository.save(MemeEntity(chatId, sentMessage.messageId, senderId, fileId, privateMessageId)).also {
             downloadFromFileId(it.fileId).also { file ->
               log.info(file.toString())
               memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
