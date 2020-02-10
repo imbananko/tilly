@@ -320,6 +320,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
     fun forwardOriginalMemeToSender(originalFileId: String) =
         runCatching {
+          execute(SendMessage()
+              .setChatId(update.message.chatId)
+              .setReplyToMessageId(update.message.messageId)
+              .setText("К сожалению, мем уже был отправлен ранее!"))
           memeRepository.findMeme(originalFileId)?.also {
             if (it.isPublishedOnChannel())
               execute(ForwardMessage()
@@ -333,13 +337,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setChatId(update.message.chatId)
                   .setFromChatId(it.chatId)
                   .setMessageId(it.messageId)
-                  .disableNotification()
-              )
-          } ?: execute(SendMessage()
-              .setChatId(update.message.chatId)
-              .setReplyToMessageId(update.message.messageId)
-              .setText("К сожалению, мем уже был отправлен ранее!")
-              .disableNotification())
+                  .disableNotification())
+          }
         }.onFailure {
           log.error("Failed to forward original meme. Exception=", it)
         }.onSuccess {
