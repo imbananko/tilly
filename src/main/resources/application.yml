@@ -16,22 +16,22 @@ target.chat.id: 0
 sql:
   queries:
     insertMeme: >
-      insert into meme (chat_id, message_id, sender_id, file_id)
-      values (:chatId, :messageId, :senderId, :fileId)
+      insert into meme (chat_id, message_id, sender_id, file_id, private_message_id)
+      values (:chatId, :messageId, :senderId, :fileId, :privateMessageId)
     insertUserIfNotExists: >
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
     findMemeByChat: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
       from meme
       where chat_id = :chatId and message_id = :messageId
     findMemeByFileId: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
       from meme
       where file_id = :fileId
     findMemeByChannel: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id
+      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
       from meme
       where channel_id = :channelId and channel_message_id = :channelMessageId
     insertOrUpdateVote: >
@@ -61,7 +61,7 @@ sql:
       from vote
       where chat_id = :chatId and message_id = :messageId
     findAllChatMemes: >
-      select file_id, sender_id, chat_id, message_id, channel_id, channel_message_id
+      select file_id, sender_id, chat_id, message_id, channel_id, channel_message_id, private_message_id
       from meme
       where chat_id = :chatId
     getMemeOfTheWeek: >
