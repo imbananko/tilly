@@ -176,7 +176,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val meme = memeRepository.findMemeByChat(chatId, messageId) ?: return
     val vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
-//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -197,25 +197,9 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
 
     val privateCaptionPrefix =
-        if (readyForShipment(votes) || readyForShipment(votes)) "мем отправлен на канал. статистика:"
-        else "мем на модерации. статистика"
+        if (readyForShipment(votes) || readyForShipment(votes)) "мем отправлен на канал"
+        else "мем на модерации"
 
-    log.info(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
-    println(privateCaptionPrefix)
     if (meme.isPublishedOnChannel()) {
       try {
         execute(EditMessageReplyMarkup()
@@ -247,10 +231,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
     val caption = groupedUpVotes.entries.joinToString(
-        prefix = privateCaptionPrefix + "\n\n",
+        prefix = "${update.callbackQuery.message.caption}\n\n$privateCaptionPrefix. статистика:\n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-    meme.privateMessageId ?: updateCaptionInSenderChat(meme, caption)
+    if (meme.privateMessageId != null) updateCaptionInSenderChat(meme, caption)
 
     log.info("Processed chat vote=$vote")
   }
@@ -261,7 +245,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val meme = memeRepository.findMemeByChannel(channelId, messageId) ?: return
     val vote = VoteEntity(meme.chatId, meme.messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
-//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -290,10 +274,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
       val caption = votes.values.groupingBy { it }.eachCount().entries.joinToString(
-          prefix = "мем отправлен на канал. статистика: \n\n",
+          prefix = "${update.callbackQuery.message.caption}\n\nмем отправлен на канал. статистика: \n\n",
           transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-      meme.privateMessageId ?: updateCaptionInSenderChat(meme, caption)
+      if (meme.privateMessageId != null) updateCaptionInSenderChat(meme, caption)
 
       log.info("Processed channel vote=$vote")
     }
@@ -350,6 +334,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
               .setMessageId(message.messageId))
 
           execute(SendPhoto()
+              .disableNotification()
               .setPhoto(fileId)
               .setChatId(message.chatId)
               .setCaption(message.caption))
@@ -377,6 +362,10 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
 
     fun forwardOriginalMemeToSender(originalFileId: String) =
         runCatching {
+          execute(SendMessage()
+              .setChatId(update.message.chatId)
+              .setReplyToMessageId(update.message.messageId)
+              .setText("К сожалению, мем уже был отправлен ранее!"))
           memeRepository.findMeme(originalFileId)?.also {
             if (it.isPublishedOnChannel())
               execute(ForwardMessage()
@@ -390,13 +379,8 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
                   .setChatId(update.message.chatId)
                   .setFromChatId(it.chatId)
                   .setMessageId(it.messageId)
-                  .disableNotification()
-              )
-          } ?: execute(SendMessage()
-              .setChatId(update.message.chatId)
-              .setReplyToMessageId(update.message.messageId)
-              .setText("К сожалению, мем уже был отправлен ранее!")
-              .disableNotification())
+                  .disableNotification())
+          }
         }.onFailure {
           log.error("Failed to forward original meme. Exception=", it)
         }.onSuccess {
@@ -413,7 +397,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean = true ||
+  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
       votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
