@@ -148,7 +148,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
           })
       )
     }
-        .onSuccess { log.info("Successful send memes of the year") }
+        .onSuccess { log.info("Successfully sent memes of the year") }
         .onFailure { throwable -> log.error("Can't send memes of the year because of", throwable) }
   }
 
@@ -176,7 +176,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val meme = memeRepository.findMemeByChat(chatId, messageId) ?: return
     val vote = VoteEntity(chatId, messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
-    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -196,45 +196,61 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       log.error("Failed to process vote=$vote", it)
     }
 
-    var privateCaptionPrefix = "мем на модерации. статистика: \n\n"
+    val privateCaptionPrefix =
+        if (readyForShipment(votes) || readyForShipment(votes)) "мем отправлен на канал. статистика:"
+        else "мем на модерации. статистика"
 
-    if (meme.channelId == null && readyForShipment(votes)) {
-      runCatching {
-        val originalCaption = update.callbackQuery.message.caption ?: ""
-        val captionForChannel = originalCaption.split("Sender: ").firstOrNull()
-        execute(SendPhoto()
-            .setChatId(channelId)
-            .setPhoto(meme.fileId)
-            .setCaption(captionForChannel)
-            .setReplyMarkup(markup)
-        )
-      }.onSuccess { message ->
-        memeRepository.update(meme, meme.copy(channelId = message.chatId, channelMessageId = message.messageId))
-        log.info("Sent meme to channel=$meme")
-        privateCaptionPrefix = "мем отправлен на канал. статистика: \n\n"
-      }.onFailure {
-        log.error("Failed to send meme=$meme to channel", it)
-        return
-      }
-    } else if (meme.channelId != null) {
-      runCatching {
+    log.info(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    println(privateCaptionPrefix)
+    if (meme.isPublishedOnChannel()) {
+      try {
         execute(EditMessageReplyMarkup()
             .setChatId(meme.channelId)
             .setMessageId(meme.channelMessageId)
             .setReplyMarkup(markup)
         )
-      }.onFailure {
-        log.error("Failed to process vote=$vote", it)
-        return
+      } catch (t: Throwable) {
+        log.error("Failed to process vote=$vote", t)
+      }
+    } else if (readyForShipment(votes)) {
+      try {
+        val captionForChannel = update.callbackQuery.message.caption?.split("Sender: ")?.firstOrNull()
+        execute(SendPhoto()
+            .setChatId(channelId)
+            .setPhoto(meme.fileId)
+            .setCaption(captionForChannel)
+            .setReplyMarkup(markup)
+        ).also {
+          memeRepository.update(meme, meme.copy(channelId = it.chatId, channelMessageId = it.messageId))
+        }
+        log.info("Sent meme to channel=$meme")
+
+      } catch (t: Throwable) {
+        log.error("Failed to send meme=$meme to channel", t)
       }
     }
 
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
     val caption = groupedUpVotes.entries.joinToString(
-        prefix = privateCaptionPrefix,
+        prefix = privateCaptionPrefix + "\n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
-    updateCaptionInSenderChat(meme, caption)
+
+    meme.privateMessageId ?: updateCaptionInSenderChat(meme, caption)
 
     log.info("Processed chat vote=$vote")
   }
@@ -245,7 +261,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     val meme = memeRepository.findMemeByChannel(channelId, messageId) ?: return
     val vote = VoteEntity(meme.chatId, meme.messageId, update.callbackQuery.from.id, update.extractVoteValue())
 
-    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
+//    if (update.callbackQuery.message.isOld() || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -270,14 +286,14 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
     }.onFailure { throwable ->
       log.error("Failed to process vote=" + vote + ". Exception=" + throwable.message)
-      return
     }.onSuccess {
       if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
       val caption = votes.values.groupingBy { it }.eachCount().entries.joinToString(
           prefix = "мем отправлен на канал. статистика: \n\n",
           transform = { (value, sum) -> "${value.emoji}: $sum" })
-      updateCaptionInSenderChat(meme, caption)
+
+      meme.privateMessageId ?: updateCaptionInSenderChat(meme, caption)
 
       log.info("Processed channel vote=$vote")
     }
@@ -397,7 +413,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     }
   }
 
-  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
+  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean = true ||
       votes.values.filter { it == UP }.size - votes.values.filter { it == DOWN }.size >= 5
 
   private fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {

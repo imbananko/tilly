@@ -32,7 +32,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -45,7 +45,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -58,7 +58,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -72,7 +72,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -86,7 +86,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -100,7 +100,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             rs.getInt("message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
-            rs.getInt("private_message_id"),
+            checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }.toList()
