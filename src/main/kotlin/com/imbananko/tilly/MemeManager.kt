@@ -212,7 +212,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       }
     } else if (readyForShipment(votes)) {
       try {
-        val captionForChannel = update.callbackQuery.message.caption?.split("Sender: ")?.firstOrNull()
+        val captionForChannel = update.callbackQuery.message.caption?.split("Sender: ")?.firstOrNull() ?: ""
         execute(SendPhoto()
             .setChatId(channelId)
             .setPhoto(meme.fileId)
@@ -231,7 +231,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
     val caption = groupedUpVotes.entries.joinToString(
-        prefix = "${update.callbackQuery.message.caption}\n\n$privateCaptionPrefix. статистика:\n\n",
+        prefix = "${update.callbackQuery.message.caption ?: ""}\n\n$privateCaptionPrefix. статистика:\n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
     if (meme.privateMessageId != null) updateCaptionInSenderChat(meme, caption)
@@ -274,7 +274,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
       if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
       val caption = votes.values.groupingBy { it }.eachCount().entries.joinToString(
-          prefix = "${update.callbackQuery.message.caption}\n\nмем отправлен на канал. статистика: \n\n",
+          prefix = "${update.callbackQuery.message.caption ?: ""}\n\nмем отправлен на канал. статистика: \n\n",
           transform = { (value, sum) -> "${value.emoji}: $sum" })
 
       if (meme.privateMessageId != null) updateCaptionInSenderChat(meme, caption)
