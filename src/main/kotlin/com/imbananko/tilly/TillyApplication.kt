@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
   ApiContextInitializer.init()
   SpringApplication.run(TillyApplication::class.java, *args)
 
-  HttpServer.create(InetSocketAddress(8080), 0).apply {
+  HttpServer.create(InetSocketAddress(4576), 0).apply {
     createContext("/hc") { http ->
       http.sendResponseHeaders(200, 0)
       PrintWriter(http.responseBody).use { out ->
