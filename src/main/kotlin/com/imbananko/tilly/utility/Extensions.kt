@@ -2,22 +2,16 @@ package com.imbananko.tilly.utility
 
 import com.imbananko.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
-import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
-import java.time.Instant
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
 fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
-fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand && this.message.text == "/stats"
+fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand
 
-fun Update.hasChannelVote() = this.hasCallbackQuery()
-    && this.callbackQuery.message.isChannelMessage
-    && runCatching {
-  setOf(*VoteValue.values()).contains(extractVoteValue())
-}.getOrDefault(false)
-
-fun Update.hasChatVote() = this.hasCallbackQuery()
+fun Update.hasVote() = this.hasCallbackQuery()
     && (this.callbackQuery.message.isGroupMessage || this.callbackQuery.message.isSuperGroupMessage)
     && runCatching {
   setOf(*VoteValue.values()).contains(extractVoteValue())
@@ -28,11 +22,24 @@ fun Update.extractVoteValue() =
 
 fun User.mention(): String = "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
 
-fun Message.print(): String =
-    "Message(messageId=${this.messageId},chatId=${this.chatId},userId=${this.from?.id},userName=${this.from?.userName})"
-
-fun Message.isOld(): Boolean = Instant.ofEpochSecond(this.date.toLong()) < Instant.now().minusSeconds(60 * 60 * 24 * 7)
-
 fun String.isChatUserStatus(): Boolean = chatUserStatuses.contains(this)
 
 private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER)
+
+fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup {
+  fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int): InlineKeyboardButton {
+    return InlineKeyboardButton().also {
+      it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
+      it.callbackData = voteValue.name
+    }
+  }
+
+  return InlineKeyboardMarkup().setKeyboard(
+      listOf(
+          listOf(
+              createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
+              createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
+          )
+      )
+  )
+}
