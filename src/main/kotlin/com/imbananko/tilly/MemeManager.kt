@@ -167,7 +167,7 @@ class MemeManager(private val memeRepository: MemeRepository, private val voteRe
             .setCaption(caption)
         )
       }.onFailure {
-        log.error("Failed update caption in private chat=$chatId", it)
+        log.error("Failed to update caption in private chat=${meme.senderId}", it)
       }
 
   private fun processChatVote(update: Update) {
