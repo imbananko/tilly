@@ -4,7 +4,6 @@ import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.MemeUpdate
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.similarity.MemeMatcher
-import com.imbananko.tilly.utility.createMarkup
 import com.imbananko.tilly.utility.isChatUserStatus
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory

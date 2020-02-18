@@ -3,7 +3,6 @@ package com.imbananko.tilly.handlers
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.createMarkup
 import com.imbananko.tilly.utility.mention
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -37,6 +36,7 @@ final class Schedulers(private val memeRepository: MemeRepository, private val v
     runCatching {
       val meme: MemeEntity? = memeRepository.findMemeOfTheWeek(channelId)
 
+      meme ?: log.info("Can't find meme of the week")
       meme ?: return
 
       val winner = execute(
@@ -66,7 +66,7 @@ final class Schedulers(private val memeRepository: MemeRepository, private val v
                 .setPhoto(meme.fileId)
                 .setParseMode(ParseMode.MARKDOWN)
                 .setCaption(congratulationText)
-                .setReplyMarkup(createMarkup(statistics))
+                .setReplyMarkup(AbstractHandler.createMarkup(statistics))
         )
 
         memeRepository.update(meme, meme.copy(channelId = meme.channelId, channelMessageId = fallbackMemeOfTheWeekMessage.messageId))

@@ -3,6 +3,8 @@ package com.imbananko.tilly.model
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
 
+const val week: Long = 60 * 60 * 24 * 7
+
 data class MemeEntity(
     val chatId: Long,
     val messageId: Int,
@@ -29,15 +31,15 @@ enum class VoteValue(val emoji: String) {
 
 class MemeStatsEntry(vararg val counts: Pair<VoteValue, Int>)
 
-class VoteUpdate(update: Update) {
+data class VoteUpdate(private val update: Update) {
   val fromId: Int = update.callbackQuery.message.from.id
   val messageId: Int = update.callbackQuery.message.messageId
-  val isMessageOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(60 * 60 * 24 * 7)
-  val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }[0])
+  val isMessageOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
+  val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
   val caption: String? = update.callbackQuery.message.caption
 }
 
-class MemeUpdate(update: Update) {
+data class MemeUpdate(private val update: Update) {
   val messageId: Int = update.message.messageId
   val caption: String? = update.message.caption
   val fileId: String = update.message.photo[0].fileId
@@ -45,7 +47,7 @@ class MemeUpdate(update: Update) {
   val senderName: String = update.message.from.userName?.let { "@$it" } ?: update.message.from.firstName ?: update.message.from.lastName
 }
 
-class CommandUpdate(update: Update) {
+data class CommandUpdate(private val update: Update) {
   val senderId: Long = update.message.chatId
   val value: Command? = Command.from(update.message.text)
 }
