@@ -6,7 +6,6 @@ import com.imbananko.tilly.model.VoteUpdate
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.createMarkup
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto

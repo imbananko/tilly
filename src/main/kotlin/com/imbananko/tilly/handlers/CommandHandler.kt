@@ -15,21 +15,22 @@ class CommandHandler(val voteRepository: VoteRepository) : AbstractHandler<Comma
   override fun handle(update: CommandUpdate) {
     when (update.value) {
       Command.STATS -> sendStats(update)
+      else -> log.error("Unknown command from update=$update")
     }
   }
 
-  private fun sendStats(update: CommandUpdate) {
-    runCatching {
-      execute(SendMessage()
-              .setChatId(update.senderId)
-              .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.senderId.toInt())))
-      )
-    }.onSuccess {
-      log.debug("Sent stats to user=${update.senderId}")
-    }.onFailure {
-      log.error("Failed to send stats to user=$update", it)
-    }
-  }
+  private fun sendStats(update: CommandUpdate) =
+      runCatching {
+        execute(SendMessage()
+            .setChatId(update.senderId)
+            .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.senderId.toInt())))
+        )
+      }.onSuccess {
+        log.debug("Sent stats to user=${update.senderId}")
+      }.onFailure {
+        log.error("Failed to send stats to user=$update", it)
+      }
+
 
   private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
       if (stats.isEmpty())
