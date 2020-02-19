@@ -1,25 +1,14 @@
 package com.imbananko.tilly.handlers
 
 import com.imbananko.tilly.model.VoteValue
-import org.springframework.beans.factory.annotation.Value
+import com.imbananko.tilly.utility.BotConfig
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.ApiContext
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
-abstract class AbstractHandler<T : Any> : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)) {
-  @Value("\${target.chat.id}")
-  protected val chatId: Long = 0
-
-  @Value("\${target.channel.id}")
-  protected val channelId: Long = 0
-
-  @Value("\${bot.token}")
-  protected lateinit var token: String
-
-  override fun getBotToken(): String = token
-
+abstract class AbstractHandler<T : Any> : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig {
   abstract fun handle(update: T)
 
   companion object {
