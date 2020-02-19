@@ -3,15 +3,15 @@ spring:
     continue-on-error: true
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
-    password: tilly51382512
-    url: jdbc:postgresql://localhost:54320/tilly
-    username: tilly
+    password: password
+    url: url
+    username: username
 
 bot:
-  token: '917063297:AAFuuiINhR89DYKh2GYPPardbkAe-G5LzGY'
-  username: 'tilly_test_bot'
-  target.chat.id: -1001401091410
-  target.channel.id: -1001218922894
+  token: token
+  username: username
+
+target.chat.id: 0
 
 sql:
   queries:
@@ -71,6 +71,7 @@ sql:
              m.file_id,
              m.channel_id,
              m.channel_message_id,
+             m.private_message_id,
              count(value) filter (where value = 'UP') as up_count,
              count(value) filter (where value = 'EXPLAIN') as explain_count,
              count(value) filter (where value = 'DOWN') as down_count
@@ -85,6 +86,7 @@ sql:
              m.sender_id,
              m.chat_id,
              m.file_id,
+             m.private_message_id,
              count(value) filter (where value = 'UP') as up_count,
              count(value) filter (where value = 'EXPLAIN') as explain_count,
              count(value) filter (where value = 'DOWN') as down_count
