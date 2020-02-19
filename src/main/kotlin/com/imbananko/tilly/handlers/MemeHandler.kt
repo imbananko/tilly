@@ -48,7 +48,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     val privateMessageId =
         runCatching {
           deletePrivateMessage(update)
-          reSendPrivateMessage(update)
+          resendPrivateMessage(update)
         }.getOrThrow().messageId
 
     runCatching {
@@ -76,10 +76,10 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setChatId(update.senderId.toLong())
           .setMessageId(update.messageId))
 
-  private fun reSendPrivateMessage(update: MemeUpdate) =
+  private fun resendPrivateMessage(update: MemeUpdate) =
       execute(SendPhoto()
           .disableNotification()
-          .setCaption(update.caption ?: "")
+          .setCaption("${update.caption ?: ""}\n\nмем отправлен на канал")
           .setPhoto(update.fileId)
           .setChatId(update.senderId.toLong()))
 

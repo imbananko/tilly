@@ -5,13 +5,14 @@ import com.imbananko.tilly.model.CommandUpdate
 import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.utility.BotConfig
+import com.imbananko.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 
 @Component
 class CommandHandler(private val voteRepository: VoteRepository,
-                     private val botConfig: BotConfig) : AbstractHandler<CommandUpdate>(), BotConfig by botConfig {
+                     private val botConfig: BotConfigImpl) : AbstractHandler<CommandUpdate>(), BotConfig by botConfig {
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: CommandUpdate) {
