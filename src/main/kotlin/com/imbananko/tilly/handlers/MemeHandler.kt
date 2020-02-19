@@ -5,6 +5,7 @@ import com.imbananko.tilly.model.MemeUpdate
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.similarity.MemeMatcher
 import com.imbananko.tilly.utility.BotConfig
+import com.imbananko.tilly.utility.BotConfigImpl
 import com.imbananko.tilly.utility.isChatUserStatus
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -23,7 +24,7 @@ import javax.annotation.PostConstruct
 @Component
 class MemeHandler(private val memeRepository: MemeRepository,
                   private val memeMatcher: MemeMatcher,
-                  private val botConfig: BotConfig) : AbstractHandler<MemeUpdate>(), BotConfig by botConfig {
+                  private val botConfig: BotConfigImpl) : AbstractHandler<MemeUpdate>(), BotConfig by botConfig {
 
   private val log = LoggerFactory.getLogger(javaClass)
 

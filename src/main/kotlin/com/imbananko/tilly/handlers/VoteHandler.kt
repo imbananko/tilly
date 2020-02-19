@@ -7,6 +7,7 @@ import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.utility.BotConfig
+import com.imbananko.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
@@ -17,7 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 @Component
 class VoteHandler(private val memeRepository: MemeRepository,
                   private val voteRepository: VoteRepository,
-                  private val botConfig: BotConfig) : AbstractHandler<VoteUpdate>(), BotConfig by botConfig {
+                  private val botConfig: BotConfigImpl) : AbstractHandler<VoteUpdate>(), BotConfig by botConfig {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
