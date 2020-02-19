@@ -45,22 +45,21 @@ class MemeHandler(private val memeRepository: MemeRepository,
   }
 
   override fun handle(update: MemeUpdate) {
-    val privateMessageId =
-        runCatching {
-          deletePrivateMessage(update)
-          resendPrivateMessage(update)
-        }.getOrThrow().messageId
-
     runCatching {
       val file = downloadFromFileId(update.fileId)
 
       memeMatcher.tryFindDuplicate(file)?.also { duplicate ->
-        sendSorryText(update.senderId.toLong(), privateMessageId)
+        sendSorryText(update.senderId.toLong(), update.messageId)
         memeRepository.findMeme(duplicate)?.also { meme ->
           meme.channelMessageId?.apply { forwardMemeFromChannel(meme, update.senderId.toLong()) }
               ?: forwardMemeFromChat(meme, update.senderId.toLong())
         }
       } ?: sendMemeToChat(update).let { sent ->
+        val privateMessageId =
+            runCatching {
+              deletePrivateMessage(update)
+              resendPrivateMessage(update)
+            }.getOrThrow().messageId
         memeRepository.save(MemeEntity(chatId, sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
           memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
           log.info("Sent meme=$it to chat")
