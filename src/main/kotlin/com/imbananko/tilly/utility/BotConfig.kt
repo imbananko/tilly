@@ -3,7 +3,6 @@ package com.imbananko.tilly.utility
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
-@Component
 interface BotConfig {
   val chatId: Long
 
@@ -17,8 +16,8 @@ interface BotConfig {
 
   fun getBotUsername(): String
 }
-
-object BotConfigImpl : BotConfig {
+@Component
+class BotConfigImpl : BotConfig {
   @Value("\${target.chat.id}")
   override val chatId: Long = 0
 

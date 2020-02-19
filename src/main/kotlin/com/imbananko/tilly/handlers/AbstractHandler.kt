@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.ApiContext
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
-abstract class AbstractHandler<T : Any> : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig {
+abstract class AbstractHandler<T> : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig {
   abstract fun handle(update: T)
 
   companion object {
