@@ -3,15 +3,15 @@ spring:
     continue-on-error: true
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
-    password: password
-    url: url
-    username: username
+    password: tilly51382512
+    url: jdbc:postgresql://localhost:54320/tilly
+    username: tilly
 
 bot:
-  token: token
-  username: username
-
-target.chat.id: 0
+  token: '917063297:AAFuuiINhR89DYKh2GYPPardbkAe-G5LzGY'
+  username: 'tilly_test_bot'
+  target.chat.id: -1001401091410
+  target.channel.id: -1001218922894
 
 sql:
   queries:
