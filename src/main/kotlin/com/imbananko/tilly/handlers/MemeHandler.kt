@@ -61,7 +61,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
               resendPrivateMessage(update)
             }.getOrThrow().messageId
         memeRepository.save(MemeEntity(chatId, sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
-          memeMatcher.addMeme(it.fileId, downloadFromFileId(it.fileId))
+          memeMatcher.addMeme(it.fileId, file)
           log.info("Sent meme=$it to chat")
         }
       }
@@ -78,7 +78,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
   private fun resendPrivateMessage(update: MemeUpdate) =
       execute(SendPhoto()
           .disableNotification()
-          .setCaption("${update.caption ?: ""}\n\nмем отправлен на канал")
+          .setCaption("${update.caption ?: ""}\n\nмем на модерации")
           .setPhoto(update.fileId)
           .setChatId(update.senderId.toLong()))
 

@@ -3,6 +3,8 @@ package com.imbananko.tilly.handlers
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteUpdate
+import com.imbananko.tilly.model.VoteUpdate.SourceType.CHANNEL
+import com.imbananko.tilly.model.VoteUpdate.SourceType.CHAT
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
@@ -23,10 +25,14 @@ class VoteHandler(private val memeRepository: MemeRepository,
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: VoteUpdate) {
-    val meme = memeRepository.findMemeByChat(chatId, update.messageId) ?: return
-    val vote = VoteEntity(chatId, update.messageId, update.fromId, update.voteValue)
+    val meme = when (update.isFrom) {
+      CHANNEL -> memeRepository.findMemeByChannel(channelId, update.messageId)
+      CHAT -> memeRepository.findMemeByChat(chatId, update.messageId)
+    } ?: return
 
-    if (update.isMessageOld || meme.senderId == vote.voterId) return
+    val vote = VoteEntity(chatId, meme.messageId, update.fromId, update.voteValue)
+
+    if (update.isNotProcessable || meme.senderId == vote.voterId) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -39,21 +45,23 @@ class VoteHandler(private val memeRepository: MemeRepository,
         if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
         else "мем на модерации"
 
-    updateChatMarkup(update.messageId, markup)
-    meme.channelMessageId?.let { updateChannelMarkup(it, markup) } ?: if (readyForShipment(votes)) {
+    updateChatMarkup(meme.messageId, markup)
+
+    meme.channelMessageId?.also { updateChannelMarkup(it, markup) } ?: if (readyForShipment(votes)) {
       val captionForChannel = update.caption?.split("Sender: ")?.firstOrNull() ?: ""
-      sendMemeToChannel(meme, captionForChannel, markup).also {
-        memeRepository.update(meme, meme.copy(channelId = it.chatId, channelMessageId = it.messageId))
-      }
+      val channelMessageId = sendMemeToChannel(meme, captionForChannel, markup).messageId
+      memeRepository.update(meme, meme.copy(channelId = channelId, channelMessageId = channelMessageId))
     }
 
-    val caption = votes.values.groupingBy { it }.eachCount().entries.joinToString(
+    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+
+    val caption = votes.values.groupingBy { it }.eachCount().entries.sortedBy { it.key }.joinToString(
         prefix = "${update.caption ?: ""}\n\n$privateCaptionPrefix. статистика: \n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-    if (meme.privateMessageId != null) updateCaptionInSenderChat(meme, caption)
+    updateCaptionInSenderChat(meme, caption)
 
-    log.info("Processed channel vote=$vote")
+    log.info("Processed vote update=$update")
   }
 
   private fun updateChatMarkup(messageId: Int, markup: InlineKeyboardMarkup) =
@@ -64,7 +72,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
   private fun updateChannelMarkup(messageId: Int, markup: InlineKeyboardMarkup) =
       execute(EditMessageReplyMarkup()
-          .setChatId(chatId)
+          .setChatId(channelId)
           .setMessageId(messageId)
           .setReplyMarkup(markup)).also { log.debug("Updated channel markup") }
 
@@ -76,20 +84,12 @@ class VoteHandler(private val memeRepository: MemeRepository,
           .setReplyMarkup(markup)).also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
-      votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
+          votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
 
   private fun updateCaptionInSenderChat(meme: MemeEntity, caption: String) =
-      runCatching {
         execute(EditMessageCaption()
             .setChatId(meme.senderId.toString())
             .setMessageId(meme.privateMessageId)
             .setCaption(caption)
         )
-      }.onFailure {
-        log.error("Failed update caption in private chat=$chatId", it)
-      }
-
-
-
-
 }

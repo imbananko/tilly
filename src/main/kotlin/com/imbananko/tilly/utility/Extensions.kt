@@ -10,7 +10,7 @@ fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this
 fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand
 
 fun Update.hasVote() = this.hasCallbackQuery()
-    && (this.callbackQuery.message.isGroupMessage || this.callbackQuery.message.isSuperGroupMessage)
+    && (this.callbackQuery.message.isSuperGroupMessage || this.callbackQuery.message.isChannelMessage)
     && runCatching {
   setOf(*VoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
