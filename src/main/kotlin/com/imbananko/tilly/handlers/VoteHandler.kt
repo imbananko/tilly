@@ -13,8 +13,8 @@ import com.imbananko.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 
 @Component
@@ -59,8 +59,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
         prefix = "${update.caption ?: ""}\n\n$privateCaptionPrefix. статистика: \n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-    updateCaptionInSenderChat(meme, caption)
-
+    updateStatsInSenderChat(meme, caption)
     log.info("Processed vote update=$update")
   }
 
@@ -86,10 +85,9 @@ class VoteHandler(private val memeRepository: MemeRepository,
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
           votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
 
-  private fun updateCaptionInSenderChat(meme: MemeEntity, caption: String) =
-        execute(EditMessageCaption()
+  private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
+        execute(EditMessageText()
             .setChatId(meme.senderId.toString())
             .setMessageId(meme.privateMessageId)
-            .setCaption(caption)
-        )
+            .setText(stats))
 }

@@ -15,7 +15,6 @@ import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -55,11 +54,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
               ?: forwardMemeFromChat(meme, update.senderId.toLong())
         }
       } ?: sendMemeToChat(update).let { sent ->
-        val privateMessageId =
-            runCatching {
-              deletePrivateMessage(update)
-              resendPrivateMessage(update)
-            }.getOrThrow().messageId
+        val privateMessageId = sendReplyToMeme(update).messageId
         memeRepository.save(MemeEntity(chatId, sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
           memeMatcher.addMeme(it.fileId, file)
           log.info("Sent meme=$it to chat")
@@ -69,18 +64,6 @@ class MemeHandler(private val memeRepository: MemeRepository,
       log.error("Failed to check duplicates for update=$update", throwable)
     }
   }
-
-  private fun deletePrivateMessage(update: MemeUpdate) =
-      execute(DeleteMessage()
-          .setChatId(update.senderId.toLong())
-          .setMessageId(update.messageId))
-
-  private fun resendPrivateMessage(update: MemeUpdate) =
-      execute(SendPhoto()
-          .disableNotification()
-          .setCaption("${update.caption ?: ""}\n\nмем на модерации")
-          .setPhoto(update.fileId)
-          .setChatId(update.senderId.toLong()))
 
   private fun sendMemeToChat(update: MemeUpdate) =
       execute(SendPhoto()
@@ -123,6 +106,13 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setReplyToMessageId(messageId)
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
+
+  private fun sendReplyToMeme(update: MemeUpdate) =
+      execute(SendMessage()
+          .setChatId(update.senderId.toLong())
+          .setReplyToMessageId(update.messageId)
+          .disableNotification()
+          .setText("${update.caption ?: ""}\n\nмем на модерации"))
 
   private fun downloadFromFileId(fileId: String) =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {
