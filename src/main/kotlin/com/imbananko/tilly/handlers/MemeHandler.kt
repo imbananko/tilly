@@ -96,7 +96,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
               .status.isChatUserStatus()) {
         update.caption ?: ""
       } else {
-        "${update.caption}\n\nSender: ${update.senderName}"
+        "${update.caption ?: ""}\n\nSender: ${update.senderName}"
       }
 
   private fun forwardMemeFromChannel(meme: MemeEntity, senderId: Long) {
