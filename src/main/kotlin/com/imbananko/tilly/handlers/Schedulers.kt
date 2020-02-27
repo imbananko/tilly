@@ -7,6 +7,7 @@ import com.imbananko.tilly.utility.BotConfig
 import com.imbananko.tilly.utility.BotConfigImpl
 import com.imbananko.tilly.utility.mention
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.DefaultAbsSender
@@ -21,12 +22,13 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 
 @Component
+@EnableScheduling
 final class Schedulers(private val memeRepository: MemeRepository,
                        private val voteRepository: VoteRepository,
                        private val botConfig: BotConfigImpl) : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig by botConfig {
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Scheduled(cron = "0 0 19 * * WED")
+  @Scheduled(cron = "0 0 19 * * THU")
   private fun sendMemeOfTheWeek() {
     runCatching {
       val meme: MemeEntity? = memeRepository.findMemeOfTheWeek(channelId)
