@@ -15,7 +15,7 @@ fun Update.hasVote() = this.hasCallbackQuery()
   setOf(*VoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
 
-fun User.mention(): String = "[${this.userName ?: this.firstName ?: "мутный тип"}](tg://user?id=${this.id})"
+fun User.mention(): String = """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""
 
 fun String.isChatUserStatus(): Boolean = chatUserStatuses.contains(this)
 

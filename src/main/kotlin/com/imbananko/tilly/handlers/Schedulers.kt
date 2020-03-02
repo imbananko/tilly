@@ -46,7 +46,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
         execute(
             SendMessage()
                 .setChatId(channelId)
-                .setParseMode(ParseMode.MARKDOWN)
+                .setParseMode(ParseMode.HTML)
                 .setReplyToMessageId(meme.channelMessageId)
                 .setText(congratulationText)
         )
@@ -61,7 +61,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
             SendPhoto()
                 .setChatId(channelId)
                 .setPhoto(meme.fileId)
-                .setParseMode(ParseMode.MARKDOWN)
+                .setParseMode(ParseMode.HTML)
                 .setCaption(congratulationText)
                 .setReplyMarkup(AbstractHandler.createMarkup(statistics))
         )
@@ -96,7 +96,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
       execute(
           SendMediaGroup(channelId, memeRepository.findMemesOfTheYear(channelId).map { meme ->
             InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
-                .setParseMode(ParseMode.MARKDOWN)
+                .setParseMode(ParseMode.HTML)
           })
       )
     }
