@@ -1,4 +1,4 @@
-name: Tilly PR
+name: Tilly CI
 on: [pull_request]
 
 jobs:
