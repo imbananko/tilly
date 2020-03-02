@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
+import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
@@ -70,6 +71,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setChatId(chatId)
           .setPhoto(update.fileId)
           .setCaption(runCatching { getCaption(update) }.getOrThrow())
+          .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())))
 
   private fun getCaption(update: MemeUpdate): String =

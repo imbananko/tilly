@@ -1,5 +1,6 @@
 package com.imbananko.tilly.model
 
+import com.imbananko.tilly.utility.mention
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
 
@@ -58,7 +59,7 @@ class MemeUpdate(update: Update) {
   val caption: String? = update.message.caption
   val fileId: String = update.message.photo[0].fileId
   val senderId: Int = update.message.from.id
-  val senderName: String = update.message.from.userName?.let { "@$it" } ?: update.message.from.firstName ?: update.message.from.lastName
+  val senderName: String = update.message.from.mention()
 
   override fun toString(): String {
     return "MemeUpdate(messageId=$messageId, caption=$caption, fileId='$fileId', senderId=$senderId, senderName='$senderName')"
