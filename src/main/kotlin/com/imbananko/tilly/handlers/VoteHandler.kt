@@ -3,6 +3,8 @@ package com.imbananko.tilly.handlers
 import com.imbananko.tilly.model.MemeEntity
 import com.imbananko.tilly.model.VoteEntity
 import com.imbananko.tilly.model.VoteUpdate
+import com.imbananko.tilly.model.VoteUpdate.SourceType.CHANNEL
+import com.imbananko.tilly.model.VoteUpdate.SourceType.CHAT
 import com.imbananko.tilly.model.VoteValue
 import com.imbananko.tilly.repository.MemeRepository
 import com.imbananko.tilly.repository.VoteRepository
@@ -23,7 +25,10 @@ class VoteHandler(private val memeRepository: MemeRepository,
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: VoteUpdate) {
-    val meme = memeRepository.findMemeByChannel(channelId, update.messageId) ?: return
+    val meme = when (update.isFrom) {
+      CHANNEL -> memeRepository.findMemeByChannel(channelId, update.messageId)
+      CHAT -> memeRepository.findMemeByChat(chatId, update.messageId)
+    } ?: return
 
     val vote = VoteEntity(chatId, meme.messageId, update.fromId, update.voteValue)
 
