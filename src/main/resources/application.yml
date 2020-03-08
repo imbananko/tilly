@@ -10,6 +10,8 @@ spring:
 bot:
   token: token
   username: username
+  votes-for-channel: 5
+  allow-vote-for-yourself: false
 
 target.chat.id: 0
 

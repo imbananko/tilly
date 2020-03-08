@@ -32,7 +32,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
     val vote = VoteEntity(chatId, meme.messageId, update.fromId, update.voteValue)
 
-    if (update.isNotProcessable || meme.senderId == vote.voterId) return
+    if (update.isNotProcessable || (!allowVoteForYourself && meme.senderId == vote.voterId)) return
 
     val votes = voteRepository.getVotes(meme)
         .associate { Pair(it.voterId, it.voteValue) }
@@ -83,7 +83,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
           .setReplyMarkup(markup)).also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
-          votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
+          votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= votesForChannel
 
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
         execute(EditMessageText()
