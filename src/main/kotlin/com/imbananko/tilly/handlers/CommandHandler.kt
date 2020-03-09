@@ -53,8 +53,21 @@ class CommandHandler(private val voteRepository: VoteRepository,
                 .sortedBy { it.first }
                 .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-  private fun sendInfoMessage(update: CommandUpdate) {
-    val text = """
+  fun sendInfoMessage(update: CommandUpdate) {
+    runCatching {
+      execute(SendMessage()
+          .setChatId(update.senderId)
+          .setParseMode(ParseMode.HTML)
+          .setText(infoText)
+      )
+    }.onSuccess {
+      log.info("Sent info message to user=${update.senderId}")
+    }.onFailure {
+      log.error("Failed to send info message to user=$update", it)
+    }
+  }
+
+  val infoText = """
       
       Привет, я ${botConfig.username}. 
       
@@ -70,17 +83,4 @@ class CommandHandler(private val voteRepository: VoteRepository,
       За динамикой оценки также можно следить тут.
       
     """.trimIndent()
-
-    runCatching {
-      execute(SendMessage()
-          .setChatId(update.senderId)
-          .setParseMode(ParseMode.HTML)
-          .setText(text)
-      )
-    }.onSuccess {
-      log.info("Sent info message to user=${update.senderId}")
-    }.onFailure {
-      log.error("Failed to send info message to user=$update", it)
-    }
-  }
 }

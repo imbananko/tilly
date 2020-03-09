@@ -66,7 +66,7 @@ class MemeUpdate(update: Update) {
   }
 }
 
-class CommandUpdate(private val update: Update) {
+class CommandUpdate(update: Update) {
   val senderId: Long = update.message.chatId
   val value: Command? = Command.from(update.message.text)
 

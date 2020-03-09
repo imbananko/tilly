@@ -12,17 +12,17 @@ repositories {
 }
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.50")
-
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.50")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.50")
-
     implementation("org.telegram:telegrambots-spring-boot-starter:4.4.0.1")
     implementation("org.postgresql:postgresql:42.2.6")
     implementation("org.springframework.boot:spring-boot-starter-data-jdbc:2.2.0.RELEASE")
     implementation("org.springframework.boot:spring-boot-configuration-processor")
     implementation("com.github.kilianB:JImageHash:3.0.0")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    testImplementation("org.springframework.boot:spring-boot-starter-test:2.2.0.RELEASE")
 }
 
 plugins {
