@@ -66,16 +66,18 @@ class MemeUpdate(update: Update) {
   }
 }
 
-data class CommandUpdate(private val update: Update) {
+class CommandUpdate(private val update: Update) {
   val senderId: Long = update.message.chatId
   val value: Command? = Command.from(update.message.text)
-}
 
-enum class Command(val value: String) {
-  STATS("/stats");
+  enum class Command(val value: String) {
+    STATS("/stats"),
+    HELP("/help")
+    ;
 
-  companion object {
-    private val map = values().associateBy(Command::value)
-    fun from(value: String) = map[value]
+    companion object {
+      private val map = values().associateBy(Command::value)
+      fun from(value: String) = map[value]
+    }
   }
 }

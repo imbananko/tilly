@@ -1,13 +1,14 @@
 package com.imbananko.tilly.handlers
 
-import com.imbananko.tilly.model.Command
 import com.imbananko.tilly.model.CommandUpdate
+import com.imbananko.tilly.model.CommandUpdate.Command
 import com.imbananko.tilly.model.MemeStatsEntry
 import com.imbananko.tilly.repository.VoteRepository
 import com.imbananko.tilly.utility.BotConfig
 import com.imbananko.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 
 @Component
@@ -18,6 +19,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
   override fun handle(update: CommandUpdate) {
     when (update.value) {
       Command.STATS -> sendStats(update)
+      Command.HELP -> sendInfoMessage(update)
       else -> log.error("Unknown command from update=$update")
     }
   }
@@ -29,11 +31,10 @@ class CommandHandler(private val voteRepository: VoteRepository,
             .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.senderId.toInt())))
         )
       }.onSuccess {
-        log.debug("Sent stats to user=${update.senderId}")
+        log.info("Sent stats to user=${update.senderId}")
       }.onFailure {
         log.error("Failed to send stats to user=$update", it)
       }
-
 
   private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
       if (stats.isEmpty())
@@ -51,4 +52,35 @@ class CommandHandler(private val voteRepository: VoteRepository,
                 .toList()
                 .sortedBy { it.first }
                 .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
+
+  private fun sendInfoMessage(update: CommandUpdate) {
+    val text = """
+      
+      Привет, я ${botConfig.username}. 
+      
+      Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
+      Сейчас же отправляй мне самый крутой мем, и, если он пройдёт модерацию, то попадёт на канал <a href="https://t.me/chsdngm/">че с деньгами</a>. 
+      Мем, набравший за неделю больше всех кристаллов, станет <b>мемом недели</b>, а его обладатель получит бесконечный респект и поздравление на канале.
+
+      Термины и определения:
+      
+      Мем (англ. meme) — единица культурной информации, имеющей развлекательный характер (в нашем случае - картинка). 
+      Модерация (от лат. moderor — умеряю, сдерживаю) — все мемы проходят предварительную оценку экспертов, а на канал попадут только лучшие. 
+      
+      За динамикой оценки также можно следить тут.
+      
+    """.trimIndent()
+
+    runCatching {
+      execute(SendMessage()
+          .setChatId(update.senderId)
+          .setParseMode(ParseMode.HTML)
+          .setText(text)
+      )
+    }.onSuccess {
+      log.info("Sent info message to user=${update.senderId}")
+    }.onFailure {
+      log.error("Failed to send info message to user=$update", it)
+    }
+  }
 }
