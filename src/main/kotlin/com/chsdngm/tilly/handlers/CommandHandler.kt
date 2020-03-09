@@ -1,11 +1,11 @@
-package com.imbananko.tilly.handlers
+package com.chsdngm.tilly.handlers
 
-import com.imbananko.tilly.model.CommandUpdate
-import com.imbananko.tilly.model.CommandUpdate.Command
-import com.imbananko.tilly.model.MemeStatsEntry
-import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.BotConfig
-import com.imbananko.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.model.CommandUpdate
+import com.chsdngm.tilly.model.CommandUpdate.Command
+import com.chsdngm.tilly.model.MemeStatsEntry
+import com.chsdngm.tilly.repository.VoteRepository
+import com.chsdngm.tilly.utility.BotConfig
+import com.chsdngm.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode

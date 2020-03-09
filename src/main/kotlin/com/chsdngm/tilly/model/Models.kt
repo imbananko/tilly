@@ -1,6 +1,6 @@
-package com.imbananko.tilly.model
+package com.chsdngm.tilly.model
 
-import com.imbananko.tilly.utility.mention
+import com.chsdngm.tilly.utility.mention
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
 

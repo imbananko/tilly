@@ -1,15 +1,15 @@
-package com.imbananko.tilly.handlers
+package com.chsdngm.tilly.handlers
 
-import com.imbananko.tilly.model.MemeEntity
-import com.imbananko.tilly.model.VoteEntity
-import com.imbananko.tilly.model.VoteUpdate
-import com.imbananko.tilly.model.VoteUpdate.SourceType.CHANNEL
-import com.imbananko.tilly.model.VoteUpdate.SourceType.CHAT
-import com.imbananko.tilly.model.VoteValue
-import com.imbananko.tilly.repository.MemeRepository
-import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.BotConfig
-import com.imbananko.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.model.MemeEntity
+import com.chsdngm.tilly.model.VoteEntity
+import com.chsdngm.tilly.model.VoteUpdate
+import com.chsdngm.tilly.model.VoteUpdate.SourceType.CHANNEL
+import com.chsdngm.tilly.model.VoteUpdate.SourceType.CHAT
+import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.VoteRepository
+import com.chsdngm.tilly.utility.BotConfig
+import com.chsdngm.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto

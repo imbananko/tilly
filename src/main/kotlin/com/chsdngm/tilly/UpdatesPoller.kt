@@ -1,12 +1,12 @@
-package com.imbananko.tilly
+package com.chsdngm.tilly
 
-import com.imbananko.tilly.handlers.CommandHandler
-import com.imbananko.tilly.handlers.MemeHandler
-import com.imbananko.tilly.handlers.VoteHandler
-import com.imbananko.tilly.model.CommandUpdate
-import com.imbananko.tilly.model.MemeUpdate
-import com.imbananko.tilly.model.VoteUpdate
-import com.imbananko.tilly.utility.*
+import com.chsdngm.tilly.handlers.CommandHandler
+import com.chsdngm.tilly.handlers.MemeHandler
+import com.chsdngm.tilly.handlers.VoteHandler
+import com.chsdngm.tilly.model.CommandUpdate
+import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.model.VoteUpdate
+import com.chsdngm.tilly.utility.*
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update

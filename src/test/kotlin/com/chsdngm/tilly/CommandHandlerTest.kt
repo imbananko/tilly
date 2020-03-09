@@ -1,9 +1,9 @@
-package com.imbananko.tilly.similarity
+package com.chsdngm.tilly
 
-import com.imbananko.tilly.handlers.CommandHandler
-import com.imbananko.tilly.model.CommandUpdate
-import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.handlers.CommandHandler
+import com.chsdngm.tilly.model.CommandUpdate
+import com.chsdngm.tilly.repository.VoteRepository
+import com.chsdngm.tilly.utility.BotConfigImpl
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Answers

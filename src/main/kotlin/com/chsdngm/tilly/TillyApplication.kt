@@ -1,6 +1,6 @@
-package com.imbananko.tilly
+package com.chsdngm.tilly
 
-import com.imbananko.tilly.utility.SqlQueries
+import com.chsdngm.tilly.utility.SqlQueries
 import com.sun.net.httpserver.HttpServer
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication

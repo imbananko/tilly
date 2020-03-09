@@ -1,4 +1,4 @@
-package com.imbananko.tilly.similarity
+package com.chsdngm.tilly.similarity
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull

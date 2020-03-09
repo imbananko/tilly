@@ -1,6 +1,6 @@
-package com.imbananko.tilly.repository
+package com.chsdngm.tilly.repository
 
-import com.imbananko.tilly.utility.SqlQueries
+import com.chsdngm.tilly.utility.SqlQueries
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.stereotype.Repository
