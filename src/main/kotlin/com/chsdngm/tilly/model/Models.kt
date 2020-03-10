@@ -72,7 +72,8 @@ class CommandUpdate(update: Update) {
 
   enum class Command(val value: String) {
     STATS("/stats"),
-    HELP("/help")
+    HELP("/help"),
+    START("/start")
     ;
 
     companion object {

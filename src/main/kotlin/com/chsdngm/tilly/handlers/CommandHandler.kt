@@ -19,7 +19,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
   override fun handle(update: CommandUpdate) {
     when (update.value) {
       Command.STATS -> sendStats(update)
-      Command.HELP -> sendInfoMessage(update)
+      Command.HELP, Command.START -> sendInfoMessage(update)
       else -> log.error("Unknown command from update=$update")
     }
   }

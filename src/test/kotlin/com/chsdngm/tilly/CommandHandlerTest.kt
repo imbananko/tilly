@@ -31,8 +31,21 @@ class CommandHandlerTest {
   val update: Update = mock(Update::class.java)
 
   @Test
-  fun shouldReturn() {
+  fun shouldSendInfoMessageWhenHelpCommandReceived() {
     `when`(update.message.text).thenReturn("/help")
+    `when`(update.message.chatId).thenReturn(0L)
+    `when`(config.username).thenReturn("@meme_manager")
+
+    val sendMessageMethod = SendMessage(0L, handler.infoText).enableHtml(true)
+    doReturn(Message()).`when`(handler).execute(sendMessageMethod)
+
+    handler.handle(CommandUpdate(this.update))
+    verify(handler, times(1)).execute(sendMessageMethod)
+  }
+
+  @Test
+  fun shouldSendInfoMessageWhenStartCommandReceived() {
+    `when`(update.message.text).thenReturn("/start")
     `when`(update.message.chatId).thenReturn(0L)
     `when`(config.username).thenReturn("@meme_manager")
 
