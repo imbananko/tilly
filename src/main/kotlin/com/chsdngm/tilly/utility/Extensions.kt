@@ -1,6 +1,6 @@
-package com.imbananko.tilly.utility
+package com.chsdngm.tilly.utility
 
-import com.imbananko.tilly.model.VoteValue
+import com.chsdngm.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User

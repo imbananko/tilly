@@ -1,4 +1,4 @@
-package com.imbananko.tilly.similarity
+package com.chsdngm.tilly.similarity
 
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher

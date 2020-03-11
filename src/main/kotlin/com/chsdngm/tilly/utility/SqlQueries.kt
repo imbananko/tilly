@@ -1,4 +1,4 @@
-package com.imbananko.tilly.utility
+package com.chsdngm.tilly.utility
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

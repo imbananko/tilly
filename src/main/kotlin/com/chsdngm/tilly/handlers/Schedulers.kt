@@ -1,11 +1,11 @@
-package com.imbananko.tilly.handlers
+package com.chsdngm.tilly.handlers
 
-import com.imbananko.tilly.model.MemeEntity
-import com.imbananko.tilly.repository.MemeRepository
-import com.imbananko.tilly.repository.VoteRepository
-import com.imbananko.tilly.utility.BotConfig
-import com.imbananko.tilly.utility.BotConfigImpl
-import com.imbananko.tilly.utility.mention
+import com.chsdngm.tilly.model.MemeEntity
+import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.VoteRepository
+import com.chsdngm.tilly.utility.BotConfig
+import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.mention
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled

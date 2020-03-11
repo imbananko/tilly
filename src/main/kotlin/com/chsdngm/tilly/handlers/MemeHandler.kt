@@ -1,12 +1,12 @@
-package com.imbananko.tilly.handlers
+package com.chsdngm.tilly.handlers
 
-import com.imbananko.tilly.model.MemeEntity
-import com.imbananko.tilly.model.MemeUpdate
-import com.imbananko.tilly.repository.MemeRepository
-import com.imbananko.tilly.similarity.MemeMatcher
-import com.imbananko.tilly.utility.BotConfig
-import com.imbananko.tilly.utility.BotConfigImpl
-import com.imbananko.tilly.utility.isChatUserStatus
+import com.chsdngm.tilly.model.MemeEntity
+import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.similarity.MemeMatcher
+import com.chsdngm.tilly.utility.BotConfig
+import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.isChatUserStatus
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component

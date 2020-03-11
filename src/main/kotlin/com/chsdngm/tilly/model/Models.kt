@@ -1,6 +1,6 @@
-package com.imbananko.tilly.model
+package com.chsdngm.tilly.model
 
-import com.imbananko.tilly.utility.mention
+import com.chsdngm.tilly.utility.mention
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
 
@@ -66,16 +66,19 @@ class MemeUpdate(update: Update) {
   }
 }
 
-data class CommandUpdate(private val update: Update) {
+class CommandUpdate(update: Update) {
   val senderId: Long = update.message.chatId
   val value: Command? = Command.from(update.message.text)
-}
 
-enum class Command(val value: String) {
-  STATS("/stats");
+  enum class Command(val value: String) {
+    STATS("/stats"),
+    HELP("/help"),
+    START("/start")
+    ;
 
-  companion object {
-    private val map = values().associateBy(Command::value)
-    fun from(value: String) = map[value]
+    companion object {
+      private val map = values().associateBy(Command::value)
+      fun from(value: String) = map[value]
+    }
   }
 }

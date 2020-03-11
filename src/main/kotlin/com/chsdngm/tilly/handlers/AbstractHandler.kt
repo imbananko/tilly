@@ -1,7 +1,7 @@
-package com.imbananko.tilly.handlers
+package com.chsdngm.tilly.handlers
 
-import com.imbananko.tilly.model.VoteValue
-import com.imbananko.tilly.utility.BotConfig
+import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.utility.BotConfig
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.ApiContext
