@@ -72,14 +72,13 @@ sql:
              m.channel_id,
              m.channel_message_id,
              m.private_message_id,
-             count(value) filter (where value = 'UP') as up_count,
-             count(value) filter (where value = 'EXPLAIN') as explain_count,
-             count(value) filter (where value = 'DOWN') as down_count
+             count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') as difference
       from meme m
-          join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
-      where (m.chat_id = :channelId or m.channel_id= :channelId) and m.created_at > current_timestamp - interval '7 days'
+               join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
+      where (m.chat_id = :channelId or m.channel_id = :channelId)
+        and m.created_at > current_timestamp - interval '7 days'
       group by m.chat_id, m.message_id
-      order by up_count desc, down_count, explain_count, m.created_at desc
+      order by difference desc
       limit 1
     getMemesOfTheYear: >
       select m.message_id,
