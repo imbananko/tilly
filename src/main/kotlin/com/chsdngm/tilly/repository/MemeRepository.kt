@@ -14,109 +14,86 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
 
   fun save(meme: MemeEntity): MemeEntity {
     template.update(queries.getFromConfOrFail("insertMeme"),
-        MapSqlParameterSource("chatId", meme.chatId)
-            .addValue("messageId", meme.messageId)
+        MapSqlParameterSource("chatMessageId", meme.chatMessageId)
             .addValue("senderId", meme.senderId)
             .addValue("fileId", meme.fileId)
             .addValue("privateMessageId", meme.privateMessageId))
 
-    memeSenderCache[Objects.hash(meme.chatId, meme.messageId)] = meme.senderId
+    memeSenderCache[meme.chatMessageId] = meme.senderId
     return meme
   }
 
-  fun findMemeByChat(chatId: Long, messageId: Int): MemeEntity? =
-      template.queryForObject(queries.getFromConfOrFail("findMemeByChat"),
-          MapSqlParameterSource("chatId", chatId).addValue("messageId", messageId))
+  fun findByChatMessageId(chatMessageId: Int): MemeEntity? =
+      template.queryForObject(queries.getFromConfOrFail("findMemeByMessageId"),
+          MapSqlParameterSource("chatMessageId", chatMessageId))
       { rs, _ ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findMemeByChannel(channelId: Long, channelMessageId: Int): MemeEntity? =
-      template.queryForObject(queries.getFromConfOrFail("findMemeByChannel"),
-          MapSqlParameterSource("channelId", channelId).addValue("channelMessageId", channelMessageId))
+  fun findByChannelMessageId(channelMessageId: Int): MemeEntity? =
+      template.queryForObject(queries.getFromConfOrFail("findMemeByChannelMessageId"),
+          MapSqlParameterSource("channelMessageId", channelMessageId))
       { rs, _ ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findMeme(filedId: String): MemeEntity? =
+  fun findByFileId(filedId: String): MemeEntity? =
       template.queryForObject(queries.getFromConfOrFail("findMemeByFileId"),
           MapSqlParameterSource("fileId", filedId))
       { rs, _ ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findAllChatMemes(chatId: Long): List<MemeEntity> =
-      template.query(
-          queries.getFromConfOrFail("findAllChatMemes"),
-          MapSqlParameterSource("chatId", chatId)
-      ) { rs: ResultSet, _: Int ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+  fun findAll(): List<MemeEntity> =
+      template.query(queries.getFromConfOrFail("selectAllMemes"))
+      { rs: ResultSet, _: Int ->
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findMemeOfTheWeek(channelId: Long): MemeEntity? =
-      template.queryForObject(
-          queries.getFromConfOrFail("getMemeOfTheWeek"),
-          MapSqlParameterSource("channelId", channelId)
-      ) { rs: ResultSet, _: Int ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+  fun findMemeOfTheWeek(): MemeEntity? =
+      template.queryForObject(queries.getFromConfOrFail("getMemeOfTheWeek"), MapSqlParameterSource())
+      { rs: ResultSet, _: Int ->
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
 
-  fun findMemesOfTheYear(channelId: Long): List<MemeEntity> =
-      template.query(
-          queries.getFromConfOrFail("getMemesOfTheYear"),
-          MapSqlParameterSource("channelId", channelId)
-      ) { rs: ResultSet, _: Int ->
-        MemeEntity(rs.getLong("chat_id"),
-            rs.getInt("message_id"),
+  fun findMemesOfTheYear(): List<MemeEntity> =
+      template.query(queries.getFromConfOrFail("getMemesOfTheYear"))
+      { rs: ResultSet, _: Int ->
+        MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
             checkZero(rs.getInt("private_message_id")),
-            checkZero(rs.getLong("channel_id")),
             checkZero(rs.getInt("channel_message_id")))
       }.toList()
 
   fun update(old: MemeEntity, new: MemeEntity) =
       template.update(queries.getFromConfOrFail("updateMeme"),
-          MapSqlParameterSource("oldChatId", old.chatId)
-              .addValue("newChatId", new.chatId)
-              .addValue("oldMessageId", old.messageId)
-              .addValue("newMessageId", new.messageId)
+          MapSqlParameterSource("oldMessageId", old.chatMessageId)
+              .addValue("newMessageId", new.chatMessageId)
               .addValue("oldSenderId", old.senderId)
               .addValue("newSenderId", new.senderId)
               .addValue("oldFileId", old.fileId)
               .addValue("newFileId", new.fileId)
-              .addValue("oldChannelId", old.channelId)
-              .addValue("newChannelId", new.channelId)
               .addValue("oldChannelMessageId", old.channelMessageId)
               .addValue("newChannelMessageId", new.channelMessageId)
       )

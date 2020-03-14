@@ -31,15 +31,14 @@ class MemeHandler(private val memeRepository: MemeRepository,
   @PostConstruct
   private fun init() {
     memeRepository
-        .findAllChatMemes(chatId)
+        .findAll()
         .distinctBy { it.fileId }
         .parallelStream()
-        .map { meme -> Pair(meme.fileId, downloadFromFileId(meme.fileId)) }
-        .forEach { (fileId, file) ->
+        .forEach { meme ->
           runCatching {
-            memeMatcher.addMeme(fileId, file)
-          }.onFailure { throwable: Throwable ->
-            log.error("Failed to load file=$fileId", throwable)
+            memeMatcher.addMeme(meme.fileId, downloadFromFileId(meme.fileId))
+          }.onFailure {
+            log.error("Failed to load file=${meme.fileId}", it)
           }
         }
   }
@@ -50,13 +49,13 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
       memeMatcher.tryFindDuplicate(file)?.also { duplicate ->
         sendSorryText(update.senderId.toLong(), update.messageId)
-        memeRepository.findMeme(duplicate)?.also { meme ->
+        memeRepository.findByFileId(duplicate)?.also { meme ->
           meme.channelMessageId?.apply { forwardMemeFromChannel(meme, update.senderId.toLong()) }
               ?: forwardMemeFromChat(meme, update.senderId.toLong())
         }
       } ?: sendMemeToChat(update).let { sent ->
         val privateMessageId = sendReplyToMeme(update).messageId
-        memeRepository.save(MemeEntity(chatId, sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
+        memeRepository.save(MemeEntity(sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
           memeMatcher.addMeme(it.fileId, file)
           log.info("Sent meme=$it to chat")
         }
@@ -87,7 +86,6 @@ class MemeHandler(private val memeRepository: MemeRepository,
   private fun forwardMemeFromChannel(meme: MemeEntity, senderId: Long) {
     execute(ForwardMessage()
         .setChatId(senderId)
-        .setFromChatId(meme.channelId)
         .setMessageId(meme.channelMessageId)
         .disableNotification())
     log.info("Successfully forwarded original meme to sender=$senderId. $meme")
@@ -96,8 +94,8 @@ class MemeHandler(private val memeRepository: MemeRepository,
   private fun forwardMemeFromChat(meme: MemeEntity, senderId: Long) {
     execute(ForwardMessage()
         .setChatId(senderId)
-        .setFromChatId(meme.chatId)
-        .setMessageId(meme.messageId)
+        .setFromChatId(chatId)
+        .setMessageId(meme.chatMessageId)
         .disableNotification())
     log.info("Successfully forwarded original meme to sender=$senderId. $meme")
   }

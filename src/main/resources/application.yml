@@ -16,100 +16,85 @@ target.chat.id: 0
 sql:
   queries:
     insertMeme: >
-      insert into meme (chat_id, message_id, sender_id, file_id, private_message_id)
-      values (:chatId, :messageId, :senderId, :fileId, :privateMessageId)
+      insert into meme (chat_message_id, sender_id, file_id, private_message_id)
+      values (:chatMessageId, :senderId, :fileId, :privateMessageId)
     insertUserIfNotExists: >
       insert into users (user_id, username, first_name, last_name)
       select :userId, :username, :firstName, :lastName
       where not exists (select 1 from users where user_id = :userId)
-    findMemeByChat: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
+    findMemeByMessageId: >
+      select chat_message_id, sender_id, file_id, channel_message_id, private_message_id
       from meme
-      where chat_id = :chatId and message_id = :messageId
+      where chat_message_id = :chatMessageId
     findMemeByFileId: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
+      select chat_message_id, sender_id, file_id, channel_message_id, private_message_id
       from meme
       where file_id = :fileId
-    findMemeByChannel: >
-      select chat_id, message_id, sender_id, file_id, channel_id, channel_message_id, private_message_id
+    findMemeByChannelMessageId: >
+      select chat_message_id, sender_id, file_id, channel_message_id, private_message_id
       from meme
-      where channel_id = :channelId and channel_message_id = :channelMessageId
+      where channel_message_id = :channelMessageId
     insertOrUpdateVote: >
-      insert into vote(chat_id, message_id, voter_id, value)
-      values (:chatId, :messageId, :voterId, :value::vote_value)
-      on conflict (chat_id, message_id, voter_id)
+      insert into vote(chat_message_id, voter_id, value)
+      values (:chatMessageId, :voterId, :value::vote_value)
+      on conflict (chat_message_id, voter_id)
       do update set value = :value::vote_value
     deleteVote: >
       delete from vote
       where
-        chat_id = :chatId
-        and message_id = :messageId
+        chat_message_id = :chatMessageId
         and voter_id = :voterId
     findUserStats: >
-      select m.message_id,
+      select m.chat_message_id,
              count(v.value) filter ( where value = 'UP')      as UP,
-             count(v.value) filter ( where value = 'EXPLAIN' ) as EXPLAIN,
              count(v.value) filter ( where value = 'DOWN' )    as DOWN
       from meme m
-               left join vote v
-                         on m.chat_id = v.chat_id and m.message_id = v.message_id
+               left join vote v on m.chat_message_id = v.chat_message_id
       where m.sender_id = :userId
-        and (m.chat_id = :chatId or m.channel_id = :chatId)
-      group by m.message_id
+      group by m.chat_message_id
     findMemeVotes: >
-      select chat_id, message_id, voter_id, value
+      select chat_message_id, voter_id, value
       from vote
-      where chat_id = :chatId and message_id = :messageId
-    findAllChatMemes: >
-      select file_id, sender_id, chat_id, message_id, channel_id, channel_message_id, private_message_id
+      where chat_message_id = :chatMessageId
+    selectAllMemes: >
+      select file_id, sender_id, chat_message_id, channel_message_id, private_message_id
       from meme
-      where chat_id = :chatId
     getMemeOfTheWeek: >
-      select m.chat_id,
-             m.message_id,
+      select m.chat_message_id,
              m.sender_id,
              m.file_id,
-             m.channel_id,
              m.channel_message_id,
              m.private_message_id,
              count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') as difference
       from meme m
-               join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
-      where (m.chat_id = :channelId or m.channel_id = :channelId)
-        and m.created_at > current_timestamp - interval '7 days'
-      group by m.chat_id, m.message_id
+            join vote v on m.chat_message_id = v.chat_message_id
+      where m.created_at > current_timestamp - interval '7 days'
+      group by m.chat_message_id
       order by difference desc
       limit 1
     getMemesOfTheYear: >
-      select m.message_id,
+      select m.chat_message_id,
              m.sender_id,
-             m.chat_id,
              m.file_id,
-             m.channel_id,
              m.channel_message_id,
              m.private_message_id,
              count(value) filter (where value = 'UP') as up_count,
              count(value) filter (where value = 'EXPLAIN') as explain_count,
              count(value) filter (where value = 'DOWN') as down_count
       from meme m
-               join vote v on m.chat_id = v.chat_id and m.message_id = v.message_id
-      where (m.chat_id = :channelId or m.channel_id= :channelId)
-      group by m.chat_id, m.message_id, m.sender_id, m.file_id
+               join vote v on m.chat_message_id = v.chat_message_id
+      group by m.chat_message_id, m.sender_id, m.file_id
       order by up_count desc, down_count, explain_count
       limit 10
     updateMeme: >
       update meme
       set
-        message_id = :newMessageId,
-        chat_id = :newChatId,
+        chat_message_id = :newMessageId,
         sender_id = :newSenderId,
         file_id = :newFileId,
-        channel_id = :newChannelId,
         channel_message_id = :newChannelMessageId
       where
-        chat_id = :oldChatId
-        and message_id = :oldMessageId
+        chat_message_id = :oldMessageId
         and sender_id = :oldSenderId
         and file_id = :oldFileId
-        and (channel_id = :oldChannelId or channel_id is null)
         and (channel_message_id = :oldChannelMessageId or channel_message_id is null)

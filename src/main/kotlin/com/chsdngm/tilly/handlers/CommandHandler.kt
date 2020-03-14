@@ -28,7 +28,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
       runCatching {
         execute(SendMessage()
             .setChatId(update.senderId)
-            .setText(formatStatsMessage(voteRepository.getStatsByUser(channelId, update.senderId.toInt())))
+            .setText(formatStatsMessage(voteRepository.getStatsByUser(update.senderId.toInt())))
         )
       }.onSuccess {
         log.info("Sent stats to user=${update.senderId}")
