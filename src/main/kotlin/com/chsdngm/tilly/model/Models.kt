@@ -7,19 +7,16 @@ import java.time.Instant
 const val week: Long = 60 * 60 * 24 * 7
 
 data class MemeEntity(
-    val chatId: Long,
-    val messageId: Int,
+    val chatMessageId: Int,
     val senderId: Int,
     val fileId: String,
     val privateMessageId: Int? = null,
-    val channelId: Long? = null,
     val channelMessageId: Int? = null) {
 
-  fun isPublishedOnChannel(): Boolean = channelId != null && channelMessageId != null
+  fun isPublishedOnChannel(): Boolean = channelMessageId != null
 }
 
 data class VoteEntity(
-    val chatId: Long,
     val messageId: Int,
     val voterId: Int,
     val voteValue: VoteValue
@@ -50,7 +47,7 @@ class VoteUpdate(update: Update) {
   }
 
   override fun toString(): String {
-    return "VoteUpdate(fromId=$fromId, messageId=$messageId, isFrom=$isFrom, isMessageOld=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
+    return "VoteUpdate(fromId=$fromId, chatMessageId=$messageId, isFrom=$isFrom, isMessageOld=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
   }
 }
 
@@ -62,7 +59,7 @@ class MemeUpdate(update: Update) {
   val senderName: String = update.message.from.mention()
 
   override fun toString(): String {
-    return "MemeUpdate(messageId=$messageId, caption=$caption, fileId='$fileId', senderId=$senderId, senderName='$senderName')"
+    return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', senderId=$senderId, senderName='$senderName')"
   }
 }
 

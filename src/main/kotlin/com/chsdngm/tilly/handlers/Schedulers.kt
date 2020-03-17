@@ -31,7 +31,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
   @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() {
     runCatching {
-      val meme: MemeEntity? = memeRepository.findMemeOfTheWeek(channelId)
+      val meme: MemeEntity? = memeRepository.findMemeOfTheWeek()
 
       meme ?: log.info("Can't find meme of the week")
       meme ?: return
@@ -66,7 +66,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
                 .setReplyMarkup(AbstractHandler.createMarkup(statistics))
         )
 
-        memeRepository.update(meme, meme.copy(channelId = meme.channelId, channelMessageId = fallbackMemeOfTheWeekMessage.messageId))
+        memeRepository.update(meme, meme.copy(channelMessageId = fallbackMemeOfTheWeekMessage.messageId))
 
         fallbackMemeOfTheWeekMessage
       }
@@ -80,7 +80,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
   private fun sendMemesOfTheYear() {
     fun formatMemeTheYearCaption(meme: MemeEntity): String {
       val userMention = execute(GetChatMember()
-          .setChatId(meme.chatId)
+          .setChatId(chatId)
           .setUserId(meme.senderId))
           .user.mention()
       val votes = voteRepository.getVotes(meme)
@@ -94,7 +94,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
     runCatching {
       execute(SendMessage(channelId, "Топ мемсы прошедшего года:"))
       execute(
-          SendMediaGroup(channelId, memeRepository.findMemesOfTheYear(channelId).map { meme ->
+          SendMediaGroup(channelId, memeRepository.findMemesOfTheYear().map { meme ->
             InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
                 .setParseMode(ParseMode.HTML)
           })

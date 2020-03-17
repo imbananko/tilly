@@ -26,11 +26,11 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
   override fun handle(update: VoteUpdate) {
     val meme = when (update.isFrom) {
-      CHANNEL -> memeRepository.findMemeByChannel(channelId, update.messageId)
-      CHAT -> memeRepository.findMemeByChat(chatId, update.messageId)
+      CHANNEL -> memeRepository.findByChannelMessageId(update.messageId)
+      CHAT -> memeRepository.findByChatMessageId(update.messageId)
     } ?: return
 
-    val vote = VoteEntity(chatId, meme.messageId, update.fromId, update.voteValue)
+    val vote = VoteEntity(meme.chatMessageId, update.fromId, update.voteValue)
 
     if (update.isNotProcessable || meme.senderId == vote.voterId) return
 
@@ -45,12 +45,12 @@ class VoteHandler(private val memeRepository: MemeRepository,
         if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
         else "мем на модерации"
 
-    updateChatMarkup(meme.messageId, markup)
+    updateChatMarkup(meme.chatMessageId, markup)
 
     meme.channelMessageId?.also { updateChannelMarkup(it, markup) } ?: if (readyForShipment(votes)) {
       val captionForChannel = update.caption?.split("Sender: ")?.firstOrNull() ?: ""
       val channelMessageId = sendMemeToChannel(meme, captionForChannel, markup).messageId
-      memeRepository.update(meme, meme.copy(channelId = channelId, channelMessageId = channelMessageId))
+      memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
 
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)

@@ -15,9 +15,9 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
 
   fun delete(vote: VoteEntity) = template.update(queries.getFromConfOrFail("deleteVote"), getParams(vote))
 
-  fun getStatsByUser(chatId: Long, userId: Int): List<MemeStatsEntry> = template.query(
+  fun getStatsByUser(userId: Int): List<MemeStatsEntry> = template.query(
       queries.getFromConfOrFail("findUserStats"),
-      MapSqlParameterSource("chatId", chatId).addValue("userId", userId))
+      MapSqlParameterSource("userId", userId))
   { rs, _ ->
     MemeStatsEntry(
         UP to rs.getInt(UP.name),
@@ -26,18 +26,16 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
 
   fun getVotes(meme: MemeEntity): List<VoteEntity> = template.query(
       queries.getFromConfOrFail("findMemeVotes"),
-      MapSqlParameterSource("chatId", meme.chatId).addValue("messageId", meme.messageId))
+      MapSqlParameterSource("chatMessageId", meme.chatMessageId))
   { rs, _ ->
     VoteEntity(
-        rs.getLong("chat_id"),
-        rs.getInt("message_id"),
+        rs.getInt("chat_message_id"),
         rs.getInt("voter_id"),
         valueOf(rs.getString("value")))
   }.toList()
 
   private fun getParams(vote: VoteEntity): MapSqlParameterSource =
-      MapSqlParameterSource("chatId", vote.chatId)
-          .addValue("messageId", vote.messageId)
+      MapSqlParameterSource("chatMessageId", vote.messageId)
           .addValue("voterId", vote.voterId)
           .addValue("value", vote.voteValue.name)
 }
