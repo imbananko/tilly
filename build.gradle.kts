@@ -31,6 +31,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-data-jdbc:$springVersion")
   implementation("org.springframework.boot:spring-boot-configuration-processor")
   implementation("com.github.kilianB:JImageHash:3.0.0")
+  implementation("net.sourceforge.tess4j:tess4j:4.5.1")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")

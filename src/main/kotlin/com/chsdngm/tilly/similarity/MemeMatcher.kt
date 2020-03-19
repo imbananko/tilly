@@ -7,7 +7,7 @@ import java.io.File
 
 @Component
 class MemeMatcher {
-  private val normalizedHammingDistance = .02
+  private val normalizedHammingDistance = .15
 
   private val matcher = ConsecutiveMatcher(true).also {
     it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
