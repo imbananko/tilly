@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 interface BotConfig {
   val chatId: Long
   val channelId: Long
+  val betaChatId: Long
   val token: String
   val username: String
 
@@ -19,6 +20,8 @@ class BotConfigImpl : BotConfig {
   override val chatId: Long = 0
   @Value("\${target.channel.id}")
   override val channelId: Long = 0
+  @Value("\${beta.chat.id}")
+  override val betaChatId: Long = 0
   @Value("\${bot.token}")
   override lateinit var token: String
   @Value("\${bot.username}")
