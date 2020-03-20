@@ -1,9 +1,9 @@
 package com.chsdngm.tilly.similarity
 
-import net.sourceforge.tess4j.Tesseract
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -25,13 +25,11 @@ class MemeMatcherTest {
     fun loadMeme(memeName: String) =
         File(this::class.java.classLoader.getResource(memeName)?.file
             ?: error("meme not found: $memeName"))
-
-    var tesseract = Tesseract()
   }
 
   @BeforeEach
   fun init() {
-    memeMatcher = MemeMatcher()
+    memeMatcher = MemeMatcher(normalizedHammingDistance = .15)
   }
 
   @ParameterizedTest
@@ -44,16 +42,25 @@ class MemeMatcherTest {
   }
 
   @Test
-  fun `Memes with a difference in text should be distinguished`() {
-    val originalMeme = memes["original_meme.jpg"] ?: error("doctor1.jpg is not found")
-    val doctor1 = memes["doctor3.jpg"] ?: error("doctor2.jpg is not found")
-
-    val text1 = tesseract.doOCR(originalMeme);
-    val text2 = tesseract.doOCR(doctor1);
+  fun `Almost same memes with a difference in text should be distinguished`() {
+    val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not found")
+    val doctor3 = memes["doctor3.jpg"] ?: error("doctor3.jpg is not found")
 
     memeMatcher.addMeme(originalMeme.name, originalMeme)
-    val memeMatch1 = memeMatcher.tryFindDuplicate(doctor1)
-    assertNull(memeMatch1, "Changed meme ${doctor1.name} should be different from original one ${originalMeme.name}")
+    val memeMatch1 = memeMatcher.tryFindDuplicate(doctor3)
+    assertNull(memeMatch1, "Changed meme ${doctor3.name} should be different from original one ${originalMeme.name}")
+  }
+
+  // TODO: currently falling
+  @Disabled
+  @Test
+  fun `Same memes with a difference in text should be distinguished`() {
+    val doctor1 = memes["doctor1.jpg"] ?: error("doctor1.jpg is not found")
+    val doctor2 = memes["doctor2.jpg"] ?: error("doctor2.jpg is not found")
+
+    memeMatcher.addMeme(doctor1.name, doctor1)
+    val memeMatch1 = memeMatcher.tryFindDuplicate(doctor2)
+    assertNull(memeMatch1, "Changed meme ${doctor2.name} should be different from original one ${doctor2.name}")
   }
 
   @Test
