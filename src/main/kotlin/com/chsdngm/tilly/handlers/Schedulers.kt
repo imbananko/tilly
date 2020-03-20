@@ -36,6 +36,8 @@ final class Schedulers(private val memeRepository: MemeRepository,
       meme ?: log.info("Can't find meme of the week")
       meme ?: return
 
+      memeRepository.markAsMemeOfTheWeek(meme)
+
       val winner = execute(
           GetChatMember()
               .setChatId(channelId)
