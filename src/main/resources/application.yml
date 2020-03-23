@@ -98,3 +98,6 @@ sql:
         and sender_id = :oldSenderId
         and file_id = :oldFileId
         and (channel_message_id = :oldChannelMessageId or channel_message_id is null)
+    insertMemeOfWeek: >
+      insert into meme_of_week (chat_message_id)
+      values (:chatMessageId)
