@@ -46,8 +46,9 @@ sql:
         and voter_id = :voterId
     findUserStats: >
       select m.chat_message_id,
-             count(v.value) filter ( where value = 'UP')      as UP,
-             count(v.value) filter ( where value = 'DOWN' )    as DOWN
+             count(v.value) filter ( where value = 'UP')    as up,
+             count(v.value) filter ( where value = 'DOWN' ) as down,
+             case when channel_message_id is not null then true end as is_published
       from meme m
                left join vote v on m.chat_message_id = v.chat_message_id
       where m.sender_id = :userId
