@@ -14,8 +14,10 @@ import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
+import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -52,6 +54,8 @@ class MemeHandler(private val memeRepository: MemeRepository,
         memeRepository.findByFileId(duplicate)?.also { meme ->
           meme.channelMessageId?.apply { forwardMemeFromChannel(meme, update.senderId.toLong()) }
               ?: forwardMemeFromChat(meme, update.senderId.toLong())
+          runCatching { sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId) }
+              .onFailure { throwable -> log.error("Can't send duplicate info to beta chat", throwable) }
         }
       } ?: sendMemeToChat(update).let { sent ->
         val privateMessageId = sendReplyToMeme(update).messageId
@@ -113,6 +117,17 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("${update.caption ?: ""}\n\nмем на модерации"))
+
+  private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
+      execute(
+          SendMediaGroup(
+              betaChatId,
+              listOf(
+                  InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
+                  InputMediaPhoto(originalFileId, "оригинал")
+              )
+          )
+      )
 
   private fun downloadFromFileId(fileId: String) =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {

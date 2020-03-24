@@ -1,6 +1,5 @@
-package com.chsdngm.tilly
+package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.handlers.CommandHandler
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfigImpl
