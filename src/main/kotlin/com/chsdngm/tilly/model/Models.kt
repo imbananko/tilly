@@ -27,7 +27,7 @@ enum class VoteValue(val emoji: String) {
   DOWN("\uD83D\uDCA9")
 }
 
-class MemeStatsEntry(vararg val counts: Pair<VoteValue, Int>)
+class MemeStatsEntry(val upvotes: Int, val downvotes: Int, val isPublished: Boolean = false)
 
 class VoteUpdate(update: Update) {
   val fromId: Int = update.callbackQuery.from.id

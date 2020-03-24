@@ -20,8 +20,9 @@ class VoteRepository(private val template: NamedParameterJdbcTemplate, private v
       MapSqlParameterSource("userId", userId))
   { rs, _ ->
     MemeStatsEntry(
-        UP to rs.getInt(UP.name),
-        DOWN to rs.getInt(DOWN.name))
+        rs.getInt(UP.name),
+        rs.getInt(DOWN.name),
+        rs.getBoolean("is_published"))
   }.toList()
 
   fun getVotes(meme: MemeEntity): List<VoteEntity> = template.query(

@@ -2,7 +2,7 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
-import com.chsdngm.tilly.model.MemeStatsEntry
+import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfig
 import com.chsdngm.tilly.utility.BotConfigImpl
@@ -24,34 +24,32 @@ class CommandHandler(private val voteRepository: VoteRepository,
     }
   }
 
-  private fun sendStats(update: CommandUpdate) =
-      runCatching {
-        execute(SendMessage()
-            .setChatId(update.senderId)
-            .setText(formatStatsMessage(voteRepository.getStatsByUser(update.senderId.toInt())))
-        )
-      }.onSuccess {
-        log.info("Sent stats to user=${update.senderId}")
-      }.onFailure {
-        log.error("Failed to send stats to user=$update", it)
-      }
-
-  private fun formatStatsMessage(stats: List<MemeStatsEntry>): String =
-      if (stats.isEmpty())
-        "You have no statistics yet!"
-      else
-        """
+  private fun sendStats(update: CommandUpdate) {
+    val stats = voteRepository.getStatsByUser(update.senderId.toInt())
+    val aggregated = stats.fold(Pair(0, 0)) { acc, entry -> Pair(acc.first + entry.upvotes, acc.second + entry.downvotes) }
+    val message =
+        if (stats.isEmpty())
+          "You have no statistics yet!"
+        else
+          """
           Your statistics:
 
-          Memes sent: ${stats.size}
-        """.trimIndent() +
-            stats
-                .flatMap { it.counts.asIterable() }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { it.value.sum() }
-                .toList()
-                .sortedBy { it.first }
-                .joinToString("\n", prefix = "\n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
+          Memes sent: ${stats.size} (on channel: ${stats.filter { it.isPublished }.size})
+          ${VoteValue.UP.emoji}: ${aggregated.first}
+          ${VoteValue.DOWN.emoji}: ${aggregated.second}
+        """.trimIndent()
+
+    runCatching {
+      execute(SendMessage()
+          .setChatId(update.senderId)
+          .setText(message)
+      )
+    }.onSuccess {
+      log.info("Sent stats to user=${update.senderId}")
+    }.onFailure {
+      log.error("Failed to send stats to user=$update", it)
+    }
+  }
 
   fun sendInfoMessage(update: CommandUpdate) {
     runCatching {
