@@ -86,6 +86,10 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
             checkZero(rs.getInt("channel_message_id")))
       }.toList()
 
+  fun markAsMemeOfTheWeek(meme: MemeEntity) =
+      template.update(queries.getFromConfOrFail("insertMemeOfWeek"),
+          MapSqlParameterSource("chatMessageId", meme.chatMessageId))
+
   fun update(old: MemeEntity, new: MemeEntity) =
       template.update(queries.getFromConfOrFail("updateMeme"),
           MapSqlParameterSource("oldMessageId", old.chatMessageId)
