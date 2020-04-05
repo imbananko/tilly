@@ -59,7 +59,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
         }
       } ?: sendMemeToChat(update).let { sent ->
         val privateMessageId = sendReplyToMeme(update).messageId
-        memeRepository.save(MemeEntity(sent.messageId, update.senderId, update.fileId, privateMessageId)).also {
+        memeRepository.save(MemeEntity(sent.messageId, update.senderId, update.fileId, update.caption, privateMessageId)).also {
           memeMatcher.addMeme(it.fileId, file)
           log.info("Sent meme=$it to chat")
         }
@@ -73,19 +73,19 @@ class MemeHandler(private val memeRepository: MemeRepository,
       execute(SendPhoto()
           .setChatId(chatId)
           .setPhoto(update.fileId)
-          .setCaption(runCatching { getCaption(update) }.getOrThrow())
+          .setCaption(runCatching { resolveCaption(update) }.getOrNull())
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())))
 
-  private fun getCaption(update: MemeUpdate): String =
-      if (execute(GetChatMember()
-              .setChatId(chatId)
-              .setUserId(update.senderId))
-              .status.isChatUserStatus()) {
-        update.caption ?: ""
-      } else {
-        "${update.caption ?: ""}\n\nSender: ${update.senderName}"
-      }
+  private fun resolveCaption(update: MemeUpdate): String =
+      update.caption?.let {
+        if (execute(GetChatMember()
+                .setChatId(chatId)
+                .setUserId(update.senderId))
+                .status.isChatUserStatus()) {
+          it
+        } else it.plus("\n\nSender: ${update.senderName}")
+      } ?: ""
 
   private fun forwardMemeFromChannel(meme: MemeEntity, senderId: Long) {
     execute(ForwardMessage()
@@ -116,7 +116,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setChatId(update.senderId.toLong())
           .setReplyToMessageId(update.messageId)
           .disableNotification()
-          .setText("${update.caption ?: ""}\n\nмем на модерации"))
+          .setText("мем на модерации"))
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
       execute(
