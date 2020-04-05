@@ -36,10 +36,10 @@ sql:
       from meme
       where channel_message_id = :channelMessageId
     insertOrUpdateVote: >
-      insert into vote(chat_message_id, voter_id, value)
-      values (:chatMessageId, :voterId, :value::vote_value)
+      insert into vote(chat_message_id, voter_id, value, source)
+      values (:chatMessageId, :voterId, :value::vote_value, :source::vote_source)
       on conflict (chat_message_id, voter_id)
-      do update set value = :value::vote_value
+          do update set value  = :value::vote_value
     deleteVote: >
       delete from vote
       where
@@ -55,7 +55,7 @@ sql:
       where m.sender_id = :userId
       group by m.chat_message_id
     findMemeVotes: >
-      select chat_message_id, voter_id, value
+      select chat_message_id, voter_id, value, source
       from vote
       where chat_message_id = :chatMessageId
     selectAllMemes: >

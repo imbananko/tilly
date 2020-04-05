@@ -19,7 +19,8 @@ data class MemeEntity(
 data class VoteEntity(
     val messageId: Int,
     val voterId: Int,
-    val voteValue: VoteValue
+    val voteValue: VoteValue,
+    val source: SourceType
 )
 
 enum class VoteValue(val emoji: String) {
@@ -41,14 +42,14 @@ class VoteUpdate(update: Update) {
   val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
   val caption: String? = update.callbackQuery.message.caption
 
-  enum class SourceType {
-    CHAT,
-    CHANNEL
-  }
-
   override fun toString(): String {
     return "VoteUpdate(fromId=$fromId, chatMessageId=$messageId, isFrom=$isFrom, isMessageOld=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
   }
+}
+
+enum class SourceType {
+  CHAT,
+  CHANNEL
 }
 
 class MemeUpdate(update: Update) {

@@ -1,11 +1,6 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.MemeEntity
-import com.chsdngm.tilly.model.VoteEntity
-import com.chsdngm.tilly.model.VoteUpdate
-import com.chsdngm.tilly.model.VoteUpdate.SourceType.CHANNEL
-import com.chsdngm.tilly.model.VoteUpdate.SourceType.CHAT
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfig
@@ -26,11 +21,11 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
   override fun handle(update: VoteUpdate) {
     val meme = when (update.isFrom) {
-      CHANNEL -> memeRepository.findByChannelMessageId(update.messageId)
-      CHAT -> memeRepository.findByChatMessageId(update.messageId)
+      SourceType.CHANNEL -> memeRepository.findByChannelMessageId(update.messageId)
+      SourceType.CHAT -> memeRepository.findByChatMessageId(update.messageId)
     } ?: return
 
-    val vote = VoteEntity(meme.chatMessageId, update.fromId, update.voteValue)
+    val vote = VoteEntity(meme.chatMessageId, update.fromId, update.voteValue, update.isFrom)
 
     if (update.isNotProcessable || meme.senderId == vote.voterId) return
 
