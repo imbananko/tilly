@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 
 @Component
 class VoteHandler(private val memeRepository: MemeRepository,
@@ -35,22 +34,23 @@ class VoteHandler(private val memeRepository: MemeRepository,
           it.merge(vote.voterId, vote.voteValue) { old, new -> if (old == new) null else new }
         }
 
-    val markup = createMarkup(votes.values.groupingBy { it }.eachCount())
+    val groupedVotes = votes.values.groupingBy { it }.eachCount()
+
     val privateCaptionPrefix =
         if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
         else "мем на модерации"
 
-    updateChatMarkup(meme.chatMessageId, markup)
+    updateChatMarkup(meme.chatMessageId, groupedVotes)
 
-    meme.channelMessageId?.also { updateChannelMarkup(it, markup) } ?: if (readyForShipment(votes)) {
+    meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(votes)) {
       val captionForChannel = update.caption?.split("Sender: ")?.firstOrNull() ?: ""
-      val channelMessageId = sendMemeToChannel(meme, captionForChannel, markup).messageId
+      val channelMessageId = sendMemeToChannel(meme, captionForChannel, groupedVotes).messageId
       memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
 
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
-    val caption = votes.values.groupingBy { it }.eachCount().entries.sortedBy { it.key }.joinToString(
+    val caption = groupedVotes.entries.sortedBy { it.key }.joinToString(
         prefix = "${update.caption ?: ""}\n\n$privateCaptionPrefix. статистика: \n\n",
         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
@@ -58,31 +58,35 @@ class VoteHandler(private val memeRepository: MemeRepository,
     log.info("Processed vote update=$update")
   }
 
-  private fun updateChatMarkup(messageId: Int, markup: InlineKeyboardMarkup) =
-      execute(EditMessageReplyMarkup()
+  private fun updateChatMarkup(messageId: Int, votes: Map<VoteValue, Int>) =
+      EditMessageReplyMarkup()
           .setChatId(chatId)
           .setMessageId(messageId)
-          .setReplyMarkup(markup)).also { log.debug("Updated chat markup") }
+          .setReplyMarkup(createMarkup(votes)).let { execute(it) }
 
-  private fun updateChannelMarkup(messageId: Int, markup: InlineKeyboardMarkup) =
-      execute(EditMessageReplyMarkup()
+  private fun updateChannelMarkup(messageId: Int, votes: Map<VoteValue, Int>) =
+      EditMessageReplyMarkup()
           .setChatId(channelId)
           .setMessageId(messageId)
-          .setReplyMarkup(markup)).also { log.debug("Updated channel markup") }
+          .setReplyMarkup(createMarkup(votes, messageId)).let { execute(it) }
 
-  private fun sendMemeToChannel(meme: MemeEntity, caption: String, markup: InlineKeyboardMarkup) =
-      execute(SendPhoto()
+  private fun sendMemeToChannel(meme: MemeEntity, caption: String, votes: Map<VoteValue, Int>) =
+      SendPhoto()
           .setChatId(channelId)
           .setPhoto(meme.fileId)
           .setCaption(caption)
-          .setReplyMarkup(markup)).also { log.info("Sent meme to channel=$meme") }
+          .let { execute(it) }
+          .also {
+            updateChannelMarkup(it.messageId, votes)
+            log.info("Sent meme to channel=$meme")
+          }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
           votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
 
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
-        execute(EditMessageText()
-            .setChatId(meme.senderId.toString())
-            .setMessageId(meme.privateMessageId)
-            .setText(stats))
+      EditMessageText()
+          .setChatId(meme.senderId.toString())
+          .setMessageId(meme.privateMessageId)
+          .setText(stats).let { execute(it) }
 }
