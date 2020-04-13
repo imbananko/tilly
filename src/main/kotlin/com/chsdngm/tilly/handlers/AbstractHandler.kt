@@ -40,14 +40,15 @@ abstract class AbstractHandler<T> : DefaultAbsSender(ApiContext.getInstance(Defa
         ))
 
     private fun getCommentsButtonText(identifier: Int) =
-        connect("https://comments.app/embed/view?website=HzZubwqu&page_url=$commentsUrl/$identifier&origin=$domainUrl")
-            .get()
-            .select("h3.bc-header")
-            .first()
-            .childNodes()
-            .first()
-            .let { it as TextNode }
-            .text()
-
+        runCatching {
+          connect("https://comments.app/embed/view?website=HzZubwqu&page_url=$commentsUrl/$identifier&origin=$domainUrl")
+              .get()
+              .select("h3.bc-header")
+              .first()
+              .childNodes()
+              .first()
+              .let { it as TextNode }
+              .text()
+        }.getOrElse { "comments" }
   }
 }
