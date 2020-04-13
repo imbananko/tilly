@@ -74,12 +74,9 @@ class VoteHandler(private val memeRepository: MemeRepository,
       SendPhoto()
           .setChatId(channelId)
           .setPhoto(meme.fileId)
+          .setReplyMarkup(createMarkup(votes, meme.chatMessageId))
           .setCaption(caption)
           .let { execute(it) }
-          .also {
-            updateChannelMarkup(it.messageId, votes)
-            log.info("Sent meme to channel=$meme")
-          }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
           votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
