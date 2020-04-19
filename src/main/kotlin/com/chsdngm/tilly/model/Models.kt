@@ -55,7 +55,7 @@ enum class SourceType {
 class MemeUpdate(update: Update) {
   val messageId: Int = update.message.messageId
   val caption: String? = update.message.caption
-  val fileId: String = update.message.photo[0].fileId
+  val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
   val senderId: Int = update.message.from.id
   val senderName: String = update.message.from.mention()
 
