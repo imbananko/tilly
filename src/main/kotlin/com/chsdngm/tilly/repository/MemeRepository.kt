@@ -17,7 +17,8 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MapSqlParameterSource("chatMessageId", meme.chatMessageId)
             .addValue("senderId", meme.senderId)
             .addValue("fileId", meme.fileId)
-            .addValue("privateMessageId", meme.privateMessageId))
+            .addValue("privateMessageId", meme.privateMessageId)
+            .addValue("caption", meme.caption))
 
     memeSenderCache[meme.chatMessageId] = meme.senderId
     return meme
@@ -30,6 +31,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -41,6 +43,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -52,6 +55,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -62,6 +66,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -72,6 +77,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }
@@ -82,6 +88,7 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
         MemeEntity(rs.getInt("chat_message_id"),
             rs.getInt("sender_id"),
             rs.getString("file_id"),
+            rs.getString("caption"),
             checkZero(rs.getInt("private_message_id")),
             checkZero(rs.getInt("channel_message_id")))
       }.toList()

@@ -35,26 +35,27 @@ class VoteHandler(private val memeRepository: MemeRepository,
         }
 
     val groupedVotes = votes.values.groupingBy { it }.eachCount()
-
-    val privateCaptionPrefix =
-        if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
-        else "мем на модерации"
-
     updateChatMarkup(meme.chatMessageId, groupedVotes)
 
     meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(votes)) {
-      val captionForChannel = update.caption?.split("Sender: ")?.firstOrNull() ?: ""
-      val channelMessageId = sendMemeToChannel(meme, captionForChannel, groupedVotes).messageId
+      val channelMessageId = sendMemeToChannel(meme, groupedVotes).messageId
       memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
 
     if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
 
-    val caption = groupedVotes.entries.sortedBy { it.key }.joinToString(
-        prefix = "${update.caption ?: ""}\n\n$privateCaptionPrefix. статистика: \n\n",
-        transform = { (value, sum) -> "${value.emoji}: $sum" })
+    runCatching {
+      val privateCaptionPrefix =
+          if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
+          else "мем на модерации"
 
-    updateStatsInSenderChat(meme, caption)
+      val privateChatCaption = groupedVotes.entries.sortedBy { it.key }.joinToString(
+          prefix = "$privateCaptionPrefix. статистика: \n\n",
+          transform = { (value, sum) -> "${value.emoji}: $sum" })
+
+      updateStatsInSenderChat(meme, privateChatCaption)
+    }.onFailure { log.error("Failed to update private caption", it) }
+
     log.info("Processed vote update=$update")
   }
 
@@ -70,13 +71,14 @@ class VoteHandler(private val memeRepository: MemeRepository,
           .setMessageId(messageId)
           .setReplyMarkup(createMarkup(votes, messageId)).let { execute(it) }
 
-  private fun sendMemeToChannel(meme: MemeEntity, caption: String, votes: Map<VoteValue, Int>) =
+  private fun sendMemeToChannel(meme: MemeEntity, votes: Map<VoteValue, Int>) =
       SendPhoto()
           .setChatId(channelId)
           .setPhoto(meme.fileId)
           .setReplyMarkup(createMarkup(votes, meme.chatMessageId))
-          .setCaption(caption)
+          .setCaption(meme.caption)
           .let { execute(it) }
+          .also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
           votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5

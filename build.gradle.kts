@@ -27,6 +27,7 @@ dependencies {
   implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
   implementation("org.telegram:telegrambots-spring-boot-starter:4.4.0.1")
+  implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.postgresql:postgresql:42.2.6")
   implementation("org.springframework.boot:spring-boot-starter-data-jdbc:$springVersion")
   implementation("org.springframework.boot:spring-boot-configuration-processor")
