@@ -12,6 +12,7 @@ interface BotConfig {
 
   fun getBotToken(): String
   fun getBotUsername(): String
+  fun getBotPath(): String
 }
 
 @Component
@@ -29,4 +30,5 @@ class BotConfigImpl : BotConfig {
 
   override fun getBotToken(): String = token
   override fun getBotUsername(): String = username
+  override fun getBotPath(): String = token
 }
