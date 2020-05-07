@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.model.VoteValue
+import org.telegram.telegrambots.meta.api.objects.ChatMember
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
@@ -17,7 +18,7 @@ fun Update.hasVote() = this.hasCallbackQuery()
 
 fun User.mention(): String = """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""
 
-fun String.isChatUserStatus(): Boolean = chatUserStatuses.contains(this)
+fun ChatMember.isFromChat(): Boolean = chatUserStatuses.contains(this.status)
 
 private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER)
 
