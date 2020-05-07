@@ -6,7 +6,7 @@ import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.similarity.MemeMatcher
 import com.chsdngm.tilly.utility.BotConfig
 import com.chsdngm.tilly.utility.BotConfigImpl
-import com.chsdngm.tilly.utility.isChatUserStatus
+import com.chsdngm.tilly.utility.isFromChat
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -78,14 +78,12 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setReplyMarkup(createMarkup(emptyMap())))
 
   private fun resolveCaption(update: MemeUpdate): String =
-      update.caption?.let {
-        if (execute(GetChatMember()
-                .setChatId(chatId)
-                .setUserId(update.senderId))
-                .status.isChatUserStatus()) {
-          it
-        } else it.plus("\n\nSender: ${update.senderName}")
-      } ?: ""
+      update.caption ?: "" +
+      if (GetChatMember()
+              .setChatId(chatId)
+              .setUserId(update.senderId).let { execute(it) }
+              .isFromChat()) ""
+      else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannel(meme: MemeEntity, senderId: Long) {
     execute(ForwardMessage()
