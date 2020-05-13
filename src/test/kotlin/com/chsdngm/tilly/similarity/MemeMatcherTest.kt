@@ -36,7 +36,7 @@ class MemeMatcherTest {
   @MethodSource("imageProvider")
   fun `MemeMatcher should identify equal memes`(file: File) {
     val fileId = file.name
-    memeMatcher.addMeme(fileId, file)
+    memeMatcher.add(fileId, file)
 
     assertEquals(fileId, memeMatcher.tryFindDuplicate(file))
   }
@@ -46,7 +46,7 @@ class MemeMatcherTest {
     val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not found")
     val doctor3 = memes["doctor3.jpg"] ?: error("doctor3.jpg is not found")
 
-    memeMatcher.addMeme(originalMeme.name, originalMeme)
+    memeMatcher.add(originalMeme.name, originalMeme)
     val memeMatch1 = memeMatcher.tryFindDuplicate(doctor3)
     assertNull(memeMatch1, "Changed meme ${doctor3.name} should be different from original one ${originalMeme.name}")
   }
@@ -58,7 +58,7 @@ class MemeMatcherTest {
     val doctor1 = memes["doctor1.jpg"] ?: error("doctor1.jpg is not found")
     val doctor2 = memes["doctor2.jpg"] ?: error("doctor2.jpg is not found")
 
-    memeMatcher.addMeme(doctor1.name, doctor1)
+    memeMatcher.add(doctor1.name, doctor1)
     val memeMatch1 = memeMatcher.tryFindDuplicate(doctor2)
     assertNull(memeMatch1, "Changed meme ${doctor2.name} should be different from original one ${doctor2.name}")
   }
@@ -67,7 +67,7 @@ class MemeMatcherTest {
   fun `Meme1 and Meme2 should be the same`() {
     val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not found")
-    memeMatcher.addMeme(meme1.name, meme1)
+    memeMatcher.add(meme1.name, meme1)
     val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
@@ -77,7 +77,7 @@ class MemeMatcherTest {
   fun `Duplicate1 and Duplicate2 should be the same`() {
     val meme1 = memes["duplicate1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["duplicate2.jpg"] ?: error("meme2.jpg is not found")
-    memeMatcher.addMeme(meme1.name, meme1)
+    memeMatcher.add(meme1.name, meme1)
     val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
