@@ -105,3 +105,9 @@ sql:
     insertMemeOfWeek: >
       insert into meme_of_week (chat_message_id)
       values (:chatMessageId)
+    insertImage: >
+      insert into image (file_id, file)
+      values (:fileId, :file)
+    selectAllImages: >
+      select file_id, file
+      from image

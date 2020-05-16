@@ -2,6 +2,7 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.MemeEntity
 import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.similarity.MemeMatcher
 import com.chsdngm.tilly.utility.BotConfig
@@ -22,9 +23,12 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import javax.annotation.PostConstruct
+import javax.imageio.ImageIO
+import kotlin.system.measureTimeMillis
 
 @Component
 class MemeHandler(private val memeRepository: MemeRepository,
+                  private val imageRepository: ImageRepository,
                   private val memeMatcher: MemeMatcher,
                   private val botConfig: BotConfigImpl) : AbstractHandler<MemeUpdate>(), BotConfig by botConfig {
 
@@ -32,17 +36,10 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   @PostConstruct
   private fun init() {
-    memeRepository
-        .findAll()
-        .distinctBy { it.fileId }
-        .parallelStream()
-        .forEach { meme ->
-          runCatching {
-            memeMatcher.addMeme(meme.fileId, downloadFromFileId(meme.fileId))
-          }.onFailure {
-            log.error("Failed to load file=${meme.fileId}", it)
-          }
-        }
+    log.info("Start loading memes into matcher")
+    measureTimeMillis {
+      imageRepository.findAll().forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
+    }.also { log.info("Finished loading memes into matcher. took: $it ms") }
   }
 
   override fun handle(update: MemeUpdate) {
@@ -60,7 +57,8 @@ class MemeHandler(private val memeRepository: MemeRepository,
       } ?: sendMemeToChat(update).let { sent ->
         val privateMessageId = sendReplyToMeme(update).messageId
         memeRepository.save(MemeEntity(sent.messageId, update.senderId, update.fileId, update.caption, privateMessageId)).also {
-          memeMatcher.addMeme(it.fileId, file)
+          imageRepository.saveImage(file, it.fileId)
+          memeMatcher.add(it.fileId, file)
           log.info("Sent meme=$it to chat")
         }
       }
