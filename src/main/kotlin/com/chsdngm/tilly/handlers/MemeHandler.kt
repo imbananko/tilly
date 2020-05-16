@@ -11,7 +11,6 @@ import com.chsdngm.tilly.utility.isFromChat
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import org.springframework.util.StopWatch
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -25,6 +24,7 @@ import java.io.FileOutputStream
 import java.net.URL
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
+import kotlin.system.measureTimeMillis
 
 @Component
 class MemeHandler(private val memeRepository: MemeRepository,
@@ -37,9 +37,9 @@ class MemeHandler(private val memeRepository: MemeRepository,
   @PostConstruct
   private fun init() {
     log.info("Start loading memes into matcher")
-    val stopWatch = StopWatch().also { it.start() }
-    imageRepository.findAll().map { entry -> memeMatcher.add(entry.key, ImageIO.read(entry.value)) }
-    log.info("Finished loading memes into matcher. took: ${stopWatch.totalTimeSeconds}s").also { stopWatch.stop() }
+    measureTimeMillis {
+      imageRepository.findAll().forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
+    }.also { log.info("Finished loading memes into matcher. took: $it ms") }
   }
 
   override fun handle(update: MemeUpdate) {

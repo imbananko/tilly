@@ -14,6 +14,6 @@ class ImageRepository(private val template: NamedParameterJdbcTemplate,
           MapSqlParameterSource("fileId", fileId)
               .addValue("file", file.readBytes()))
 
-  fun findAll() = template.query("select file_id, file from image")
+  fun findAll() = template.query(queries.getFromConfOrFail("selectAllImages"))
   { rs, _ -> rs.getString("file_id") to rs.getBinaryStream("file") }.toMap()
 }
