@@ -15,6 +15,8 @@ data class MemeEntity(
     val channelMessageId: Int? = null) {
 
   fun isPublishedOnChannel(): Boolean = channelMessageId != null
+
+  fun isLocal(): Boolean = caption?.startsWith("#local") ?: false
 }
 
 data class VoteEntity(

@@ -37,7 +37,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
     val groupedVotes = votes.values.groupingBy { it }.eachCount()
     updateChatMarkup(meme.chatMessageId, groupedVotes)
 
-    meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(votes)) {
+    meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(votes) && !meme.isLocal()) {
       val channelMessageId = sendMemeToChannel(meme, groupedVotes).messageId
       memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
@@ -46,7 +46,8 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
     runCatching {
       val privateCaptionPrefix =
-          if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
+          if (meme.isLocal()) "так как мем локальный, на канал он отправлен не будет"
+          else if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
           else "мем на модерации"
 
       val privateChatCaption = groupedVotes.entries.sortedBy { it.key }.joinToString(
