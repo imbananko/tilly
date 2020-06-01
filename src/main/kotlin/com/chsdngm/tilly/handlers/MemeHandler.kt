@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMem
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
@@ -73,7 +74,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }
   }
 
-  private fun sendMemeToChat(update: MemeUpdate) =
+  fun sendMemeToChat(update: MemeUpdate): Message =
       execute(SendPhoto()
           .setChatId(chatId)
           .setPhoto(update.fileId)
@@ -81,7 +82,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())))
 
-  private fun resolveCaption(update: MemeUpdate): String =
+  fun resolveCaption(update: MemeUpdate): String =
       update.caption ?: "" +
       if (GetChatMember()
               .setChatId(chatId)
@@ -113,7 +114,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
 
-  private fun sendReplyToMeme(update: MemeUpdate) =
+  fun sendReplyToMeme(update: MemeUpdate): Message =
       execute(SendMessage()
           .setChatId(update.senderId.toLong())
           .setReplyToMessageId(update.messageId)
@@ -131,7 +132,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           )
       )
 
-  private fun downloadFromFileId(fileId: String) =
+  fun downloadFromFileId(fileId: String): File =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {
         FileOutputStream(it).use { out ->
           URL(execute(GetFile().setFileId(fileId)).getFileUrl(botToken)).openStream().use { stream -> IOUtils.copy(stream, out) }
