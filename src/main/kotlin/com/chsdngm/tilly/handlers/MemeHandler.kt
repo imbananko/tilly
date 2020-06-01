@@ -4,6 +4,7 @@ import com.chsdngm.tilly.model.MemeEntity
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.MemeMatcher
 import com.chsdngm.tilly.utility.BotConfig
 import com.chsdngm.tilly.utility.BotConfigImpl
@@ -29,6 +30,7 @@ import kotlin.system.measureTimeMillis
 @Component
 class MemeHandler(private val memeRepository: MemeRepository,
                   private val imageRepository: ImageRepository,
+                  private val userRepository: UserRepository,
                   private val memeMatcher: MemeMatcher,
                   private val botConfig: BotConfigImpl) : AbstractHandler<MemeUpdate>(), BotConfig by botConfig {
 
@@ -44,6 +46,10 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   override fun handle(update: MemeUpdate) {
     runCatching {
+      userRepository.saveIfNotExists(GetChatMember()
+          .setChatId(channelId)
+          .setUserId(update.senderId).let { execute(it) }.user)
+
       val file = downloadFromFileId(update.fileId)
 
       memeMatcher.tryFindDuplicate(file)?.also { duplicate ->
