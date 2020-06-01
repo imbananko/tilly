@@ -18,8 +18,10 @@ import org.mockito.Mockito.*
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.boot.test.mock.mockito.SpyBean
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
-import org.telegram.telegrambots.meta.api.objects.*
+import org.telegram.telegrambots.meta.api.objects.Message
+import org.telegram.telegrambots.meta.api.objects.PhotoSize
+import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.User
 import java.io.File
 
 @RunWith(SpringJUnit4ClassRunner::class)
@@ -60,10 +62,6 @@ class MemeHandlerTest {
       `when`(this.fileId).thenReturn("file_id")
     }
 
-    val chatMember = mock(ChatMember::class.java).apply {
-      `when`(this.user).thenReturn(sender)
-    }
-
     val sentChatMessage = mock(Message::class.java).apply {
       `when`(this.messageId).thenReturn(333)
     }
@@ -75,7 +73,6 @@ class MemeHandlerTest {
     `when`(config.channelId).thenReturn(10101)
     `when`(memeRepository.save(any(MemeEntity::class.java))).thenReturn(MemeEntity(333, 123, "file_id", null, null, null))
 
-    doReturn(chatMember).`when`(handler).execute(any(GetChatMember::class.java))
     doReturn(File("pathname")).`when`(handler).downloadFromFileId("file_id")
     doReturn(sentChatMessage).`when`(handler).sendMemeToChat(any(MemeUpdate::class.java))
     doReturn(Message()).`when`(handler).sendReplyToMeme(any(MemeUpdate::class.java))

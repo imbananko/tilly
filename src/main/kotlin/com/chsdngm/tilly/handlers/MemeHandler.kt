@@ -20,6 +20,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.Message
+import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
@@ -47,23 +48,20 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   override fun handle(update: MemeUpdate) {
     runCatching {
-      userRepository.saveIfNotExists(GetChatMember()
-          .setChatId(channelId)
-          .setUserId(update.senderId).let { execute(it) }.user)
-
+      userRepository.saveIfNotExists(update.user)
       val file = downloadFromFileId(update.fileId)
 
       memeMatcher.tryFindDuplicate(file)?.also { duplicate ->
-        sendSorryText(update.senderId.toLong(), update.messageId)
+        sendSorryText(update)
         memeRepository.findByFileId(duplicate)?.also { meme ->
-          meme.channelMessageId?.apply { forwardMemeFromChannel(meme, update.senderId.toLong()) }
-              ?: forwardMemeFromChat(meme, update.senderId.toLong())
+          meme.channelMessageId?.apply { forwardMemeFromChannelToUser(meme, update.user) }
+              ?: forwardMemeFromChatToUser(meme, update.user)
           runCatching { sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId) }
               .onFailure { throwable -> log.error("Can't send duplicate info to beta chat", throwable) }
         }
       } ?: sendMemeToChat(update).let { sent ->
         val privateMessageId = sendReplyToMeme(update).messageId
-        memeRepository.save(MemeEntity(sent.messageId, update.senderId, update.fileId, update.caption, privateMessageId)).also {
+        memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
           imageRepository.saveImage(file, it.fileId)
           memeMatcher.add(it.fileId, file)
           log.info("Sent meme=$it to chat")
@@ -86,37 +84,37 @@ class MemeHandler(private val memeRepository: MemeRepository,
       update.caption ?: "" +
       if (GetChatMember()
               .setChatId(chatId)
-              .setUserId(update.senderId).let { execute(it) }
+              .setUserId(update.user.id).let { execute(it) }
               .isFromChat()) ""
       else "\n\nSender: ${update.senderName}"
 
-  private fun forwardMemeFromChannel(meme: MemeEntity, senderId: Long) {
+  private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
     execute(ForwardMessage()
-        .setChatId(senderId)
+        .setChatId(user.id.toLong())
         .setMessageId(meme.channelMessageId)
         .disableNotification())
-    log.info("Successfully forwarded original meme to sender=$senderId. $meme")
+    log.info("Successfully forwarded original meme to sender=${user.id}. $meme")
   }
 
-  private fun forwardMemeFromChat(meme: MemeEntity, senderId: Long) {
+  private fun forwardMemeFromChatToUser(meme: MemeEntity, user: User) {
     execute(ForwardMessage()
-        .setChatId(senderId)
+        .setChatId(user.id.toLong())
         .setFromChatId(chatId)
         .setMessageId(meme.chatMessageId)
         .disableNotification())
-    log.info("Successfully forwarded original meme to sender=$senderId. $meme")
+    log.info("Successfully forwarded original meme to sender=${user.id}. $meme")
   }
 
-  private fun sendSorryText(senderId: Long, messageId: Int) =
+  private fun sendSorryText(update: MemeUpdate) =
       execute(SendMessage()
-          .setChatId(senderId)
-          .setReplyToMessageId(messageId)
+          .setChatId(update.user.id.toLong())
+          .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
 
   fun sendReplyToMeme(update: MemeUpdate): Message =
       execute(SendMessage()
-          .setChatId(update.senderId.toLong())
+          .setChatId(update.user.id.toLong())
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("мем на модерации"))

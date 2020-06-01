@@ -2,6 +2,7 @@ package com.chsdngm.tilly.model
 
 import com.chsdngm.tilly.utility.mention
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.User
 import java.time.Instant
 
 const val week: Long = 60 * 60 * 24 * 7
@@ -57,11 +58,11 @@ class MemeUpdate(update: Update) {
   val messageId: Int = update.message.messageId
   val caption: String? = update.message.caption
   val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
-  val senderId: Int = update.message.from.id
+  val user: User = update.message.from
   val senderName: String = update.message.from.mention()
 
   override fun toString(): String {
-    return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', senderId=$senderId, senderName='$senderName')"
+    return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='$user)"
   }
 }
 
