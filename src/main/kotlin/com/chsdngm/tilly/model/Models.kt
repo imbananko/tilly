@@ -45,7 +45,7 @@ class VoteUpdate(update: Update) {
   val caption: String? = update.callbackQuery.message.caption
 
   override fun toString(): String {
-    return "VoteUpdate(fromId=$fromId, chatMessageId=$messageId, isFrom=$isFrom, isMessageOld=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
+    return "VoteUpdate(fromId=$fromId, messageId=$messageId, isFrom=$isFrom, isNotProcessable=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
   }
 }
 

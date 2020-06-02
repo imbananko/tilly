@@ -9,6 +9,7 @@ import com.chsdngm.tilly.similarity.MemeMatcher
 import com.chsdngm.tilly.utility.BotConfig
 import com.chsdngm.tilly.utility.BotConfigImpl
 import com.chsdngm.tilly.utility.isFromChat
+import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -90,7 +91,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
     execute(ForwardMessage()
-        .setChatId(user.id.toLong())
+        .setChatId(user.id)
         .setMessageId(meme.channelMessageId)
         .disableNotification())
     log.info("Successfully forwarded original meme to sender=${user.id}. $meme")
@@ -98,7 +99,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   private fun forwardMemeFromChatToUser(meme: MemeEntity, user: User) {
     execute(ForwardMessage()
-        .setChatId(user.id.toLong())
+        .setChatId(user.id)
         .setFromChatId(chatId)
         .setMessageId(meme.chatMessageId)
         .disableNotification())
@@ -107,14 +108,14 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   private fun sendSorryText(update: MemeUpdate) =
       execute(SendMessage()
-          .setChatId(update.user.id.toLong())
+          .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
 
   fun sendReplyToMeme(update: MemeUpdate): Message =
       execute(SendMessage()
-          .setChatId(update.user.id.toLong())
+          .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("мем на модерации"))
