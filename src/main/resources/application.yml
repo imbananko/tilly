@@ -20,9 +20,9 @@ sql:
       insert into meme (chat_message_id, sender_id, file_id, private_message_id, caption)
       values (:chatMessageId, :senderId, :fileId, :privateMessageId, :caption)
     insertUserIfNotExists: >
-      insert into users (user_id, username, first_name, last_name)
-      select :userId, :username, :firstName, :lastName
-      where not exists (select 1 from users where user_id = :userId)
+      insert into telegram_user (id, username, first_name, last_name)
+      values (:userId, :username, :firstName, :lastName)
+      on conflict do nothing
     findMemeByMessageId: >
       select chat_message_id, sender_id, file_id, channel_message_id, private_message_id, caption
       from meme
