@@ -28,7 +28,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
                        private val botConfig: BotConfigImpl) : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig by botConfig {
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Scheduled(cron = "0 0 19 * * WED")
+  @Scheduled(cron = "0 55 20 * * WED")
   private fun sendMemeOfTheWeek() {
     runCatching {
       val meme: MemeEntity? = memeRepository.findMemeOfTheWeek()
