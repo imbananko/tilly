@@ -39,11 +39,13 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   private val log = LoggerFactory.getLogger(javaClass)
 
+  private var memeCount: Int = 0
+
   @PostConstruct
   private fun init() {
     log.info("Start loading memes into matcher")
     measureTimeMillis {
-      imageRepository.findAll().forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
+      imageRepository.findAll().apply { memeCount = this.size }.forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
     }.also { log.info("Finished loading memes into matcher. took: $it ms") }
   }
 
@@ -52,24 +54,37 @@ class MemeHandler(private val memeRepository: MemeRepository,
       userRepository.saveIfNotExists(update.user)
       val file = downloadFromFileId(update.fileId)
 
-      memeMatcher.tryFindDuplicate(file)?.also { duplicate ->
+      memeMatcher.tryFindDuplicate(file)?.also {
         sendSorryText(update)
-        memeRepository.findByFileId(duplicate)?.also { meme ->
+
+        memeRepository.findByFileId(it)?.also { meme ->
           meme.channelMessageId?.apply { forwardMemeFromChannelToUser(meme, update.user) }
               ?: forwardMemeFromChatToUser(meme, update.user)
-          runCatching { sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId) }
-              .onFailure { throwable -> log.error("Can't send duplicate info to beta chat", throwable) }
+          sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
-      } ?: sendMemeToChat(update).let { sent ->
-        val privateMessageId = sendReplyToMeme(update).messageId
-        memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
-          imageRepository.saveImage(file, it.fileId)
-          memeMatcher.add(it.fileId, file)
-          log.info("Sent meme=$it to chat")
+      } ?: if (++memeCount % 5 == 0) {
+        log.info("Lottery moderation! update=$update count=$memeCount")
+        memeRepository.getRating().forEach {
+          log.info("user=${it.key} rating=${it.value}")
+        }
+
+        sendMemeToChat(update).let { sent ->
+          val privateMessageId = sendReplyToMeme(update).messageId
+          memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also { log.info("Sent meme=$it to chat") }
+          imageRepository.saveImage(file, update.fileId)
+          memeMatcher.add(update.fileId, file)
+        }
+      } else {
+        sendMemeToChat(update).let { sent ->
+          val privateMessageId = sendReplyToMeme(update).messageId
+
+          memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also { log.info("Sent meme=$it to chat") }
+          imageRepository.saveImage(file, update.fileId)
+          memeMatcher.add(update.fileId, file)
         }
       }
-    }.onFailure { throwable ->
-      log.error("Failed to check duplicates for update=$update", throwable)
+    }.onFailure {
+      log.error("Failed to handle update=$update", it)
     }
   }
 
