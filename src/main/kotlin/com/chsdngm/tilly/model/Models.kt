@@ -62,7 +62,7 @@ class MemeUpdate(update: Update) {
   val senderName: String = update.message.from.mention()
 
   override fun toString(): String {
-    return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='$user)"
+    return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='${user.id})"
   }
 }
 

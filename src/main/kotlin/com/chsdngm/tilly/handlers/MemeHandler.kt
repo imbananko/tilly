@@ -63,9 +63,20 @@ class MemeHandler(private val memeRepository: MemeRepository,
           sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
       } ?: if (++memeCount % 5 == 0) {
-        log.info("Lottery moderation! update=$update count=$memeCount")
-        memeRepository.getRating().forEach {
-          log.info("user=${it.key} rating=${it.value}")
+
+        if (!userRepository.isRankedModerationAvailable()) log.info("Ranked moderation is not available! Restricted list is full")
+
+        with(memeRepository.getTopSenders(5).iterator()) {
+          var success = false
+          var winnerId = 0
+          while (this.hasNext() && !success) {
+            success = userRepository.restrictModerationForUser(this.next().also {
+              log.info("Trying to pick user=${it.key}")
+              winnerId = it.key
+            }.key)
+          }
+          if (success)
+            log.info("Top rank user=$winnerId")
         }
 
         sendMemeToChat(update).let { sent ->

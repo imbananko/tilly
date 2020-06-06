@@ -110,7 +110,8 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
       )
 
   //Temporary placed here due to dependency injections
-  fun getRating(): Map<Int, Int> = template.query(queries.getFromConfOrFail("selectRating")) { rs, _ ->
+  fun getTopSenders(count: Int): Map<Int, Int> = template.query(queries.getFromConfOrFail("selectTopSenders"),
+      MapSqlParameterSource("count", count)) { rs, _ ->
     rs.getInt("sender_id") to rs.getInt("rating")
   }.toMap()
 

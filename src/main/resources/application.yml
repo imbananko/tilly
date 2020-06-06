@@ -111,7 +111,7 @@ sql:
     selectAllImages: >
       select file_id, file
       from image
-    selectRating: >
+    selectTopSenders: >
       select sender_id, sum(up) - sum(down) - 2 * count(1) rating
       from (select sender_id, up, down
             from meme m
@@ -125,3 +125,4 @@ sql:
             where created_at >= now() - interval '3 days') t
       group by sender_id
       order by rating desc
+      limit :count
