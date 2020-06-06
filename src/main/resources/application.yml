@@ -111,3 +111,17 @@ sql:
     selectAllImages: >
       select file_id, file
       from image
+    selectRating: >
+      select sender_id, sum(up) - sum(down) - 2 * count(1) rating
+      from (select sender_id, up, down
+            from meme m
+                     inner join (select chat_message_id,
+                                        count(*) filter (where value = 'UP')   up,
+                                        count(*) filter (where value = 'DOWN') down,
+                                        count(1)                               all_votes
+                                 from vote
+                                 group by chat_message_id) v
+                                on (m.chat_message_id = v.chat_message_id)
+            where created_at >= now() - interval '3 days') t
+      group by sender_id
+      order by rating desc
