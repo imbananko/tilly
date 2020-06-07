@@ -3,9 +3,12 @@ spring:
     continue-on-error: true
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
-    password: password
-    url: url
-    username: username
+    password: tilly
+    url: localhost
+    username: tilly
+  redis:
+    host: localhost
+    port: 6379
 
 bot:
   token: token
