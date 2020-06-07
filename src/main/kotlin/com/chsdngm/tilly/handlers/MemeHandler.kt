@@ -62,6 +62,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
       if (++memeCount % 5 == 0 && userRepository.isRankedModerationAvailable()) {
+        log.info("Ranked moderation time!")
 
         val iterator = memeRepository.getTopSenders(5).keys.iterator()
         var success = false
@@ -77,6 +78,8 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
         if (success)
           log.info("Picked userId=$winnerId")
+        else
+          log.info("User is already on list")
 
         moderateWithChat(update)
       } else {
