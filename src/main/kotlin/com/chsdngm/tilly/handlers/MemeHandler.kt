@@ -50,52 +50,64 @@ class MemeHandler(private val memeRepository: MemeRepository,
   }
 
   override fun handle(update: MemeUpdate) {
+    update.file = download(update.fileId)
+
     runCatching {
       userRepository.saveIfNotExists(update.user)
-      val file = downloadFromFileId(update.fileId)
 
-      memeMatcher.tryFindDuplicate(file)?.also {
-        sendSorryText(update)
+      memeMatcher.tryFindDuplicate(update.file)?.also {
+        handleDuplicate(update)
+      }
+    }.onFailure {
+      log.info("Failed to check duplicates for update=$update")
+    }.getOrThrow() ?: runCatching {
+      if (++memeCount % 5 == 0 && userRepository.isRankedModerationAvailable()) {
 
-        memeRepository.findByFileId(it)?.also { meme ->
-          meme.channelMessageId?.apply { forwardMemeFromChannelToUser(meme, update.user) }
-              ?: forwardMemeFromChatToUser(meme, update.user)
-          sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
-        }
-      } ?: if (++memeCount % 5 == 0) {
+        val iterator = memeRepository.getTopSenders(5).keys.iterator()
+        var success = false
+        var winnerId = 0
 
-        if (!userRepository.isRankedModerationAvailable()) log.info("Ranked moderation is not available! Restricted list is full")
-
-        with(memeRepository.getTopSenders(5).iterator()) {
-          var success = false
-          var winnerId = 0
-          while (this.hasNext() && !success) {
-            success = userRepository.restrictModerationForUser(this.next().also {
-              log.info("Trying to pick user=${it.key}")
-              winnerId = it.key
-            }.key)
+        while (iterator.hasNext() && !success) {
+          with(iterator.next()) {
+            log.info("Trying to pick userId=$this")
+            success = userRepository.tryPickUserForModeration(this)
+            winnerId = this
           }
-          if (success)
-            log.info("Top rank user=$winnerId")
         }
 
-        sendMemeToChat(update).let { sent ->
-          val privateMessageId = sendReplyToMeme(update).messageId
-          memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also { log.info("Sent meme=$it to chat") }
-          imageRepository.saveImage(file, update.fileId)
-          memeMatcher.add(update.fileId, file)
-        }
+        if (success)
+          log.info("Picked userId=$winnerId")
+
+        moderateWithChat(update)
       } else {
-        sendMemeToChat(update).let { sent ->
-          val privateMessageId = sendReplyToMeme(update).messageId
-
-          memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also { log.info("Sent meme=$it to chat") }
-          imageRepository.saveImage(file, update.fileId)
-          memeMatcher.add(update.fileId, file)
-        }
+        moderateWithChat(update)
       }
     }.onFailure {
       log.error("Failed to handle update=$update", it)
+    }
+  }
+
+  fun handleDuplicate(update: MemeUpdate) {
+    sendSorryText(update)
+
+    memeRepository.findByFileId(update.fileId)?.also { meme ->
+      if (meme.channelMessageId == null)
+        forwardMemeFromChatToUser(meme, update.user)
+      else
+        forwardMemeFromChannelToUser(meme, update.user)
+    }
+
+    sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = update.fileId)
+  }
+
+  fun moderateWithChat(update: MemeUpdate) {
+    sendMemeToChat(update).let { sent ->
+      val privateMessageId = sendReplyToMeme(update).messageId
+      memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
+        log.info("Sent meme=$it to chat")
+      }
+      imageRepository.saveImage(update.file, update.fileId)
+      memeMatcher.add(update.fileId, update.file)
     }
   }
 
@@ -147,17 +159,14 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setText("мем на модерации"))
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
-      execute(
-          SendMediaGroup(
-              betaChatId,
-              listOf(
-                  InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
-                  InputMediaPhoto(originalFileId, "оригинал")
-              )
-          )
-      )
+      SendMediaGroup(
+          betaChatId,
+          listOf(
+              InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
+              InputMediaPhoto(originalFileId, "оригинал")
+          )).let { execute(it) }
 
-  fun downloadFromFileId(fileId: String): File =
+  fun download(fileId: String): File =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {
         FileOutputStream(it).use { out ->
           URL(execute(GetFile().setFileId(fileId)).getFileUrl(botToken)).openStream().use { stream -> IOUtils.copy(stream, out) }

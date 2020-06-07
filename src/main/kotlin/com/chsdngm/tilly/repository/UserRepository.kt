@@ -27,7 +27,7 @@ class UserRepository(private val template: NamedParameterJdbcTemplate,
           .addValue("lastName", user.lastName))
 
 
-  fun restrictModerationForUser(userId: Int): Boolean {
+  fun tryPickUserForModeration(userId: Int): Boolean {
     val now = Date().time
 
     return if (now - (set.score(rankedModerationKey, userId)?.toLong() ?: 0) > oneDay) {
