@@ -44,6 +44,7 @@ class VoteUpdate(update: Update) {
   val isNotProcessable: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
   val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
   val caption: String? = update.callbackQuery.message.caption
+  val callbackQueryId: String = update.callbackQuery.id
 
   override fun toString(): String {
     return "VoteUpdate(fromId=$fromId, messageId=$messageId, isFrom=$isFrom, isNotProcessable=$isNotProcessable, voteValue=$voteValue, caption=$caption)"

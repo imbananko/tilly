@@ -7,6 +7,7 @@ import com.chsdngm.tilly.utility.BotConfig
 import com.chsdngm.tilly.utility.BotConfigImpl
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
@@ -42,7 +43,17 @@ class VoteHandler(private val memeRepository: MemeRepository,
       memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
 
-    if (votes.containsKey(vote.voterId)) voteRepository.insertOrUpdate(vote) else voteRepository.delete(vote)
+    if (votes.containsKey(vote.voterId)) {
+      when (vote.voteValue) {
+        VoteValue.UP -> sendPopupNotification(update.callbackQueryId, "Вы обогатили этот мем ${update.voteValue.emoji}")
+        VoteValue.DOWN -> sendPopupNotification(update.callbackQueryId, "Вы засрали этот мем ${update.voteValue.emoji}")
+      }
+      voteRepository.insertOrUpdate(vote)
+    }
+    else {
+      sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
+      voteRepository.delete(vote)
+    }
 
     runCatching {
       val privateCaptionPrefix =
@@ -57,6 +68,12 @@ class VoteHandler(private val memeRepository: MemeRepository,
     }.onFailure { log.error("Failed to update private caption", it) }
 
     log.info("Processed vote update=$update")
+  }
+
+  private fun sendPopupNotification(callbackQueryId: String, text: String) {
+    AnswerCallbackQuery()
+        .setCallbackQueryId(callbackQueryId)
+        .setText(text).let { execute(it) }
   }
 
   private fun updateChatMarkup(messageId: Int, votes: Map<VoteValue, Int>) =
