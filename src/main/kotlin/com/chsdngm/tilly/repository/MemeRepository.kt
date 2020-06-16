@@ -109,11 +109,5 @@ class MemeRepository(private val template: NamedParameterJdbcTemplate, private v
               .addValue("newChannelMessageId", new.channelMessageId)
       )
 
-  //Temporary placed here due to dependency injections
-  fun getTopSenders(count: Int): Map<Int, Int> = template.query(queries.getFromConfOrFail("selectTopSenders"),
-      MapSqlParameterSource("count", count)) { rs, _ ->
-    rs.getInt("sender_id") to rs.getInt("rating")
-  }.toMap()
-
   private fun <T> checkZero(param: T): T? = if (param == 0 || param == 0L) null else param
 }

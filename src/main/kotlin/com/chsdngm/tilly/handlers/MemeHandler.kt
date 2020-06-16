@@ -6,8 +6,10 @@ import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.MemeMatcher
-import com.chsdngm.tilly.utility.BotConfig
-import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.BotConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import com.chsdngm.tilly.utility.isFromChat
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
@@ -26,6 +28,7 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.concurrent.atomic.AtomicInteger
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
 import kotlin.system.measureTimeMillis
@@ -34,18 +37,16 @@ import kotlin.system.measureTimeMillis
 class MemeHandler(private val memeRepository: MemeRepository,
                   private val imageRepository: ImageRepository,
                   private val userRepository: UserRepository,
-                  private val memeMatcher: MemeMatcher,
-                  private val botConfig: BotConfigImpl) : AbstractHandler<MemeUpdate>(), BotConfig by botConfig {
+                  private val memeMatcher: MemeMatcher) : AbstractHandler<MemeUpdate>() {
 
   private val log = LoggerFactory.getLogger(javaClass)
-
-  private var memeCount: Int = 0
+  private val memeCount = AtomicInteger(0)
 
   @PostConstruct
   private fun init() {
     log.info("Start loading memes into matcher")
     measureTimeMillis {
-      imageRepository.findAll().apply { memeCount = this.size }.forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
+      imageRepository.findAll().apply { memeCount.set(this.size) }.forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
     }.also { log.info("Finished loading memes into matcher. took: $it ms") }
   }
 
@@ -61,10 +62,10 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
-      if (++memeCount % 5 == 0 && userRepository.isRankedModerationAvailable()) {
+      if (memeCount.incrementAndGet() % 5 == 0 && userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
 
-        val winnerId = memeRepository.getTopSenders(5).keys.find { userRepository.tryPickUserForModeration(it) }
+        val winnerId = userRepository.getTopSenders(5).keys.find { userRepository.tryPickUserForModeration(it) }
 
         if (winnerId != null)
           log.info("Picked userId=$winnerId")
@@ -105,8 +106,8 @@ class MemeHandler(private val memeRepository: MemeRepository,
   }
 
   fun sendMemeToChat(update: MemeUpdate): Message =
-      execute(SendPhoto()
-          .setChatId(chatId)
+      api.execute(SendPhoto()
+          .setChatId(CHAT_ID)
           .setPhoto(update.fileId)
           .setCaption(runCatching { resolveCaption(update) }.getOrNull())
           .setParseMode(ParseMode.HTML)
@@ -115,13 +116,13 @@ class MemeHandler(private val memeRepository: MemeRepository,
   fun resolveCaption(update: MemeUpdate): String =
       update.caption ?: "" +
       if (GetChatMember()
-              .setChatId(chatId)
-              .setUserId(update.user.id).let { execute(it) }
+              .setChatId(CHAT_ID)
+              .setUserId(update.user.id).let { api.execute(it) }
               .isFromChat()) ""
       else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
-    execute(ForwardMessage()
+    api.execute(ForwardMessage()
         .setChatId(user.id)
         .setMessageId(meme.channelMessageId)
         .disableNotification())
@@ -129,23 +130,23 @@ class MemeHandler(private val memeRepository: MemeRepository,
   }
 
   private fun forwardMemeFromChatToUser(meme: MemeEntity, user: User) {
-    execute(ForwardMessage()
+    api.execute(ForwardMessage()
         .setChatId(user.id)
-        .setFromChatId(chatId)
+        .setFromChatId(CHAT_ID)
         .setMessageId(meme.chatMessageId)
         .disableNotification())
     log.info("Successfully forwarded original meme to sender=${user.id}. $meme")
   }
 
   private fun sendSorryText(update: MemeUpdate) =
-      execute(SendMessage()
+      api.execute(SendMessage()
           .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
 
   fun sendReplyToMeme(update: MemeUpdate): Message =
-      execute(SendMessage()
+      api.execute(SendMessage()
           .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
@@ -153,16 +154,16 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
       SendMediaGroup(
-          betaChatId,
+          BETA_CHAT_ID,
           listOf(
               InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
               InputMediaPhoto(originalFileId, "оригинал")
-          )).let { execute(it) }
+          )).let { api.execute(it) }
 
   fun download(fileId: String): File =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {
         FileOutputStream(it).use { out ->
-          URL(execute(GetFile().setFileId(fileId)).getFileUrl(botToken)).openStream().use { stream -> IOUtils.copy(stream, out) }
+          URL(api.execute(GetFile().setFileId(fileId)).getFileUrl(BOT_TOKEN)).openStream().use { stream -> IOUtils.copy(stream, out) }
         }
       }.also {
         log.info("Successfully downloaded file=$it")

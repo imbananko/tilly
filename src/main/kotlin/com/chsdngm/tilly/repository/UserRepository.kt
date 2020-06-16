@@ -24,6 +24,10 @@ class UserRepository(private val template: NamedParameterJdbcTemplate,
           .addValue("firstName", user.firstName)
           .addValue("lastName", user.lastName))
 
+  fun getTopSenders(count: Int): Map<Int, Int> = template.query(queries.getFromConfOrFail("selectTopSenders"),
+      MapSqlParameterSource("count", count)) { rs, _ ->
+    rs.getInt("sender_id") to rs.getInt("rating")
+  }.toMap()
 
   fun tryPickUserForModeration(userId: Int) =
       if (ops.get("$rankedModerationKey-$userId") == null) {
