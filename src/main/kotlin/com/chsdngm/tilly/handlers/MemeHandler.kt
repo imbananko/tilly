@@ -64,19 +64,9 @@ class MemeHandler(private val memeRepository: MemeRepository,
       if (++memeCount % 5 == 0 && userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
 
-        val iterator = memeRepository.getTopSenders(5).keys.iterator()
-        var success = false
-        var winnerId = 0
+        val winnerId = memeRepository.getTopSenders(5).keys.find { userRepository.tryPickUserForModeration(it) }
 
-        while (iterator.hasNext() && !success) {
-          with(iterator.next()) {
-            log.info("Trying to pick userId=$this")
-            success = userRepository.tryPickUserForModeration(this)
-            winnerId = this
-          }
-        }
-
-        if (success)
+        if (winnerId != null)
           log.info("Picked userId=$winnerId")
         else
           log.info("User is already on list")
