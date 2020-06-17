@@ -116,7 +116,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setReplyMarkup(createMarkup(emptyMap())))
 
   fun resolveCaption(update: MemeUpdate): String =
-      update.caption +
+      update.caption ?: "" +
           if (GetChatMember()
                   .setChatId(CHAT_ID)
                   .setUserId(update.user.id).let { api.execute(it) }
