@@ -12,7 +12,7 @@ data class MemeEntity(
     val chatMessageId: Int,
     val senderId: Int,
     val fileId: String,
-    val caption: String,
+    val caption: String?,
     val privateMessageId: Int? = null,
     val channelMessageId: Int? = null) {
 
@@ -58,7 +58,7 @@ enum class SourceType {
 
 open class MemeUpdate(update: Update) {
   val messageId: Int = update.message.messageId
-  val caption: String = update.message.caption ?: ""
+  val caption: String? = update.message.caption
   val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
   val user: User = update.message.from
   val senderName: String = update.message.from.mention()
