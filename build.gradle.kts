@@ -5,7 +5,7 @@ version = "1.0"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
 val kotlinVersion = "1.3.70"
-val springVersion = "2.2.0.RELEASE"
+val springVersion = "2.3.0.RELEASE"
 val jupiterVersion = "5.5.2"
 
 repositories {
@@ -31,15 +31,16 @@ dependencies {
   implementation("org.telegram:telegrambots-spring-boot-starter:4.8.1")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.postgresql:postgresql:42.2.6")
-  implementation("org.springframework.boot:spring-boot-starter-data-jdbc:$springVersion")
+  implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
   implementation("org.springframework.boot:spring-boot-configuration-processor")
+  implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("com.github.kilianB:JImageHash:3.0.0")
   implementation("org.jsoup:jsoup:1.13.1")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
-  testImplementation("org.springframework.boot:spring-boot-starter-test:$springVersion")
+  testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 tasks.bootJar {

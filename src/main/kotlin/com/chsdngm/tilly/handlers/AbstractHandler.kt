@@ -1,16 +1,12 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.utility.BotConfig
 import org.jsoup.Jsoup.connect
 import org.jsoup.nodes.TextNode
-import org.telegram.telegrambots.bots.DefaultAbsSender
-import org.telegram.telegrambots.bots.DefaultBotOptions
-import org.telegram.telegrambots.meta.ApiContext
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
-abstract class AbstractHandler<T> : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig {
+abstract class AbstractHandler<T> {
   abstract fun handle(update: T)
 
   companion object {

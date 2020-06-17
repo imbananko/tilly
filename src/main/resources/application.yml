@@ -3,9 +3,12 @@ spring:
     continue-on-error: true
     driver-class-name: org.postgresql.Driver
     initialization-mode: always
-    password: password
-    url: url
-    username: username
+    password: tilly
+    url: localhost
+    username: tilly
+  redis:
+    host: localhost
+    port: 6379
 
 bot:
   token: token
@@ -111,3 +114,18 @@ sql:
     selectAllImages: >
       select file_id, file
       from image
+    selectTopSenders: >
+      select sender_id, sum(up) - sum(down) - 2 * count(1) rating
+      from (select sender_id, up, down
+            from meme m
+                     inner join (select chat_message_id,
+                                        count(*) filter (where value = 'UP')   up,
+                                        count(*) filter (where value = 'DOWN') down,
+                                        count(1)                               all_votes
+                                 from vote
+                                 group by chat_message_id) v
+                                on (m.chat_message_id = v.chat_message_id)
+            where created_at >= now() - interval '3 days') t
+      group by sender_id
+      order by rating desc
+      limit :count

@@ -2,31 +2,56 @@ package com.chsdngm.tilly.utility
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-
-interface BotConfig {
-  val chatId: Long
-  val channelId: Long
-  val betaChatId: Long
-  val token: String
-  val username: String
-
-  fun getBotToken(): String
-  fun getBotUsername(): String
-}
+import org.telegram.telegrambots.bots.DefaultAbsSender
+import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Component
-class BotConfigImpl : BotConfig {
-  @Value("\${target.chat.id}")
-  override val chatId: Long = 0
-  @Value("\${target.channel.id}")
-  override val channelId: Long = 0
-  @Value("\${beta.chat.id}")
-  override val betaChatId: Long = 0
-  @Value("\${bot.token}")
-  override lateinit var token: String
-  @Value("\${bot.username}")
-  override lateinit var username: String
+class BotConfig {
+  companion object {
 
-  override fun getBotToken(): String = token
-  override fun getBotUsername(): String = username
+    @JvmField
+    var CHAT_ID = 0L
+
+    @JvmField
+    var CHANNEL_ID = 0L
+
+    @JvmField
+    var BETA_CHAT_ID = 0L
+
+    @JvmField
+    var BOT_TOKEN = ""
+
+    @JvmField
+    var BOT_USERNAME = ""
+
+    val api = object : DefaultAbsSender(DefaultBotOptions()) {
+      override fun getBotToken(): String = BOT_TOKEN
+    }
+  }
+
+  @Value("\${bot.token}")
+  fun setToken(token: String) {
+    BOT_TOKEN = token
+  }
+
+  @Value("\${bot.username}")
+  fun setUsername(username: String) {
+    BOT_USERNAME = username
+  }
+
+  @Value("\${beta.chat.id}")
+  fun setBetaChatId(betaChatId: Long) {
+    BETA_CHAT_ID = betaChatId
+  }
+
+  @Value("\${target.channel.id}")
+  fun setChannelId(channelId: Long) {
+    CHANNEL_ID = channelId
+  }
+
+  @Value("\${target.chat.id}")
+  fun setChatId(chatId: Long) {
+    CHAT_ID = chatId
+  }
+
 }
