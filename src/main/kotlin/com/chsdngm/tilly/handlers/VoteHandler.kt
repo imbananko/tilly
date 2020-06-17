@@ -6,6 +6,7 @@ import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
+import com.chsdngm.tilly.utility.isLocal
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
@@ -38,7 +39,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
     val groupedVotes = votes.values.groupingBy { it }.eachCount()
     updateChatMarkup(meme.chatMessageId, groupedVotes)
 
-    meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(votes) && !meme.isLocal()) {
+    meme.channelMessageId?.also { updateChannelMarkup(it, groupedVotes) } ?: if (readyForShipment(meme, votes)) {
       val channelMessageId = sendMemeToChannel(meme, groupedVotes).messageId
       memeRepository.update(meme, meme.copy(channelMessageId = channelMessageId))
     }
@@ -49,16 +50,15 @@ class VoteHandler(private val memeRepository: MemeRepository,
         VoteValue.DOWN -> sendPopupNotification(update.callbackQueryId, "Вы засрали этот мем ${update.voteValue.emoji}")
       }
       voteRepository.insertOrUpdate(vote)
-    }
-    else {
+    } else {
       sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
       voteRepository.delete(vote)
     }
 
     runCatching {
       val privateCaptionPrefix =
-          if (meme.isLocal()) "так как мем локальный, на канал он отправлен не будет"
-          else if (meme.isPublishedOnChannel() || readyForShipment(votes)) "мем отправлен на канал"
+          if (meme.caption.isLocal()) "так как мем локальный, на канал он отправлен не будет"
+          else if (meme.isPublishedOnChannel() || readyForShipment(meme, votes)) "мем отправлен на канал"
           else "мем на модерации"
 
       val privateChatCaption = groupedVotes.entries.sortedBy { it.key }.joinToString(
@@ -98,8 +98,9 @@ class VoteHandler(private val memeRepository: MemeRepository,
           .let { api.execute(it) }
           .also { log.info("Sent meme to channel=$meme") }
 
-  private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
-          votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
+  private fun readyForShipment(meme: MemeEntity, votes: MutableMap<Int, VoteValue>): Boolean =
+      (votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size) >= 5 &&
+          !meme.caption.isLocal()
 
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
       EditMessageText()

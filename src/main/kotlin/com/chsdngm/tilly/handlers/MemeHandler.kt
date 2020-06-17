@@ -11,6 +11,7 @@ import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import com.chsdngm.tilly.utility.isFromChat
+import com.chsdngm.tilly.utility.isLocal
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -62,7 +63,9 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
-      if (memeCount.incrementAndGet() % 5 == 0 && userRepository.isRankedModerationAvailable()) {
+      if (!update.caption.isLocal() &&
+          memeCount.incrementAndGet() % 5 == 0 &&
+          userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
 
         val winnerId = userRepository.getTopSenders(5).keys.find { userRepository.tryPickUserForModeration(it) }
@@ -114,12 +117,12 @@ class MemeHandler(private val memeRepository: MemeRepository,
           .setReplyMarkup(createMarkup(emptyMap())))
 
   fun resolveCaption(update: MemeUpdate): String =
-      update.caption ?: "" +
-      if (GetChatMember()
-              .setChatId(CHAT_ID)
-              .setUserId(update.user.id).let { api.execute(it) }
-              .isFromChat()) ""
-      else "\n\nSender: ${update.senderName}"
+      update.caption +
+          if (GetChatMember()
+                  .setChatId(CHAT_ID)
+                  .setUserId(update.user.id).let { api.execute(it) }
+                  .isFromChat()) ""
+          else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
     api.execute(ForwardMessage()
