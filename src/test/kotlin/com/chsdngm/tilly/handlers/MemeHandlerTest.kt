@@ -2,7 +2,6 @@ package com.chsdngm.tilly.handlers
 
 //@RunWith(SpringJUnit4ClassRunner::class)
 class MemeHandlerTest {
-
 //  @MockBean
 //  private lateinit var voteRepository: VoteRepository
 //
