@@ -62,7 +62,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
-      if (update.caption?.contains("#local") != true &&
+      if (update.caption?.contains("#local") != false &&
           memeCount.incrementAndGet() % 5 == 0 &&
           userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")

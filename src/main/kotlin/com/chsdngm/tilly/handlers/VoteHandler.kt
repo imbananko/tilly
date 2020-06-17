@@ -98,7 +98,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
           .also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(meme: MemeEntity, votes: MutableMap<Int, VoteValue>): Boolean =
-      (votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size) >= 5 &&
+      (votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size) >= 1 &&
           meme.caption?.contains("#local") == false
 
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
