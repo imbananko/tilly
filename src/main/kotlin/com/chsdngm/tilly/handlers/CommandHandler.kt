@@ -4,16 +4,15 @@ import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.VoteRepository
-import com.chsdngm.tilly.utility.BotConfig
-import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 
 @Component
-class CommandHandler(private val voteRepository: VoteRepository,
-                     private val botConfig: BotConfigImpl) : AbstractHandler<CommandUpdate>(), BotConfig by botConfig {
+class CommandHandler(private val voteRepository: VoteRepository) : AbstractHandler<CommandUpdate>() {
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: CommandUpdate) {
@@ -40,7 +39,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
         """.trimIndent()
 
     runCatching {
-      execute(SendMessage()
+      api.execute(SendMessage()
           .setChatId(update.senderId)
           .setText(message)
       )
@@ -53,7 +52,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
 
   fun sendInfoMessage(update: CommandUpdate) {
     runCatching {
-      execute(SendMessage()
+      api.execute(SendMessage()
           .setChatId(update.senderId)
           .setParseMode(ParseMode.HTML)
           .setText(infoText)
@@ -67,7 +66,7 @@ class CommandHandler(private val voteRepository: VoteRepository,
 
   val infoText = """
       
-      Привет, я ${botConfig.username}. 
+      Привет, я $BOT_USERNAME. 
       
       Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
       Сейчас же отправляй мне самый крутой мем, и, если он пройдёт модерацию, то попадёт на канал <a href="https://t.me/chsdngm/">че с деньгами</a>. 

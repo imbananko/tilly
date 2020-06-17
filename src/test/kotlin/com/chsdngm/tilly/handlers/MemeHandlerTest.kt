@@ -73,7 +73,7 @@ class MemeHandlerTest {
     `when`(config.channelId).thenReturn(10101)
     `when`(memeRepository.save(any(MemeEntity::class.java))).thenReturn(MemeEntity(333, 123, "file_id", null, null, null))
 
-    doReturn(File("pathname")).`when`(handler).downloadFromFileId("file_id")
+    doReturn(File("pathname")).`when`(handler).download("file_id")
     doReturn(sentChatMessage).`when`(handler).sendMemeToChat(any(MemeUpdate::class.java))
     doReturn(Message()).`when`(handler).sendReplyToMeme(any(MemeUpdate::class.java))
 

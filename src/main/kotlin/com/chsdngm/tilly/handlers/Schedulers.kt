@@ -3,16 +3,14 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.model.MemeEntity
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.VoteRepository
-import com.chsdngm.tilly.utility.BotConfig
-import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.BotConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import com.chsdngm.tilly.utility.mention
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import org.telegram.telegrambots.bots.DefaultAbsSender
-import org.telegram.telegrambots.bots.DefaultBotOptions
-import org.telegram.telegrambots.meta.ApiContext
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
@@ -24,11 +22,11 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 @Component
 @EnableScheduling
 final class Schedulers(private val memeRepository: MemeRepository,
-                       private val voteRepository: VoteRepository,
-                       private val botConfig: BotConfigImpl) : DefaultAbsSender(ApiContext.getInstance(DefaultBotOptions::class.java)), BotConfig by botConfig {
+                       private val voteRepository: VoteRepository) {
+
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Scheduled(cron = "0 55 20 * * WED")
+  @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() {
     runCatching {
       val meme: MemeEntity? = memeRepository.findMemeOfTheWeek()
@@ -38,16 +36,16 @@ final class Schedulers(private val memeRepository: MemeRepository,
 
       memeRepository.markAsMemeOfTheWeek(meme)
 
-      val winner = execute(
+      val winner = api.execute(
           GetChatMember()
-              .setChatId(channelId)
+              .setChatId(CHANNEL_ID)
               .setUserId(meme.senderId))
           .user
       val congratulationText = "Поздравляем ${winner.mention()} с мемом недели!"
       val memeOfTheWeekMessage = runCatching {
-        execute(
+        api.execute(
             SendMessage()
-                .setChatId(channelId)
+                .setChatId(CHANNEL_ID)
                 .setParseMode(ParseMode.HTML)
                 .setReplyToMessageId(meme.channelMessageId)
                 .setText(congratulationText)
@@ -59,9 +57,9 @@ final class Schedulers(private val memeRepository: MemeRepository,
         val statistics = voteRepository.getVotes(meme)
             .groupingBy { vote -> vote.voteValue }
             .eachCount()
-        val fallbackMemeOfTheWeekMessage = execute(
+        val fallbackMemeOfTheWeekMessage = api.execute(
             SendPhoto()
-                .setChatId(channelId)
+                .setChatId(CHANNEL_ID)
                 .setPhoto(meme.fileId)
                 .setParseMode(ParseMode.HTML)
                 .setCaption(congratulationText)
@@ -72,7 +70,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
 
         fallbackMemeOfTheWeekMessage
       }
-      execute(PinChatMessage(memeOfTheWeekMessage.chatId, memeOfTheWeekMessage.messageId))
+      api.execute(PinChatMessage(memeOfTheWeekMessage.chatId, memeOfTheWeekMessage.messageId))
     }
         .onSuccess { log.info("Successful send meme of the week") }
         .onFailure { throwable -> log.error("Can't send meme of the week because of", throwable) }
@@ -81,8 +79,8 @@ final class Schedulers(private val memeRepository: MemeRepository,
   @Scheduled(cron = "0 0 20 31 12 *")
   private fun sendMemesOfTheYear() {
     fun formatMemeTheYearCaption(meme: MemeEntity): String {
-      val userMention = execute(GetChatMember()
-          .setChatId(chatId)
+      val userMention = api.execute(GetChatMember()
+          .setChatId(CHAT_ID)
           .setUserId(meme.senderId))
           .user.mention()
       val votes = voteRepository.getVotes(meme)
@@ -94,9 +92,9 @@ final class Schedulers(private val memeRepository: MemeRepository,
     }
 
     runCatching {
-      execute(SendMessage(channelId, "Топ мемсы прошедшего года:"))
-      execute(
-          SendMediaGroup(channelId, memeRepository.findMemesOfTheYear().map { meme ->
+      api.execute(SendMessage(CHANNEL_ID, "Топ мемсы прошедшего года:"))
+      api.execute(
+          SendMediaGroup(CHANNEL_ID, memeRepository.findMemesOfTheYear().map { meme ->
             InputMediaPhoto(meme.fileId, formatMemeTheYearCaption(meme))
                 .setParseMode(ParseMode.HTML)
           })

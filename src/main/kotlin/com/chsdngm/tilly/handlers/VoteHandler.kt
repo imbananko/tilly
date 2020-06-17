@@ -3,8 +3,9 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.VoteRepository
-import com.chsdngm.tilly.utility.BotConfig
-import com.chsdngm.tilly.utility.BotConfigImpl
+import com.chsdngm.tilly.utility.BotConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
@@ -14,8 +15,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 
 @Component
 class VoteHandler(private val memeRepository: MemeRepository,
-                  private val voteRepository: VoteRepository,
-                  private val botConfig: BotConfigImpl) : AbstractHandler<VoteUpdate>(), BotConfig by botConfig {
+                  private val voteRepository: VoteRepository) : AbstractHandler<VoteUpdate>() {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
@@ -73,28 +73,28 @@ class VoteHandler(private val memeRepository: MemeRepository,
   private fun sendPopupNotification(callbackQueryId: String, text: String) {
     AnswerCallbackQuery()
         .setCallbackQueryId(callbackQueryId)
-        .setText(text).let { execute(it) }
+        .setText(text).let { api.execute(it) }
   }
 
   private fun updateChatMarkup(messageId: Int, votes: Map<VoteValue, Int>) =
       EditMessageReplyMarkup()
-          .setChatId(chatId)
+          .setChatId(CHAT_ID)
           .setMessageId(messageId)
-          .setReplyMarkup(createMarkup(votes)).let { execute(it) }
+          .setReplyMarkup(createMarkup(votes)).let { api.execute(it) }
 
   private fun updateChannelMarkup(messageId: Int, votes: Map<VoteValue, Int>) =
       EditMessageReplyMarkup()
-          .setChatId(channelId)
+          .setChatId(CHANNEL_ID)
           .setMessageId(messageId)
-          .setReplyMarkup(createMarkup(votes, messageId)).let { execute(it) }
+          .setReplyMarkup(createMarkup(votes, messageId)).let { api.execute(it) }
 
   private fun sendMemeToChannel(meme: MemeEntity, votes: Map<VoteValue, Int>) =
       SendPhoto()
-          .setChatId(channelId)
+          .setChatId(CHANNEL_ID)
           .setPhoto(meme.fileId)
           .setReplyMarkup(createMarkup(votes, meme.chatMessageId))
           .setCaption(meme.caption)
-          .let { execute(it) }
+          .let { api.execute(it) }
           .also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
@@ -104,5 +104,5 @@ class VoteHandler(private val memeRepository: MemeRepository,
       EditMessageText()
           .setChatId(meme.senderId.toString())
           .setMessageId(meme.privateMessageId)
-          .setText(stats).let { execute(it) }
+          .setText(stats).let { api.execute(it) }
 }
