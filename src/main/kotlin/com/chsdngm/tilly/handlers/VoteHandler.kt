@@ -6,6 +6,7 @@ import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
+import com.chsdngm.tilly.utility.isLocal
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery

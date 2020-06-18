@@ -46,8 +46,5 @@ abstract class AbstractHandler<T> {
               .let { it as TextNode }
               .text()
         }.getOrElse { "comments" }
-
-    @JvmStatic
-    protected fun isLocal(caption: String?) = caption?.contains("#local") ?: false
   }
 }

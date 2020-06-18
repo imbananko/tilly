@@ -27,3 +27,5 @@ private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CR
 fun ForwardMessage.setChatId(chatId: Int): ForwardMessage = this.setChatId(chatId.toLong())
 
 fun SendMessage.setChatId(chatId: Int): SendMessage = this.setChatId(chatId.toLong())
+
+fun isLocal(caption: String?) = caption?.contains("#local") ?: false

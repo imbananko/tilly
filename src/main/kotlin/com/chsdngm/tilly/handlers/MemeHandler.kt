@@ -11,6 +11,7 @@ import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import com.chsdngm.tilly.utility.isFromChat
+import com.chsdngm.tilly.utility.isLocal
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
