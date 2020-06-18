@@ -11,7 +11,7 @@ import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
 import com.chsdngm.tilly.utility.isFromChat
-import com.chsdngm.tilly.utility.isLocal
+import com.chsdngm.tilly.utility.hasLocalTag
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -63,7 +63,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
-      if (!isLocal(update.caption) &&
+      if (!hasLocalTag(update.caption) &&
           memeCount.incrementAndGet() % 5 == 0 &&
           userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")

@@ -6,7 +6,7 @@ import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.BotConfig.Companion.api
-import com.chsdngm.tilly.utility.isLocal
+import com.chsdngm.tilly.utility.hasLocalTag
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
@@ -57,7 +57,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
     runCatching {
       val privateCaptionPrefix =
-          if (isLocal(meme.caption) == true) "так как мем локальный, на канал он отправлен не будет"
+          if (hasLocalTag(meme.caption)) "так как мем локальный, на канал он отправлен не будет"
           else if (meme.isPublishedOnChannel() || readyForShipment(meme, votes)) "мем отправлен на канал"
           else "мем на модерации"
 

@@ -28,4 +28,4 @@ fun ForwardMessage.setChatId(chatId: Int): ForwardMessage = this.setChatId(chatI
 
 fun SendMessage.setChatId(chatId: Int): SendMessage = this.setChatId(chatId.toLong())
 
-fun isLocal(caption: String?) = caption?.contains("#local") ?: false
+fun hasLocalTag(caption: String?) = caption?.contains("#local") ?: false
