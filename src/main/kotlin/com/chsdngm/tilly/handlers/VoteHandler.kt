@@ -56,7 +56,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
     runCatching {
       val privateCaptionPrefix =
-          if (meme.caption?.contains("#local") == true) "так как мем локальный, на канал он отправлен не будет"
+          if (isLocal(meme.caption) == true) "так как мем локальный, на канал он отправлен не будет"
           else if (meme.isPublishedOnChannel() || readyForShipment(meme, votes)) "мем отправлен на канал"
           else "мем на модерации"
 
@@ -99,7 +99,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
   private fun readyForShipment(meme: MemeEntity, votes: MutableMap<Int, VoteValue>): Boolean =
       (votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size) >= 5 &&
-          meme.caption?.contains("#local") == false
+          !isLocal(meme.caption)
 
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
       EditMessageText()

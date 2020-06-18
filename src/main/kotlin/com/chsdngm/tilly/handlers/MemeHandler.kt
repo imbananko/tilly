@@ -62,7 +62,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
-      if (update.caption?.contains("#local") == false &&
+      if (!isLocal(update.caption) &&
           memeCount.incrementAndGet() % 5 == 0 &&
           userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
@@ -117,11 +117,11 @@ class MemeHandler(private val memeRepository: MemeRepository,
 
   fun resolveCaption(update: MemeUpdate): String =
       update.caption ?: "" +
-          if (GetChatMember()
-                  .setChatId(CHAT_ID)
-                  .setUserId(update.user.id).let { api.execute(it) }
-                  .isFromChat()) ""
-          else "\n\nSender: ${update.senderName}"
+      if (GetChatMember()
+              .setChatId(CHAT_ID)
+              .setUserId(update.user.id).let { api.execute(it) }
+              .isFromChat()) ""
+      else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
     api.execute(ForwardMessage()
