@@ -102,6 +102,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
       (votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size) >= 5 &&
           !hasLocalTag(meme.caption)
 
+
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
       EditMessageText()
           .setChatId(meme.senderId.toString())
