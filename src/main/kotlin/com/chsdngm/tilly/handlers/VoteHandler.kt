@@ -100,6 +100,7 @@ class VoteHandler(private val memeRepository: MemeRepository,
   private fun readyForShipment(votes: MutableMap<Int, VoteValue>): Boolean =
           votes.values.filter { it == VoteValue.UP }.size - votes.values.filter { it == VoteValue.DOWN }.size >= 5
 
+
   private fun updateStatsInSenderChat(meme: MemeEntity, stats: String) =
       EditMessageText()
           .setChatId(meme.senderId.toString())
