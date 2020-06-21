@@ -35,7 +35,6 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-configuration-processor")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("com.github.kilianB:JImageHash:3.0.0")
-  implementation("org.jsoup:jsoup:1.13.1")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
