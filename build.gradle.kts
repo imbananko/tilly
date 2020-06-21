@@ -37,6 +37,8 @@ dependencies {
   implementation("com.github.kilianB:JImageHash:3.0.0")
   implementation("org.jsoup:jsoup:1.13.1")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
+  implementation("net.sourceforge.tess4j:tess4j:4.5.1")
+
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")

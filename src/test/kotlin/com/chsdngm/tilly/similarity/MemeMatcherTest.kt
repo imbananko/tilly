@@ -15,7 +15,21 @@ class MemeMatcherTest {
   @Suppress("unused")
   companion object {
     @JvmStatic
-    val memes = listOf("original_meme.jpg", "meme_changed_more.jpg", "doctor1.jpg", "doctor2.jpg", "doctor3.jpg", "meme1.jpg", "meme2.jpg", "duplicate1.jpg", "duplicate2.jpg")
+    val memes = listOf(
+        "original_meme.jpg",
+        "meme_changed_more.jpg",
+        "doctor1.jpg",
+        "doctor2.jpg",
+        "doctor3.jpg",
+        "meme1.jpg",
+        "meme2.jpg",
+        "duplicate1.jpg",
+        "duplicate2.jpg",
+        "tupoi.jpg",
+        "english_text.jpg",
+        "millhouse.jpg",
+        "kakdela.jpg"
+    )
         .map { it to loadMeme(it) }.toMap()
 
     @JvmStatic
@@ -81,5 +95,14 @@ class MemeMatcherTest {
     val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
+  }
+
+  @Test
+  fun `should get text from picture`() {
+    val meme = memes["kakdela.jpg"] ?: error("millhouse.jpg is not found")
+
+    val memeText = memeMatcher.getText(meme)
+
+    assertEquals(memeText, "abc")
   }
 }
