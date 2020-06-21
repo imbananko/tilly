@@ -87,13 +87,13 @@ class VoteHandler(private val memeRepository: MemeRepository,
       EditMessageReplyMarkup()
           .setChatId(CHANNEL_ID)
           .setMessageId(messageId)
-          .setReplyMarkup(createMarkup(votes, messageId)).let { api.execute(it) }
+          .setReplyMarkup(createMarkup(votes)).let { api.execute(it) }
 
   private fun sendMemeToChannel(meme: MemeEntity, votes: Map<VoteValue, Int>) =
       SendPhoto()
           .setChatId(CHANNEL_ID)
           .setPhoto(meme.fileId)
-          .setReplyMarkup(createMarkup(votes, meme.chatMessageId))
+          .setReplyMarkup(createMarkup(votes))
           .setCaption(meme.caption)
           .let { api.execute(it) }
           .also { log.info("Sent meme to channel=$meme") }

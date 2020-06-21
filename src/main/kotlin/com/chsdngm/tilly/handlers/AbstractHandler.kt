@@ -1,8 +1,6 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.VoteValue
-import org.jsoup.Jsoup.connect
-import org.jsoup.nodes.TextNode
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
@@ -10,8 +8,6 @@ abstract class AbstractHandler<T> {
   abstract fun handle(update: T)
 
   companion object {
-    private const val domainUrl = "http://chsdngm.com"
-    private const val commentsUrl = "$domainUrl/comments"
 
     private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int) =
         InlineKeyboardButton().also {
@@ -25,26 +21,5 @@ abstract class AbstractHandler<T> {
                 createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
                 createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
             )))
-
-    fun createMarkup(stats: Map<VoteValue, Int>, identifier: Int): InlineKeyboardMarkup = InlineKeyboardMarkup().setKeyboard(
-        listOf(
-            listOf(
-                createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
-                createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
-            ),
-            listOf(InlineKeyboardButton(getCommentsButtonText(identifier)).setUrl("$commentsUrl/$identifier"))
-        ))
-
-    private fun getCommentsButtonText(identifier: Int) =
-        runCatching {
-          connect("https://comments.app/embed/view?website=HzZubwqu&page_url=$commentsUrl/$identifier&origin=$domainUrl")
-              .get()
-              .select("h3.bc-header")
-              .first()
-              .childNodes()
-              .first()
-              .let { it as TextNode }
-              .text()
-        }.getOrElse { "comments" }
   }
 }
