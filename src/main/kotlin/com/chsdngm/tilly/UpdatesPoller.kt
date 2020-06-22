@@ -6,8 +6,8 @@ import com.chsdngm.tilly.handlers.VoteHandler
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.VoteUpdate
-import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
-import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
 import com.chsdngm.tilly.utility.hasMeme
 import com.chsdngm.tilly.utility.hasStatsCommand
 import com.chsdngm.tilly.utility.hasVote

@@ -3,69 +3,54 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.repository.VoteRepository
-import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_USERNAME
-import com.chsdngm.tilly.utility.BotConfig.Companion.api
+import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 
-@Component
-class CommandHandler(private val voteRepository: VoteRepository) : AbstractHandler<CommandUpdate>() {
+@Service
+class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandler<CommandUpdate> {
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: CommandUpdate) {
     when (update.value) {
       Command.STATS -> sendStats(update)
       Command.HELP, Command.START -> sendInfoMessage(update)
-      else -> log.error("Unknown command from update=$update")
+      else -> log.error("unknown command from update=$update")
     }
+    log.info("processed command update=$update")
   }
 
   private fun sendStats(update: CommandUpdate) {
-    val stats = voteRepository.getStatsByUser(update.senderId.toInt())
-    val aggregated = stats.fold(Pair(0, 0)) { acc, entry -> Pair(acc.first + entry.upvotes, acc.second + entry.downvotes) }
+    val userMemes = memeRepository.findBySenderId(update.senderId.toInt())
+
+    val likes = userMemes.flatMap { it.votes }.map { it.value }.filter { it == VoteValue.UP }.size
+    val dislikes = userMemes.flatMap { it.votes }.map { it.value }.filter { it == VoteValue.DOWN }.size
+    val published = userMemes.filter { it.channelMessageId != null }.size
+
     val message =
-        if (stats.isEmpty())
+        if (userMemes.isEmpty())
           "You have no statistics yet!"
         else
           """
           Your statistics:
 
-          Memes sent: ${stats.size} (on channel: ${stats.filter { it.isPublished }.size})
-          ${VoteValue.UP.emoji}: ${aggregated.first}
-          ${VoteValue.DOWN.emoji}: ${aggregated.second}
+          Memes sent: ${userMemes.size} (on channel: $published)
+          ${VoteValue.UP.emoji}: $likes
+          ${VoteValue.DOWN.emoji}: $dislikes
         """.trimIndent()
 
-    runCatching {
       api.execute(SendMessage()
           .setChatId(update.senderId)
           .setText(message)
       )
-    }.onSuccess {
-      log.info("Sent stats to user=${update.senderId}")
-    }.onFailure {
-      log.error("Failed to send stats to user=$update", it)
-    }
   }
 
   fun sendInfoMessage(update: CommandUpdate) {
-    runCatching {
-      api.execute(SendMessage()
-          .setChatId(update.senderId)
-          .setParseMode(ParseMode.HTML)
-          .setText(infoText)
-      )
-    }.onSuccess {
-      log.info("Sent info message to user=${update.senderId}")
-    }.onFailure {
-      log.error("Failed to send info message to user=$update", it)
-    }
-  }
-
-  val infoText = """
-      
+    val infoText = """
       Привет, я $BOT_USERNAME. 
       
       Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
@@ -78,6 +63,12 @@ class CommandHandler(private val voteRepository: VoteRepository) : AbstractHandl
       Модерация (от лат. moderor — умеряю, сдерживаю) — все мемы проходят предварительную оценку экспертов, а на канал попадут только лучшие. 
       
       За динамикой оценки также можно следить тут.
-      
     """.trimIndent()
+
+      api.execute(SendMessage()
+          .setChatId(update.senderId)
+          .setParseMode(ParseMode.HTML)
+          .setText(infoText)
+      )
+  }
 }
