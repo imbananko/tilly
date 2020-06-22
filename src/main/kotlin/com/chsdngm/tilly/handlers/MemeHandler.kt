@@ -1,21 +1,24 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.MemeEntity
+import com.chsdngm.tilly.model.Image
+import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.model.TelegramUser
 import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.MemeMatcher
-import com.chsdngm.tilly.utility.BotConfig.Companion.BETA_CHAT_ID
-import com.chsdngm.tilly.utility.BotConfig.Companion.BOT_TOKEN
-import com.chsdngm.tilly.utility.BotConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.utility.BotConfig.Companion.api
-import com.chsdngm.tilly.utility.isFromChat
+import com.chsdngm.tilly.utility.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.utility.TelegramConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.utility.TelegramConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.utility.TelegramConfig.Companion.api
+import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.hasLocalTag
+import com.chsdngm.tilly.utility.isFromChat
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -34,11 +37,11 @@ import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
 import kotlin.system.measureTimeMillis
 
-@Component
-class MemeHandler(private val memeRepository: MemeRepository,
-                  private val imageRepository: ImageRepository,
+@Service
+class MemeHandler(private val imageRepository: ImageRepository,
                   private val userRepository: UserRepository,
-                  private val memeMatcher: MemeMatcher) : AbstractHandler<MemeUpdate>() {
+                  private val memeMatcher: MemeMatcher,
+                  private val memeRepository: MemeRepository) : AbstractHandler<MemeUpdate> {
 
   private val log = LoggerFactory.getLogger(javaClass)
   private val memeCount = AtomicInteger(0)
@@ -47,7 +50,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
   private fun init() {
     log.info("Start loading memes into matcher")
     measureTimeMillis {
-      imageRepository.findAll().apply { memeCount.set(this.size) }.forEach { memeMatcher.add(it.key, ImageIO.read(it.value)) }
+      imageRepository.findAll().apply { memeCount.set(this.count()) }.forEach { memeMatcher.add(it.fileId, ImageIO.read(it.file.inputStream())) }
     }.also { log.info("Finished loading memes into matcher. took: $it ms") }
   }
 
@@ -55,7 +58,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     update.file = download(update.fileId)
 
     runCatching {
-      userRepository.saveIfNotExists(update.user)
+      userRepository.save(TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName))
 
       memeMatcher.tryFindDuplicate(update.file)?.also {
         handleDuplicate(update)
@@ -68,7 +71,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
           userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
 
-        val winnerId = userRepository.getTopSenders(5).keys.find { userRepository.tryPickUserForModeration(it) }
+        val winnerId = userRepository.findTopSenders(5).find { userRepository.tryPickUserForModeration(it.id) }
 
         if (winnerId != null)
           log.info("Picked userId=$winnerId")
@@ -100,10 +103,10 @@ class MemeHandler(private val memeRepository: MemeRepository,
   fun moderateWithChat(update: MemeUpdate) {
     sendMemeToChat(update).let { sent ->
       val privateMessageId = sendReplyToMeme(update).messageId
-      memeRepository.save(MemeEntity(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
+      memeRepository.save(Meme(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
         log.info("Sent meme=$it to chat")
       }
-      imageRepository.saveImage(update.file, update.fileId)
+      imageRepository.save(Image(update.fileId, update.file.readBytes()))
       memeMatcher.add(update.fileId, update.file)
     }
   }
@@ -124,7 +127,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
               .isFromChat()) ""
       else "\n\nSender: ${update.senderName}"
 
-  private fun forwardMemeFromChannelToUser(meme: MemeEntity, user: User) {
+  private fun forwardMemeFromChannelToUser(meme: Meme, user: User) {
     api.execute(ForwardMessage()
         .setChatId(user.id)
         .setMessageId(meme.channelMessageId)
@@ -132,7 +135,7 @@ class MemeHandler(private val memeRepository: MemeRepository,
     log.info("Successfully forwarded original meme to sender=${user.id}. $meme")
   }
 
-  private fun forwardMemeFromChatToUser(meme: MemeEntity, user: User) {
+  private fun forwardMemeFromChatToUser(meme: Meme, user: User) {
     api.execute(ForwardMessage()
         .setChatId(user.id)
         .setFromChatId(CHAT_ID)
