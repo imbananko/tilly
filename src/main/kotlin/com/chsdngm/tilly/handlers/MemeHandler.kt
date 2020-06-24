@@ -32,6 +32,7 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
@@ -120,12 +121,17 @@ class MemeHandler(private val imageRepository: ImageRepository,
           .setReplyMarkup(createMarkup(emptyMap())))
 
   fun resolveCaption(update: MemeUpdate): String =
-      update.caption ?: "" +
-      if (GetChatMember()
-              .setChatId(CHAT_ID)
-              .setUserId(update.user.id).let { api.execute(it) }
-              .isFromChat()) ""
-      else "\n\nSender: ${update.senderName}"
+      Optional.ofNullable(update.caption)
+          .filter { caption ->
+            val lowerCaseCaption = caption.toLowerCase()
+            !trashCaptionParts.any { lowerCaseCaption.contains(it) }
+          }
+          .orElse("") +
+          if (GetChatMember()
+                  .setChatId(CHAT_ID)
+                  .setUserId(update.user.id).let { api.execute(it) }
+                  .isFromChat()) ""
+          else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannelToUser(meme: Meme, user: User) {
     api.execute(ForwardMessage()
@@ -174,4 +180,6 @@ class MemeHandler(private val imageRepository: ImageRepository,
       }.also {
         log.info("Successfully downloaded file=$it")
       }
+
+  private val trashCaptionParts = listOf("sender", "photo from")
 }
