@@ -20,7 +20,6 @@ plugins {
   id("io.spring.dependency-management") version "1.0.8.RELEASE"
   kotlin("jvm") version "1.3.70"
   kotlin("plugin.spring") version "1.3.70"
-  kotlin("plugin.jpa") version "1.3.70"
 }
 
 dependencies {
@@ -31,8 +30,8 @@ dependencies {
   implementation("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
   implementation("org.telegram:telegrambots-spring-boot-starter:4.8.1")
   implementation("org.springframework.boot:spring-boot-starter-web")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.postgresql:postgresql:42.2.6")
+  implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
   implementation("org.springframework.boot:spring-boot-configuration-processor")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("com.github.kilianB:JImageHash:3.0.0")

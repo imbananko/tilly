@@ -6,7 +6,7 @@ import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Component
-class TelegramConfig {
+class BotConfig {
   companion object {
 
     @JvmField
