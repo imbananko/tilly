@@ -37,7 +37,7 @@ interface UserRedisRepository {
   fun isRankedModerationAvailable(): Boolean
 }
 
-internal class UserRedisRepositoryImpl(private val template: StringRedisTemplate) : UserRedisRepository {
+internal class UserRedisRepositoryImpl(template: StringRedisTemplate) : UserRedisRepository {
   override val rankedModerationKey = "ranked-moderator-id"
 
   private val ops = template.opsForValue()
