@@ -1,13 +1,11 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.TelegramUser
-import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
-import com.chsdngm.tilly.similarity.MemeMatcher
+import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.utility.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TelegramConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TelegramConfig.Companion.CHAT_ID
@@ -32,26 +30,20 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.PostConstruct
-import javax.imageio.ImageIO
-import kotlin.system.measureTimeMillis
 
 @Service
-class MemeHandler(private val imageRepository: ImageRepository,
-                  private val userRepository: UserRepository,
-                  private val memeMatcher: MemeMatcher,
+class MemeHandler(private val userRepository: UserRepository,
+                  private val imageMatcher: ImageMatcher,
                   private val memeRepository: MemeRepository) : AbstractHandler<MemeUpdate> {
 
   private val log = LoggerFactory.getLogger(javaClass)
-  private val memeCount = AtomicInteger(0)
+  private val memeCount = AtomicLong(0)
 
   @PostConstruct
   private fun init() {
-    log.info("Start loading memes into matcher")
-    measureTimeMillis {
-      imageRepository.findAll().apply { memeCount.set(this.count()) }.forEach { memeMatcher.add(it.fileId, ImageIO.read(it.file.inputStream())) }
-    }.also { log.info("Finished loading memes into matcher. took: $it ms") }
+    memeCount.set(memeRepository.count())
   }
 
   override fun handle(update: MemeUpdate) {
@@ -60,14 +52,14 @@ class MemeHandler(private val imageRepository: ImageRepository,
     runCatching {
       userRepository.save(TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName))
 
-      memeMatcher.tryFindDuplicate(update.file)?.also {
+      imageMatcher.tryFindDuplicate(update.file)?.also {
         handleDuplicate(update)
       }
     }.onFailure {
       log.info("Failed to check duplicates for update=$update")
     }.getOrThrow() ?: runCatching {
       if (!hasLocalTag(update.caption) &&
-          memeCount.incrementAndGet() % 5 == 0 &&
+          memeCount.incrementAndGet() % 5 == 0L &&
           userRepository.isRankedModerationAvailable()) {
         log.info("Ranked moderation time!")
 
@@ -106,8 +98,7 @@ class MemeHandler(private val imageRepository: ImageRepository,
       memeRepository.save(Meme(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
         log.info("Sent meme=$it to chat")
       }
-      imageRepository.save(Image(update.fileId, update.file.readBytes()))
-      memeMatcher.add(update.fileId, update.file)
+      imageMatcher.add(update.fileId, update.file)
     }
   }
 

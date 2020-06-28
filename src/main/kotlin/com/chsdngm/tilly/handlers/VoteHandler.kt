@@ -49,12 +49,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
 
     updateChatMarkup(meme)
 
-    meme.channelMessageId?.let {
-      updateChannelMarkup(meme)
-    } ?: if (readyForShipment(meme))
-      memeRepository.save(meme.copy(channelMessageId = sendMemeToChannel(meme).messageId))
-    else
-      memeRepository.save(meme)
+    memeRepository.save(
+        if (meme.channelMessageId == null && readyForShipment(meme))
+          meme.copy(channelMessageId = sendMemeToChannel(meme).messageId)
+        else
+          meme)
 
     runCatching {
       with(StringBuilder()) {
@@ -107,7 +106,7 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
           .also { log.info("Sent meme to channel=$meme") }
 
   private fun readyForShipment(meme: Meme): Boolean = with(meme.votes.map { it.value }) {
-    this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= 5 && !hasLocalTag(meme.caption)
+    this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= 1 && !hasLocalTag(meme.caption)
   }
 
   private fun updateStatsInSenderChat(meme: Meme, stats: String) =
