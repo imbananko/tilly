@@ -1,6 +1,5 @@
 package com.chsdngm.tilly.similarity
 
-import com.chsdngm.tilly.repository.ImageRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
@@ -8,11 +7,10 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import org.mockito.Mockito.mock
 import java.io.File
 
-class ImageMatcherTest {
-  private lateinit var imageMatcher: ImageMatcher
+class MemeMatcherTest {
+  private lateinit var memeMatcher: MemeMatcher
 
   @Suppress("unused")
   companion object {
@@ -31,16 +29,16 @@ class ImageMatcherTest {
 
   @BeforeEach
   fun init() {
-    imageMatcher = ImageMatcher(mock(ImageRepository::class.java), normalizedHammingDistance = .15)
+    memeMatcher = MemeMatcher(normalizedHammingDistance = .15)
   }
 
   @ParameterizedTest
   @MethodSource("imageProvider")
   fun `MemeMatcher should identify equal memes`(file: File) {
     val fileId = file.name
-    imageMatcher.add(fileId, file)
+    memeMatcher.add(fileId, file)
 
-    assertEquals(fileId, imageMatcher.tryFindDuplicate(file))
+    assertEquals(fileId, memeMatcher.tryFindDuplicate(file))
   }
 
   @Test
@@ -48,8 +46,8 @@ class ImageMatcherTest {
     val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not found")
     val doctor3 = memes["doctor3.jpg"] ?: error("doctor3.jpg is not found")
 
-    imageMatcher.add(originalMeme.name, originalMeme)
-    val memeMatch1 = imageMatcher.tryFindDuplicate(doctor3)
+    memeMatcher.add(originalMeme.name, originalMeme)
+    val memeMatch1 = memeMatcher.tryFindDuplicate(doctor3)
     assertNull(memeMatch1, "Changed meme ${doctor3.name} should be different from original one ${originalMeme.name}")
   }
 
@@ -60,8 +58,8 @@ class ImageMatcherTest {
     val doctor1 = memes["doctor1.jpg"] ?: error("doctor1.jpg is not found")
     val doctor2 = memes["doctor2.jpg"] ?: error("doctor2.jpg is not found")
 
-    imageMatcher.add(doctor1.name, doctor1)
-    val memeMatch1 = imageMatcher.tryFindDuplicate(doctor2)
+    memeMatcher.add(doctor1.name, doctor1)
+    val memeMatch1 = memeMatcher.tryFindDuplicate(doctor2)
     assertNull(memeMatch1, "Changed meme ${doctor2.name} should be different from original one ${doctor2.name}")
   }
 
@@ -69,8 +67,8 @@ class ImageMatcherTest {
   fun `Meme1 and Meme2 should be the same`() {
     val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not found")
-    imageMatcher.add(meme1.name, meme1)
-    val memeMatch = imageMatcher.tryFindDuplicate(meme2)
+    memeMatcher.add(meme1.name, meme1)
+    val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
   }
@@ -79,8 +77,8 @@ class ImageMatcherTest {
   fun `Duplicate1 and Duplicate2 should be the same`() {
     val meme1 = memes["duplicate1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["duplicate2.jpg"] ?: error("meme2.jpg is not found")
-    imageMatcher.add(meme1.name, meme1)
-    val memeMatch = imageMatcher.tryFindDuplicate(meme2)
+    memeMatcher.add(meme1.name, meme1)
+    val memeMatch = memeMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
   }
