@@ -7,6 +7,7 @@ import java.io.File
 import java.time.Instant
 
 const val week: Long = 60 * 60 * 24 * 7
+private val trashCaptionParts = listOf("sender", "photo from")
 
 data class MemeEntity(
     val chatMessageId: Int,
@@ -58,7 +59,10 @@ enum class SourceType {
 
 open class MemeUpdate(update: Update) {
   val messageId: Int = update.message.messageId
-  val caption: String? = update.message.caption
+  val caption: String? = update.message.caption?.takeIf { caption ->
+    val lowerCaseCaption = caption.toLowerCase()
+    !trashCaptionParts.any { lowerCaseCaption.contains(it) }
+  }
   val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
   val user: User = update.message.from
   val senderName: String = update.message.from.mention()
