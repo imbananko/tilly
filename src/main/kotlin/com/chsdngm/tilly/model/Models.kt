@@ -1,59 +1,106 @@
 package com.chsdngm.tilly.model
 
 import com.chsdngm.tilly.utility.mention
+import org.hibernate.annotations.Type
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.io.File
+import java.io.Serializable
 import java.time.Instant
+import javax.persistence.*
 
 const val week: Long = 60 * 60 * 24 * 7
 
-data class MemeEntity(
-    val chatMessageId: Int,
+@Entity
+data class Meme(
+    @Id val chatMessageId: Int,
     val senderId: Int,
     val fileId: String,
     val caption: String?,
-    val privateMessageId: Int? = null,
-    val channelMessageId: Int? = null) {
+    val privateMessageId: Int?,
+    val channelMessageId: Int? = null,
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "chatMessageId", orphanRemoval = true)
+    val votes: MutableList<Vote> = mutableListOf()) {
 
-  fun isPublishedOnChannel(): Boolean = channelMessageId != null
+  override fun toString(): String {
+    return "Meme(chatMessageId=$chatMessageId, senderId=$senderId, caption=$caption, privateMessageId=$privateMessageId, votes=$votes)"
+  }
 }
 
-data class VoteEntity(
-    val messageId: Int,
-    val voterId: Int,
-    val voteValue: VoteValue,
-    val source: SourceType
+@Entity
+data class TelegramUser(
+    @Id val id: Int,
+    val username: String?,
+    val firstName: String?,
+    val lastName: String?
 )
+
+@Entity
+@IdClass(Vote.VoteKey::class)
+data class Vote(
+    @Id val chatMessageId: Int,
+    @Id val voterId: Int,
+    @Enumerated(EnumType.STRING) val value: VoteValue,
+    @Enumerated(EnumType.STRING) val source: VoteSourceType
+) {
+
+  @Embeddable
+  data class VoteKey(
+      val chatMessageId: Int,
+      val voterId: Int) : Serializable
+}
+
+@Entity
+data class Image(
+    @Id val fileId: String,
+    @Lob @Type(type = "org.hibernate.type.BinaryType") val file: ByteArray
+) {
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as Image
+
+    if (fileId != other.fileId) return false
+    if (!file.contentEquals(other.file)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = fileId.hashCode()
+    result = 31 * result + file.contentHashCode()
+    return result
+  }
+}
+
 
 enum class VoteValue(val emoji: String) {
   UP("\uD83D\uDC8E"),
   DOWN("\uD83D\uDCA9")
 }
 
-class MemeStatsEntry(val upvotes: Int, val downvotes: Int, val isPublished: Boolean = false)
+enum class VoteSourceType {
+  CHAT,
+  CHANNEL
+}
 
 class VoteUpdate(update: Update) {
   val fromId: Int = update.callbackQuery.from.id
   val messageId: Int = update.callbackQuery.message.messageId
-  val isFrom: SourceType = when {
-    update.callbackQuery.message.isChannelMessage -> SourceType.CHANNEL
-    update.callbackQuery.message.isSuperGroupMessage -> SourceType.CHAT
+  val isFrom: VoteSourceType = when {
+    update.callbackQuery.message.isChannelMessage -> VoteSourceType.CHANNEL
+    update.callbackQuery.message.isSuperGroupMessage -> VoteSourceType.CHAT
     else -> throw Exception("Unknown vote source type")
   }
-  val isNotProcessable: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
+  val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
   val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
-  val caption: String? = update.callbackQuery.message.caption
   val callbackQueryId: String = update.callbackQuery.id
 
   override fun toString(): String {
-    return "VoteUpdate(fromId=$fromId, messageId=$messageId, isFrom=$isFrom, isNotProcessable=$isNotProcessable, voteValue=$voteValue, caption=$caption)"
+    return "VoteUpdate(fromId=$fromId, messageId=$messageId, isFrom=$isFrom, voteValue=$voteValue)"
   }
-}
-
-enum class SourceType {
-  CHAT,
-  CHANNEL
 }
 
 open class MemeUpdate(update: Update) {
@@ -84,5 +131,9 @@ class CommandUpdate(update: Update) {
       private val map = values().associateBy(Command::value)
       fun from(value: String) = map[value]
     }
+  }
+
+  override fun toString(): String {
+    return "CommandUpdate(senderId=$senderId, value=$value)"
   }
 }

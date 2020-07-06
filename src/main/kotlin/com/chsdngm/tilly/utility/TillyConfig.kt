@@ -6,7 +6,7 @@ import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Component
-class BotConfig {
+class TillyConfig {
   companion object {
 
     @JvmField
@@ -20,6 +20,9 @@ class BotConfig {
 
     @JvmField
     var BOT_TOKEN = ""
+
+    @JvmField
+    var MODERATION_THRESHOLD = 0L
 
     @JvmField
     var BOT_USERNAME = ""
@@ -52,6 +55,11 @@ class BotConfig {
   @Value("\${target.chat.id}")
   fun setChatId(chatId: Long) {
     CHAT_ID = chatId
+  }
+
+  @Value("\${moderation.threshold}")
+  fun setModerationThreshold(moderationThreshold: Long) {
+    MODERATION_THRESHOLD = moderationThreshold
   }
 
 }
