@@ -10,6 +10,7 @@ import java.time.Instant
 import javax.persistence.*
 
 const val week: Long = 60 * 60 * 24 * 7
+private val trashCaptionParts = listOf("sender", "photo from")
 
 @Entity
 data class Meme(
@@ -105,7 +106,10 @@ class VoteUpdate(update: Update) {
 
 open class MemeUpdate(update: Update) {
   val messageId: Int = update.message.messageId
-  val caption: String? = update.message.caption
+  val caption: String? = update.message.caption?.takeIf { caption ->
+    val lowerCaseCaption = caption.toLowerCase()
+    !trashCaptionParts.any { lowerCaseCaption.contains(it) }
+  }
   val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
   val user: User = update.message.from
   val senderName: String = update.message.from.mention()
