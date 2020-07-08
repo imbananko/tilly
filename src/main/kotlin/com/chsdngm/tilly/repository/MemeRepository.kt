@@ -1,10 +1,12 @@
 package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.Meme
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Long> {
@@ -23,7 +25,9 @@ interface MemeRepository : CrudRepository<Meme, Long> {
   fun findBySenderId(senderId: Int): List<Meme>
 
   @Query(value = "insert into meme_of_week (chat_message_id) values (:chatMessageId)", nativeQuery = true)
-  fun saveMemeOfWeek(@Param("chatMessageId") chatMessageId: Int)
+  @Modifying
+  @Transactional
+  fun saveMemeOfWeek(@Param("chatMessageId") chatMessageId: Int): Unit
 
   @Query(value = """
     select m.*
