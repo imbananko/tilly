@@ -53,23 +53,23 @@ class MemeHandler(private val userRepository: UserRepository,
 
     imageMatcher.tryFindDuplicate(update.file)?.also {
       handleDuplicate(update)
-    }
+    } ?: run {
+      if (!hasLocalTag(update.caption) &&
+          memeCount.incrementAndGet() % 5 == 0L &&
+          userRepository.isRankedModerationAvailable()) {
+        log.info("ranked moderation time!")
 
-    if (!hasLocalTag(update.caption) &&
-        memeCount.incrementAndGet() % 5 == 0L &&
-        userRepository.isRankedModerationAvailable()) {
-      log.info("ranked moderation time!")
+        val winnerId = userRepository.findTopSenders(5).find { userRepository.tryPickUserForModeration(it.id) }
 
-      val winnerId = userRepository.findTopSenders(5).find { userRepository.tryPickUserForModeration(it.id) }
+        if (winnerId != null)
+          log.info("picked userId=$winnerId")
+        else
+          log.info("user is already on list")
 
-      if (winnerId != null)
-        log.info("picked userId=$winnerId")
-      else
-        log.info("user is already on list")
-
-      moderateWithChat(update)
-    } else {
-      moderateWithChat(update)
+        moderateWithChat(update)
+      } else {
+        moderateWithChat(update)
+      }
     }
     log.info("processed meme update=$update")
   }
