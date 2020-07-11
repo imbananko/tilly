@@ -97,11 +97,12 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
           .let { api.execute(it) }
     }
 
-    EditMessageReplyMarkup()
-        .setChatId(CHAT_ID)
-        .setMessageId(meme.chatMessageId)
-        .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-        .let { api.execute(it) }
+    if (meme.chatMessageId.toLong() == CHAT_ID)
+      EditMessageReplyMarkup()
+          .setChatId(CHAT_ID)
+          .setMessageId(meme.chatMessageId)
+          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+          .let { api.execute(it) }
   }
 
   private fun sendMemeToChannel(meme: Meme) =

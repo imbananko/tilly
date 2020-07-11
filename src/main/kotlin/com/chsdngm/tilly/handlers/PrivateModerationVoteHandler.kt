@@ -38,7 +38,9 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setPhoto(meme.fileId)
         .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
         .setCaption(meme.caption)
-        .let { TillyConfig.api.execute(it) }
+        .let { TillyConfig.api.execute(it) }.also {
+          memeRepository.save(meme.copy(channelMessageId = it.messageId))
+        }
 
     log.info("ranked moderator with id=${update.senderId} approved meme=$meme")
   }

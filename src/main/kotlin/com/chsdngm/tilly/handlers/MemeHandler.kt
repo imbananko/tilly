@@ -61,11 +61,11 @@ class MemeHandler(private val userRepository: UserRepository,
           && memeCount.incrementAndGet() % 5 == 0L
           && userRepository.isRankedModerationAvailable()) {
 
-        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let {
-          log.info("sent for moderation to user=$it. meme=${moderateWithUser(update, it.id.toLong())}")
+        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let { user ->
+          moderateWithUser(update, user.id.toLong()).also { log.info("sent for moderation to user=$user. meme=$it") }
         } ?: run {
-          log.info("cannot perform ranked moderation. list is full")
-          log.info("sent for moderation to group chat. meme=${moderateWithGroup(update)}")
+          log.info("cannot perform ranked moderation. unable to pick moderator")
+          moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
         }
 
       } else {
@@ -105,7 +105,7 @@ class MemeHandler(private val userRepository: UserRepository,
       SendPhoto()
           .setChatId(moderatorId)
           .setPhoto(update.fileId)
-          .setCaption("Теперь ты модератор!")
+          .setCaption(update.caption?.let { it + "\n\n"} ?: "" + "Теперь ты модератор!")
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
