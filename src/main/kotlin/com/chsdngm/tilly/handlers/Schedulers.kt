@@ -1,4 +1,4 @@
-package com.chsdngm.tilly
+package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.repository.MemeRepository

@@ -1,11 +1,6 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.Meme
-import com.chsdngm.tilly.model.Vote
-import com.chsdngm.tilly.model.VoteSourceType.CHANNEL
-import com.chsdngm.tilly.model.VoteSourceType.CHAT
-import com.chsdngm.tilly.model.VoteUpdate
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
@@ -29,9 +24,8 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   @Transactional
   override fun handle(update: VoteUpdate) {
     val meme = when (update.isFrom) {
-      CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
-      CHAT -> memeRepository.findMemeByChatMessageId(update.messageId)
-      else -> return
+      VoteSourceType.CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
+      VoteSourceType.CHAT -> memeRepository.findMemeByChatMessageId(update.messageId)
     } ?: return
 
     val vote = Vote(meme.chatMessageId, update.fromId, update.voteValue, update.isFrom)
@@ -97,12 +91,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
           .let { api.execute(it) }
     }
 
-    if (meme.chatMessageId.toLong() == CHAT_ID)
-      EditMessageReplyMarkup()
-          .setChatId(CHAT_ID)
-          .setMessageId(meme.chatMessageId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-          .let { api.execute(it) }
+    EditMessageReplyMarkup()
+        .setChatId(CHAT_ID)
+        .setMessageId(meme.chatMessageId)
+        .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+        .let { api.execute(it) }
   }
 
   private fun sendMemeToChannel(meme: Meme) =
