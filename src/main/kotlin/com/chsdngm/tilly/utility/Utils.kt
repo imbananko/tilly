@@ -1,6 +1,5 @@
 package com.chsdngm.tilly.utility
 
-import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -19,12 +18,6 @@ fun Update.hasVote() = this.hasCallbackQuery()
     && (this.callbackQuery.message.isSuperGroupMessage || this.callbackQuery.message.isChannelMessage)
     && runCatching {
   setOf(*VoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
-}.getOrDefault(false)
-
-fun Update.hasPrivateVote() = this.hasCallbackQuery()
-    && this.callbackQuery.message.chat.isUserChat
-    && runCatching {
-  setOf(*PrivateVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
 
 fun User.mention(): String = """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""

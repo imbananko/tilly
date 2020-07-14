@@ -22,12 +22,12 @@ interface UserRepository : CrudRepository<TelegramUser, Long>, UserRedisReposito
                          group by chat_message_id) v
                         on (m.chat_message_id = v.chat_message_id)
              inner join telegram_user u on m.sender_id = u.id
-    where created_at >= now() - interval '7 days' and u.id != :idToExclude
+    where created_at >= now() - interval '7 days'
     group by u.id
     order by sum(up) - sum(down) - 2 * count(1) desc
     limit :limit
     """)
-  fun findTopSenders(@Param("limit") count: Int, @Param("idToExclude") idToExclude: Int): List<TelegramUser>
+  fun findTopSenders(@Param("limit") count: Int): List<TelegramUser>
 }
 
 interface UserRedisRepository {
