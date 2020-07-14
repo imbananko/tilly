@@ -2,7 +2,8 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeUpdate
-import com.chsdngm.tilly.model.PrivateVoteValue
+import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
+import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.model.TelegramUser
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
@@ -69,7 +70,8 @@ class MemeHandler(private val userRepository: UserRepository,
         }
 
       } else {
-        log.info("sent for moderation to group chat. meme=${moderateWithGroup(update)}")
+        val meme = moderateWithGroup(update)
+        log.info("sent for moderation to group chat. meme=$meme")
       }
       imageMatcher.add(update.fileId, update.file)
     }
@@ -174,8 +176,8 @@ class MemeHandler(private val userRepository: UserRepository,
       }
 
   fun createPrivateModerationMarkup() = InlineKeyboardMarkup(listOf(
-      listOf(InlineKeyboardButton("Отправить на канал").also { it.callbackData = PrivateVoteValue.APPROVE.name }),
-      listOf(InlineKeyboardButton("Отправить на свалку").also { it.callbackData = PrivateVoteValue.DECLINE.name })
+      listOf(InlineKeyboardButton("Отправить на канал ${APPROVE.emoji}").also { it.callbackData = APPROVE.name }),
+      listOf(InlineKeyboardButton("Предать забвению ${DECLINE.emoji}").also { it.callbackData = DECLINE.name })
   ))
 
 }

@@ -49,7 +49,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
     EditMessageCaption()
         .setChatId(update.senderId.toString())
         .setMessageId(update.messageId)
-        .setCaption("мем отправлен на помойку")
+        .setCaption("мем предан забвению")
         .let { TillyConfig.api.execute(it) }
 
     //TODO fix long/int types in whole project
