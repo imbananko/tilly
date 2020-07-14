@@ -2,6 +2,8 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
+import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.model.TelegramUser
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
@@ -27,6 +29,8 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
@@ -54,22 +58,22 @@ class MemeHandler(private val userRepository: UserRepository,
     imageMatcher.tryFindDuplicate(update.file)?.also {
       handleDuplicate(update)
     } ?: run {
-      if (!hasLocalTag(update.caption) &&
-          memeCount.incrementAndGet() % 5 == 0L &&
-          userRepository.isRankedModerationAvailable()) {
-        log.info("ranked moderation time!")
+      if (!hasLocalTag(update.caption)
+          && memeCount.incrementAndGet() % 5 == 0L
+          && userRepository.isRankedModerationAvailable()) {
 
-        val winnerId = userRepository.findTopSenders(5).find { userRepository.tryPickUserForModeration(it.id) }
+        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let { user ->
+          moderateWithUser(update, user.id.toLong()).also { log.info("sent for moderation to user=$user. meme=$it") }
+        } ?: run {
+          log.info("cannot perform ranked moderation. unable to pick moderator")
+          moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
+        }
 
-        if (winnerId != null)
-          log.info("picked userId=$winnerId")
-        else
-          log.info("user is already on list")
-
-        moderateWithChat(update)
       } else {
-        moderateWithChat(update)
+        val meme = moderateWithGroup(update)
+        log.info("sent for moderation to group chat. meme=$meme")
       }
+      imageMatcher.add(update.fileId, update.file)
     }
     log.info("processed meme update=$update")
   }
@@ -82,28 +86,33 @@ class MemeHandler(private val userRepository: UserRepository,
         forwardMemeFromChatToUser(meme, update.user)
       else
         forwardMemeFromChannelToUser(meme, update.user)
+      log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
     }
 
     sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = update.fileId)
   }
 
-  fun moderateWithChat(update: MemeUpdate) {
-    sendMemeToChat(update).let { sent ->
-      val privateMessageId = sendReplyToMeme(update).messageId
-      memeRepository.save(Meme(sent.messageId, update.user.id, update.fileId, update.caption, privateMessageId)).also {
-        log.info("sent for moderation to group chat. meme=$it")
-      }
-      imageMatcher.add(update.fileId, update.file)
-    }
-  }
-
-  fun sendMemeToChat(update: MemeUpdate): Message =
-      api.execute(SendPhoto()
+  fun moderateWithGroup(update: MemeUpdate): Meme =
+      SendPhoto()
           .setChatId(CHAT_ID)
           .setPhoto(update.fileId)
           .setCaption(runCatching { resolveCaption(update) }.getOrNull())
           .setParseMode(ParseMode.HTML)
-          .setReplyMarkup(createMarkup(emptyMap())))
+          .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
+            val senderMessageId = replyToSender(update).messageId
+            memeRepository.save(Meme(sent.messageId, update.user.id, update.fileId, update.caption, senderMessageId, CHAT_ID))
+          }
+
+  fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
+      SendPhoto()
+          .setChatId(moderatorId)
+          .setPhoto(update.fileId)
+          .setCaption(update.caption?.let { it + "\n\n"} ?: "" + "Теперь ты модератор!")
+          .setParseMode(ParseMode.HTML)
+          .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
+            val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
+            memeRepository.save(Meme(sent.messageId, update.user.id, update.fileId, update.caption, senderMessageId, moderatorId))
+          }
 
   fun resolveCaption(update: MemeUpdate): String =
       update.caption ?: "" +
@@ -113,22 +122,20 @@ class MemeHandler(private val userRepository: UserRepository,
               .isFromChat()) ""
       else "\n\nSender: ${update.senderName}"
 
-  private fun forwardMemeFromChannelToUser(meme: Meme, user: User) {
-    api.execute(ForwardMessage()
-        .setChatId(user.id)
-        .setMessageId(meme.channelMessageId)
-        .disableNotification())
-    log.info("successfully forwarded original meme to sender=${user.id}. $meme")
-  }
+  private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
+      api.execute(ForwardMessage()
+          .setChatId(user.id)
+          .setMessageId(meme.channelMessageId)
+          .disableNotification())
 
-  private fun forwardMemeFromChatToUser(meme: Meme, user: User) {
-    api.execute(ForwardMessage()
-        .setChatId(user.id)
-        .setFromChatId(CHAT_ID)
-        .setMessageId(meme.chatMessageId)
-        .disableNotification())
-    log.info("successfully forwarded original meme to sender=${user.id}. $meme")
-  }
+
+  private fun forwardMemeFromChatToUser(meme: Meme, user: User) =
+      api.execute(ForwardMessage()
+          .setChatId(user.id)
+          .setFromChatId(CHAT_ID)
+          .setMessageId(meme.chatMessageId)
+          .disableNotification())
+
 
   private fun sendSorryText(update: MemeUpdate) =
       api.execute(SendMessage()
@@ -137,12 +144,19 @@ class MemeHandler(private val userRepository: UserRepository,
           .disableNotification()
           .setText("К сожалению, мем уже был отправлен ранее!"))
 
-  fun sendReplyToMeme(update: MemeUpdate): Message =
+  fun replyToSender(update: MemeUpdate): Message =
       api.execute(SendMessage()
           .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
           .setText("мем на модерации"))
+
+  fun replyToSenderAboutPrivateModeration(update: MemeUpdate): Message =
+      api.execute(SendMessage()
+          .setChatId(update.user.id)
+          .setReplyToMessageId(update.messageId)
+          .disableNotification()
+          .setText("мем на приватной модерации"))
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
       SendMediaGroup(
@@ -160,4 +174,10 @@ class MemeHandler(private val userRepository: UserRepository,
       }.also {
         log.info("successfully downloaded file=$it")
       }
+
+  fun createPrivateModerationMarkup() = InlineKeyboardMarkup(listOf(
+      listOf(InlineKeyboardButton("Отправить на канал ${APPROVE.emoji}").also { it.callbackData = APPROVE.name }),
+      listOf(InlineKeyboardButton("Предать забвению ${DECLINE.emoji}").also { it.callbackData = DECLINE.name })
+  ))
+
 }
