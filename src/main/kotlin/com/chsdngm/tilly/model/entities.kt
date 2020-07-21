@@ -32,6 +32,7 @@ data class TelegramUser(
 @Entity
 @IdClass(Vote.VoteKey::class)
 data class Vote(
+    @Id val moderationChatId: Long,
     @Id val chatMessageId: Int,
     @Id val voterId: Int,
     @Enumerated(EnumType.STRING) val value: VoteValue,

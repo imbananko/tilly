@@ -30,11 +30,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   override fun handle(update: VoteUpdate) {
     val meme = when (update.isFrom) {
       CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
-      CHAT -> memeRepository.findMemeByChatMessageId(update.messageId)
+      CHAT -> memeRepository.findMemeByModerationChatIdAndChatMessageId(CHAT_ID, update.messageId)
       else -> return
     } ?: return
 
-    val vote = Vote(meme.chatMessageId, update.fromId, update.voteValue, update.isFrom)
+    val vote = Vote(meme.moderationChatId, meme.chatMessageId, update.fromId, update.voteValue, update.isFrom)
 
     if (update.isOld) {
       sendPopupNotification(update.callbackQueryId, "Мем слишком стар")

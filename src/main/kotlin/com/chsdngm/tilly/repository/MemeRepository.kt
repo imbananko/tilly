@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Long> {
-  fun findMemeByChatMessageId(messageId: Int): Meme?
+  fun findMemeByModerationChatIdAndChatMessageId(moderationChatId: Long, messageId: Int): Meme?
 
   fun findMemeByChannelMessageId(messageId: Int): Meme?
 

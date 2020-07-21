@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 
 @Service
 class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<PrivateVoteUpdate> {
@@ -16,7 +17,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
   @Transactional
   override fun handle(update: PrivateVoteUpdate) {
-    memeRepository.findMemeByChatMessageId(update.messageId)?.let {
+    memeRepository.findMemeByModerationChatIdAndChatMessageId(update.senderId, update.messageId)?.let {
       when(update.voteValue) {
         PrivateVoteValue.APPROVE -> approve(update, it)
         PrivateVoteValue.DECLINE -> decline(update, it)
@@ -31,7 +32,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setCaption("мем отправлен на канал")
         .let { TillyConfig.api.execute(it) }
 
-    meme.votes.add(Vote(update.messageId, update.senderId.toInt(), VoteValue.UP, VoteSourceType.PRIVATE_CHAT))
+    meme.votes.add(Vote(update.senderId, update.messageId, update.senderId.toInt(), VoteValue.UP, VoteSourceType.PRIVATE_CHAT))
 
     SendPhoto()
         .setChatId(TillyConfig.CHANNEL_ID)
@@ -40,6 +41,11 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setCaption(meme.caption)
         .let { TillyConfig.api.execute(it) }.also {
           memeRepository.save(meme.copy(channelMessageId = it.messageId))
+
+          EditMessageText()
+              .setChatId(meme.senderId.toString())
+              .setMessageId(meme.privateMessageId)
+              .setText("мем отправлен на канал. статистика: \n\n${VoteValue.UP.emoji}: 1").let { TillyConfig.api.execute(it) }
         }
 
     log.info("ranked moderator with id=${update.senderId} approved meme=$meme")
@@ -53,7 +59,13 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .let { TillyConfig.api.execute(it) }
 
     //TODO fix long/int types in whole project
-    meme.votes.add(Vote(update.messageId, update.senderId.toInt(), VoteValue.DOWN, VoteSourceType.PRIVATE_CHAT))
+    meme.votes.add(Vote(update.senderId, update.messageId, update.senderId.toInt(), VoteValue.DOWN, VoteSourceType.PRIVATE_CHAT))
+    memeRepository.save(meme)
+
+    EditMessageText()
+        .setChatId(meme.senderId.toString())
+        .setMessageId(meme.privateMessageId)
+        .setText("мем предан забвению").let { TillyConfig.api.execute(it) }
 
     log.info("ranked moderator with id=${update.senderId} declined meme=$meme")
   }
