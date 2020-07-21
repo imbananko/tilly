@@ -13,7 +13,11 @@ data class Meme(
     val privateMessageId: Int?,
     val moderationChatId: Long,
     val channelMessageId: Int? = null,
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "chatMessageId", orphanRemoval = true)
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumns(
+        JoinColumn(name = "moderationChatId", referencedColumnName = "moderationChatId"),
+        JoinColumn(name = "chatMessageId", referencedColumnName = "chatMessageId")
+    )
     val votes: MutableList<Vote> = mutableListOf()) {
 
   override fun toString(): String {
@@ -41,6 +45,7 @@ data class Vote(
 
   @Embeddable
   data class VoteKey(
+      val moderationChatId: Long,
       val chatMessageId: Int,
       val voterId: Int) : Serializable
 }
