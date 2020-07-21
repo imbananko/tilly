@@ -45,7 +45,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
                 api.execute(PinChatMessage(it.chatId, it.messageId))
               }
 
-          memeRepository.saveMemeOfWeek(meme.chatMessageId)
+          memeRepository.saveMemeOfWeek(meme.key.chatMessageId)
         } ?: log.info("can't find meme of the week")
       }
           .onSuccess { log.info("successful send meme of the week") }
@@ -59,7 +59,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
               .setChatId(CHAT_ID)
               .setUserId(meme.senderId))
               .user.mention()
-          val votes = voteRepository.findVotesByChatMessageId(meme.chatMessageId)
+          val votes = voteRepository.findVotesByChatMessageId(meme.key.chatMessageId)
               .groupingBy { vote -> vote.value }
               .eachCount()
               .map { entry -> entry.key.emoji + " " + entry.value }
