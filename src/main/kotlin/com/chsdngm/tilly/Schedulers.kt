@@ -45,7 +45,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
                 api.execute(PinChatMessage(it.chatId, it.messageId))
               }
 
-          memeRepository.saveMemeOfWeek(meme.chatMessageId)
+          memeRepository.saveMemeOfWeek(meme.channelMessageId!!)
         } ?: log.info("can't find meme of the week")
       }
           .onSuccess { log.info("successful send meme of the week") }
