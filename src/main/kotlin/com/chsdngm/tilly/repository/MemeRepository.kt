@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Long> {
-  fun findMemeByChatMessageId(messageId: Int): Meme?
+  fun findMemeByModerationChatIdAndChatMessageId(moderationChatId: Long, messageId: Int): Meme?
 
   fun findMemeByChannelMessageId(messageId: Int): Meme?
 
@@ -24,17 +24,17 @@ interface MemeRepository : CrudRepository<Meme, Long> {
         """)
   fun findBySenderId(senderId: Int): List<Meme>
 
-  @Query(value = "insert into meme_of_week (chat_message_id) values (:chatMessageId)", nativeQuery = true)
+  @Query(value = "insert into meme_of_week (channel_message_id) values (:channelMessageId)", nativeQuery = true)
   @Modifying
   @Transactional
-  fun saveMemeOfWeek(@Param("chatMessageId") chatMessageId: Int): Unit
+  fun saveMemeOfWeek(@Param("channelMessageId") channelMessageId: Int): Unit
 
   @Query(value = """
     select m.*
     from meme m
-             join vote v on m.chat_message_id = v.chat_message_id
-    where m.created_at > current_timestamp - interval '7 days'
-    group by m.chat_message_id
+             join vote v on m.moderation_chat_id = v.moderation_chat_id and m.chat_message_id = v.chat_message_id
+    where m.channel_message_id is not null and m.created_at > current_timestamp - interval '7 days'
+    group by m.channel_message_id, m.chat_message_id
     order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc
     limit 1
   """, nativeQuery = true)

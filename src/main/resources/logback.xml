@@ -7,7 +7,7 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%d{MM-dd-yyyy HH:mm:ss} [level] %logger{0} - %msg%n</pattern>
+            <pattern>%d{MM-dd-yyyy HH:mm:ss} [%level] %logger{0} - %msg%n</pattern>
         </encoder>
     </appender>
 

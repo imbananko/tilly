@@ -5,19 +5,29 @@ import java.io.Serializable
 import javax.persistence.*
 
 @Entity
+@IdClass(Meme.MemeKey::class)
 data class Meme(
+    @Id val moderationChatId: Long,
     @Id val chatMessageId: Int,
     val senderId: Int,
     val fileId: String,
     val caption: String?,
     val privateMessageId: Int?,
-    val moderationChatId: Long,
     val channelMessageId: Int? = null,
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "chatMessageId", orphanRemoval = true)
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumns(
+        JoinColumn(name = "moderationChatId", referencedColumnName = "moderationChatId", nullable = false, insertable = false, updatable = false),
+        JoinColumn(name = "chatMessageId", referencedColumnName = "chatMessageId", nullable = false, insertable = false, updatable = false)
+    )
     val votes: MutableList<Vote> = mutableListOf()) {
 
+  @Embeddable
+  data class MemeKey(
+      val moderationChatId: Long,
+      val chatMessageId: Int) : Serializable
+
   override fun toString(): String {
-    return "Meme(chatMessageId=$chatMessageId, senderId=$senderId, caption=$caption, privateMessageId=$privateMessageId, votes=$votes)"
+    return "Meme(moderationChatId=$moderationChatId, chatMessageId=$chatMessageId, senderId=$senderId, caption=$caption, privateMessageId=$privateMessageId, votes=$votes)"
   }
 }
 
@@ -32,6 +42,7 @@ data class TelegramUser(
 @Entity
 @IdClass(Vote.VoteKey::class)
 data class Vote(
+    @Id val moderationChatId: Long,
     @Id val chatMessageId: Int,
     @Id val voterId: Int,
     @Enumerated(EnumType.STRING) val value: VoteValue,
@@ -40,6 +51,7 @@ data class Vote(
 
   @Embeddable
   data class VoteKey(
+      val moderationChatId: Long,
       val chatMessageId: Int,
       val voterId: Int) : Serializable
 }
