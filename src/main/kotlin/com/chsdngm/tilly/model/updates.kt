@@ -66,6 +66,7 @@ class CommandUpdate(update: Update) {
 }
 
 class PrivateVoteUpdate(update: Update) {
+  val user: User = update.callbackQuery.from
   val senderId: Long = update.callbackQuery.message.chatId
   val messageId: Int = update.callbackQuery.message.messageId
   val voteValue: PrivateVoteValue = PrivateVoteValue.valueOf(update.callbackQuery.data)

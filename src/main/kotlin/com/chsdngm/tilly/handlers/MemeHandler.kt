@@ -53,7 +53,8 @@ class MemeHandler(private val userRepository: UserRepository,
   override fun handle(update: MemeUpdate) {
     update.file = download(update.fileId)
 
-    userRepository.save(TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName))
+    val memeSender = TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName)
+    userRepository.save(memeSender)
 
     imageMatcher.tryFindDuplicate(update.file)?.also {
       handleDuplicate(update)
@@ -62,8 +63,11 @@ class MemeHandler(private val userRepository: UserRepository,
           && memeCount.incrementAndGet() % 5 == 0L
           && userRepository.isRankedModerationAvailable()) {
 
-        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let { user ->
-          moderateWithUser(update, user.id.toLong()).also { log.info("sent for moderation to user=$user. meme=$it") }
+        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let { moderator ->
+          moderateWithUser(update, moderator.id.toLong()).also { meme ->
+            log.info("sent for moderation to user=$moderator. meme=$meme")
+            sendPrivateModerationEventToBeta(meme, memeSender, moderator)
+          }
         } ?: run {
           log.info("cannot perform ranked moderation. unable to pick moderator")
           moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
@@ -165,6 +169,14 @@ class MemeHandler(private val userRepository: UserRepository,
               InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
               InputMediaPhoto(originalFileId, "оригинал")
           )).let { api.execute(it) }
+
+  private fun sendPrivateModerationEventToBeta(meme: Meme, memeSender: TelegramUser, moderator: TelegramUser) =
+      SendPhoto()
+          .setChatId(BETA_CHAT_ID)
+          .setPhoto(meme.fileId)
+          .setCaption("мем авторства ${memeSender.mention()} отправлен на личную модерацию к ${moderator.mention()}")
+          .setParseMode(ParseMode.HTML)
+          .let { api.execute(it) }
 
   fun download(fileId: String): File =
       File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis()).apply { this.deleteOnExit() }.also {
