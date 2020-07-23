@@ -3,13 +3,17 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig
+import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.createMarkup
+import com.chsdngm.tilly.utility.mention
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
+import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
 class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<PrivateVoteUpdate> {
@@ -49,6 +53,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         }
 
     log.info("ranked moderator with id=${update.senderId} approved meme=$meme")
+    sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.APPROVE)
   }
 
   private fun decline(update: PrivateVoteUpdate, meme: Meme) {
@@ -68,5 +73,19 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setText("мем предан забвению").let { TillyConfig.api.execute(it) }
 
     log.info("ranked moderator with id=${update.senderId} declined meme=$meme")
+    sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.DECLINE)
+  }
+
+  private fun sendPrivateModerationEventToBeta(meme: Meme, moderator: User, solution: PrivateVoteValue) {
+    val caption = "${moderator.mention()} " +
+        if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
+        else "предал(а) мем забвению"
+
+    SendPhoto()
+        .setChatId(BETA_CHAT_ID)
+        .setPhoto(meme.fileId)
+        .setCaption(caption)
+        .setParseMode(ParseMode.HTML)
+        .let { TillyConfig.api.execute(it) }
   }
 }

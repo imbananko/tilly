@@ -37,7 +37,9 @@ data class TelegramUser(
     val username: String?,
     val firstName: String?,
     val lastName: String?
-)
+) {
+  fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
+}
 
 @Entity
 @IdClass(Vote.VoteKey::class)
