@@ -34,7 +34,7 @@ interface MemeRepository : CrudRepository<Meme, Long> {
     from meme m
              join vote v on m.moderation_chat_id = v.moderation_chat_id and m.chat_message_id = v.chat_message_id
     where m.channel_message_id is not null and m.created_at > current_timestamp - interval '7 days'
-    group by m.channel_message_id, m.chat_message_id
+    group by m.channel_message_id, m.chat_message_id, m.sender_id, m.file_id, m.created_at, m.private_message_id, m.caption, m.moderation_chat_id
     order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc
     limit 1
   """, nativeQuery = true)
