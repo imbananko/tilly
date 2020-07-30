@@ -25,7 +25,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
 
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Scheduled(cron = "0 0 21 * * WED")
+  @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() =
       runCatching {
         memeRepository.findMemeOfTheWeek()?.let { meme ->
