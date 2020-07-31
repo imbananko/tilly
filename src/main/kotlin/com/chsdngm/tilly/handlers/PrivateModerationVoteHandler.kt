@@ -21,8 +21,8 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
   @Transactional
   override fun handle(update: PrivateVoteUpdate) {
-    memeRepository.findMemeByModerationChatIdAndChatMessageId(update.senderId, update.messageId)?.let {
-      when(update.voteValue) {
+    memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id.toLong(), update.messageId)?.let {
+      when (update.voteValue) {
         PrivateVoteValue.APPROVE -> approve(update, it)
         PrivateVoteValue.DECLINE -> decline(update, it)
       }
@@ -31,48 +31,46 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
   private fun approve(update: PrivateVoteUpdate, meme: Meme) {
     EditMessageCaption()
-        .setChatId(update.senderId.toString())
+        .setChatId(update.user.id.toString())
         .setMessageId(update.messageId)
         .setCaption("мем отправлен на канал")
         .let { TillyConfig.api.execute(it) }
 
-    meme.votes.add(Vote(update.senderId, update.messageId, update.senderId.toInt(), VoteValue.UP, VoteSourceType.PRIVATE_CHAT))
+    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.DOWN))
 
-    SendPhoto()
+    meme.channelMessageId = SendPhoto()
         .setChatId(TillyConfig.CHANNEL_ID)
         .setPhoto(meme.fileId)
         .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
         .setCaption(meme.caption)
-        .let { TillyConfig.api.execute(it) }.also {
-          memeRepository.save(meme.copy(channelMessageId = it.messageId))
+        .let { TillyConfig.api.execute(it) }.messageId
 
-          EditMessageText()
-              .setChatId(meme.senderId.toString())
-              .setMessageId(meme.privateMessageId)
-              .setText("мем отправлен на канал. статистика: \n\n${VoteValue.UP.emoji}: 1").let { TillyConfig.api.execute(it) }
-        }
+    EditMessageText()
+        .setChatId(meme.senderId.toString())
+        .setMessageId(meme.privateReplyMessageId)
+        .setText("мем отправлен на канал. статистика: \n\n${VoteValue.UP.emoji}: 1").let { TillyConfig.api.execute(it) }
 
-    log.info("ranked moderator with id=${update.senderId} approved meme=$meme")
+    log.info("ranked moderator with id=${update.user.id} approved meme=$meme")
     sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.APPROVE)
   }
 
   private fun decline(update: PrivateVoteUpdate, meme: Meme) {
     EditMessageCaption()
-        .setChatId(update.senderId.toString())
+        .setChatId(update.user.id.toString())
         .setMessageId(update.messageId)
         .setCaption("мем предан забвению")
         .let { TillyConfig.api.execute(it) }
 
     //TODO fix long/int types in whole project
-    meme.votes.add(Vote(update.senderId, update.messageId, update.senderId.toInt(), VoteValue.DOWN, VoteSourceType.PRIVATE_CHAT))
+    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.DOWN))
     memeRepository.save(meme)
 
     EditMessageText()
         .setChatId(meme.senderId.toString())
-        .setMessageId(meme.privateMessageId)
+        .setMessageId(meme.privateReplyMessageId)
         .setText("мем предан забвению").let { TillyConfig.api.execute(it) }
 
-    log.info("ranked moderator with id=${update.senderId} declined meme=$meme")
+    log.info("ranked moderator with id=${update.user.id} declined meme=$meme")
     sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.DECLINE)
   }
 
