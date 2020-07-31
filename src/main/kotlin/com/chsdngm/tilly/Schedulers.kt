@@ -54,12 +54,12 @@ final class Schedulers(private val memeRepository: MemeRepository,
   @Scheduled(cron = "0 0 20 31 12 *")
   private fun sendMemesOfTheYear() =
       runCatching {
-        fun formatMemeTheYearCaption(meme: Meme): String {
+        fun formatMemeOfTheYearCaption(meme: Meme): String {
           val userMention = api.execute(GetChatMember()
               .setChatId(CHAT_ID)
               .setUserId(meme.senderId))
               .user.mention()
-          val votes = voteRepository.findVotesByChatMessageId(meme.chatMessageId)
+          val votes = meme.votes
               .groupingBy { vote -> vote.value }
               .eachCount()
               .map { entry -> entry.key.emoji + " " + entry.value }
@@ -70,7 +70,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
         SendMessage(CHANNEL_ID, "Топ мемсы прошедшего года:").let { api.execute(it) }
         //TODO add date filter there
         SendMediaGroup(CHANNEL_ID, memeRepository.findAll().map {
-          InputMediaPhoto(it.fileId, formatMemeTheYearCaption(it))
+          InputMediaPhoto(it.fileId, formatMemeOfTheYearCaption(it))
               .setParseMode(ParseMode.HTML)
         }).let { api.execute(it) }
       }
