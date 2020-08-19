@@ -12,6 +12,7 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
+import com.chsdngm.tilly.utility.contestNumberToString
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.hasLocalTag
 import com.chsdngm.tilly.utility.isFromChat
@@ -59,7 +60,7 @@ class MemeHandler(private val userRepository: UserRepository,
     imageMatcher.tryFindDuplicate(update.file)?.also {
       handleDuplicate(update)
     } ?: run {
-      if (!hasLocalTag(update.caption)
+      (if (!hasLocalTag(update.caption)
           && memeCount.incrementAndGet() % 5 == 0L
           && userRepository.isRankedModerationAvailable()) {
 
@@ -74,8 +75,12 @@ class MemeHandler(private val userRepository: UserRepository,
         }
 
       } else {
-        val meme = moderateWithGroup(update)
-        log.info("sent for moderation to group chat. meme=$meme")
+        moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
+      }).also {
+        val memesAfterContestStartedCount = memeRepository.memesAfterContestStarted(it.senderId)
+        if (memesAfterContestStartedCount in 1..10) {
+          sendText(update, "Это твой ${contestNumberToString(memesAfterContestStartedCount)} мем в рамках розыгрыша")
+        }
       }
       imageMatcher.add(update.fileId, update.file)
     }
@@ -83,7 +88,7 @@ class MemeHandler(private val userRepository: UserRepository,
   }
 
   fun handleDuplicate(update: MemeUpdate) {
-    sendSorryText(update)
+    sendText(update, "К сожалению, мем уже был отправлен ранее!")
 
     memeRepository.findByFileId(update.fileId)?.also { meme ->
       if (meme.channelMessageId == null)
@@ -141,12 +146,12 @@ class MemeHandler(private val userRepository: UserRepository,
           .disableNotification())
 
 
-  private fun sendSorryText(update: MemeUpdate) =
+  private fun sendText(update: MemeUpdate, text: String) =
       api.execute(SendMessage()
           .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
-          .setText("К сожалению, мем уже был отправлен ранее!"))
+          .setText(text))
 
   fun replyToSender(update: MemeUpdate): Message =
       api.execute(SendMessage()
