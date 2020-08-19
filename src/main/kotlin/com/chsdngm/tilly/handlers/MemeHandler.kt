@@ -60,7 +60,7 @@ class MemeHandler(private val userRepository: UserRepository,
     imageMatcher.tryFindDuplicate(update.file)?.also {
       handleDuplicate(update)
     } ?: run {
-      if (!hasLocalTag(update.caption)
+      (if (!hasLocalTag(update.caption)
           && memeCount.incrementAndGet() % 5 == 0L
           && userRepository.isRankedModerationAvailable()) {
 
@@ -71,18 +71,16 @@ class MemeHandler(private val userRepository: UserRepository,
           }
         } ?: run {
           log.info("cannot perform ranked moderation. unable to pick moderator")
-          moderateWithGroup(update).also {
-            log.info("sent for moderation to group chat. meme=$it")
-            val memesAfterContestStartedCount = memeRepository.memesAfterContestStarted(memeSender.id)
-            if (memesAfterContestStartedCount in 1..10) {
-              sendText(update, "Это твой ${contestNumberToString(memesAfterContestStartedCount)} мем в рамках розыгрыша")
-            }
-          }
+          moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
         }
 
       } else {
-        val meme = moderateWithGroup(update)
-        log.info("sent for moderation to group chat. meme=$meme")
+        moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
+      }).also {
+        val memesAfterContestStartedCount = memeRepository.memesAfterContestStarted(it.senderId)
+        if (memesAfterContestStartedCount in 1..10) {
+          sendText(update, "Это твой ${contestNumberToString(memesAfterContestStartedCount)} мем в рамках розыгрыша")
+        }
       }
       imageMatcher.add(update.fileId, update.file)
     }
