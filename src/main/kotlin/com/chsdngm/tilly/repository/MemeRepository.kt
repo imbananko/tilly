@@ -16,13 +16,13 @@ interface MemeRepository : CrudRepository<Meme, Long> {
 
   fun findByFileId(fileId: String): Meme?
 
-  @Query("""
-        select distinct meme 
-        from Meme meme 
-        left join fetch meme.votes
-        where meme.senderId = ?1
-        """)
   fun findBySenderId(senderId: Int): List<Meme>
+
+  // 2020-08-19 19:00:00 UTC is 2020-08-19 22:00:00 in Moscow (meme of the week)
+  @Query("""
+        select count(*) from meme where sender_id = :senderId and created >= '2020-08-19 19:00:00' 
+        """, nativeQuery = true)
+  fun memesAfterContestStarted(@Param("senderId") senderId: Int): Int
 
   @Query(value = "insert into meme_of_week (channel_message_id) values (:channelMessageId)", nativeQuery = true)
   @Modifying
