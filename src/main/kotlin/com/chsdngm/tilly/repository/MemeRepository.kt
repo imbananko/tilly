@@ -20,7 +20,7 @@ interface MemeRepository : CrudRepository<Meme, Long> {
 
   // 2020-08-19 19:00:00 UTC is 2020-08-19 22:00:00 in Moscow (meme of the week)
   @Query("""
-        select count(*) from meme where sender_id = :senderId and created >= '2020-08-19 19:00:00' 
+        select count(*) from meme where sender_id = :senderId and created_at >= '2020-08-19 19:00:00' 
         """, nativeQuery = true)
   fun memesAfterContestStarted(@Param("senderId") senderId: Int): Int
 
