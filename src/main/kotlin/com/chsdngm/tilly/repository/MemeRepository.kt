@@ -16,6 +16,12 @@ interface MemeRepository : CrudRepository<Meme, Long> {
 
   fun findByFileId(fileId: String): Meme?
 
+  @Query("""
+        select distinct meme 
+        from Meme meme 
+        left join fetch meme.votes
+        where meme.senderId = ?1
+        """)
   fun findBySenderId(senderId: Int): List<Meme>
 
   // 2020-08-19 19:00:00 UTC is 2020-08-19 22:00:00 in Moscow (meme of the week)
