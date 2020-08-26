@@ -11,6 +11,7 @@ import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.utility.TillyConfig.Companion.CONTEST_END_DATETIME
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.contestNumberToString
 import com.chsdngm.tilly.utility.createMarkup
@@ -35,6 +36,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.PostConstruct
 
@@ -78,7 +80,7 @@ class MemeHandler(private val userRepository: UserRepository,
         moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
       }).also {
         val memesAfterContestStartedCount = memeRepository.memesAfterContestStarted(it.senderId)
-        if (memesAfterContestStartedCount in 1..10) {
+        if (Instant.now().isBefore(CONTEST_END_DATETIME) && memesAfterContestStartedCount in 1..10) {
           sendText(update, "Это твой ${contestNumberToString(memesAfterContestStartedCount)} мем в рамках розыгрыша")
         }
       }
