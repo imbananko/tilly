@@ -15,7 +15,7 @@ data class Meme(
     var channelMessageId: Int? = null,
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "memeId", orphanRemoval = true)
-    val votes: MutableList<Vote> = mutableListOf()) {
+    val votes: MutableSet<Vote> = mutableSetOf()) {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

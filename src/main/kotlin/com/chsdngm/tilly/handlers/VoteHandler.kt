@@ -48,9 +48,8 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     }
 
     meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-      if (found.value == vote.value) {
+      if (meme.votes.remove(vote)) {
         sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
-        meme.votes.remove(found)
       } else {
         found.value = vote.value
 
@@ -59,7 +58,12 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
           VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
         }.let { sendPopupNotification(update.callbackQueryId, it) }
       }
-    } ?: meme.votes.add(vote)
+    } ?: meme.votes.add(vote).also {
+      when (vote.value) {
+        VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
+        VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
+      }.let { sendPopupNotification(update.callbackQueryId, it) }
+    }
 
     updateMarkup(meme)
 
@@ -85,8 +89,10 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   }
 
   fun sendPopupNotification(callbackQueryId: String, text: String): Boolean = AnswerCallbackQuery()
+      .setCacheTime(0)
       .setCallbackQueryId(callbackQueryId)
-      .setText(text).let { api.execute(it) }
+      .setText(text)
+      .let { api.execute(it) }
 
   private fun updateMarkup(meme: Meme) {
     meme.channelMessageId?.let {
