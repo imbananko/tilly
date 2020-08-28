@@ -36,7 +36,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setCaption("мем отправлен на канал")
         .let { TillyConfig.api.execute(it) }
 
-    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.DOWN))
+    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.UP))
 
     meme.channelMessageId = SendPhoto()
         .setChatId(TillyConfig.CHANNEL_ID)
