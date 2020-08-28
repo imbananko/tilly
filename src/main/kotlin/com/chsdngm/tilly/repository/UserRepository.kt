@@ -13,16 +13,18 @@ interface UserRepository : CrudRepository<TelegramUser, Long>, UserRedisReposito
   @Query(nativeQuery = true, value = """
     select u.*
     from meme m
-             inner join (select moderation_chat_id, chat_message_id,
+             inner join (select meme_id,
                                 count(*) filter (where value = 'UP')   up,
                                 count(*) filter (where value = 'DOWN') down,
                                 count(1)                               all_votes
                          from vote
-                         where created_at >= now() - interval '7 days'
-                         group by moderation_chat_id, chat_message_id) v
-                        on (m.moderation_chat_id = v.moderation_chat_id and m.chat_message_id = v.chat_message_id)
+                         where created >= now() - interval '7 days'
+                         group by meme_id) v
+                        on m.id = v.meme_id
              inner join telegram_user u on m.sender_id = u.id
-    where m.channel_message_id is not null and created_at >= now() - interval '7 days' and u.id != :idToExclude
+    where m.channel_message_id is not null
+      and created >= now() - interval '7 days'
+      and u.id != :idToExclude
     group by u.id
     order by sum(up) - sum(down) - 2 * count(1) desc
     limit :limit

@@ -28,43 +28,47 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
 
   @Transactional
   override fun handle(update: VoteUpdate) {
-    val meme = when (update.isFrom) {
-      CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
-      CHAT -> memeRepository.findMemeByModerationChatIdAndChatMessageId(CHAT_ID, update.messageId)
-      else -> return
-    } ?: return
-
-    val vote = Vote(meme.moderationChatId, meme.chatMessageId, update.fromId, update.voteValue, update.isFrom)
-
     if (update.isOld) {
       sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
       return
-    } else if (meme.senderId == vote.voterId) {
+    }
+
+    val meme = when (update.isFrom) {
+      CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
+      CHAT -> memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID, update.messageId)
+      else -> return
+    } ?: return
+
+    //TODO: refactor this
+    val vote = Vote(meme.id, update.voterId, if (update.isFrom == CHANNEL) CHANNEL_ID else CHAT_ID, update.voteValue)
+
+    if (meme.senderId == vote.voterId) {
       sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
       return
     }
 
     meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-      meme.votes.remove(found)
-      if (found.value == vote.value) {
+      if (meme.votes.remove(vote)) {
         sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
       } else {
-        meme.votes.add(vote)
+        found.value = vote.value
 
         when (vote.value) {
           VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
           VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
         }.let { sendPopupNotification(update.callbackQueryId, it) }
       }
-    } ?: meme.votes.add(vote)
+    } ?: meme.votes.add(vote).also {
+      when (vote.value) {
+        VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
+        VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
+      }.let { sendPopupNotification(update.callbackQueryId, it) }
+    }
 
     updateMarkup(meme)
 
-    memeRepository.save(
-        if (meme.channelMessageId == null && readyForShipment(meme))
-          meme.copy(channelMessageId = sendMemeToChannel(meme).messageId)
-        else
-          meme)
+    if (meme.channelMessageId == null && readyForShipment(meme))
+      meme.channelMessageId = sendMemeToChannel(meme).messageId
 
     with(StringBuilder()) {
       this.append(
@@ -85,8 +89,10 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   }
 
   fun sendPopupNotification(callbackQueryId: String, text: String): Boolean = AnswerCallbackQuery()
+      .setCacheTime(0)
       .setCallbackQueryId(callbackQueryId)
-      .setText(text).let { api.execute(it) }
+      .setText(text)
+      .let { api.execute(it) }
 
   private fun updateMarkup(meme: Meme) {
     meme.channelMessageId?.let {
@@ -100,7 +106,7 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     if (meme.moderationChatId == CHAT_ID) {
       EditMessageReplyMarkup()
           .setChatId(CHAT_ID)
-          .setMessageId(meme.chatMessageId)
+          .setMessageId(meme.moderationChatMessageId)
           .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
           .let { api.execute(it) }
     }
@@ -122,6 +128,6 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   private fun updateStatsInSenderChat(meme: Meme, stats: String) =
       EditMessageText()
           .setChatId(meme.senderId.toString())
-          .setMessageId(meme.privateMessageId)
+          .setMessageId(meme.privateReplyMessageId)
           .setText(stats).let { api.execute(it) }
 }

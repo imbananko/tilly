@@ -104,7 +104,7 @@ class MemeHandler(private val userRepository: UserRepository,
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSender(update).messageId
-            memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, update.fileId, update.caption, senderMessageId))
+            memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, senderMessageId, update.fileId, update.caption))
           }
 
   fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
@@ -115,7 +115,7 @@ class MemeHandler(private val userRepository: UserRepository,
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
-            memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, update.fileId, update.caption, senderMessageId))
+            memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, senderMessageId, update.fileId, update.caption))
           }
 
   fun resolveCaption(update: MemeUpdate): String =
@@ -137,7 +137,7 @@ class MemeHandler(private val userRepository: UserRepository,
       api.execute(ForwardMessage()
           .setChatId(user.id)
           .setFromChatId(CHAT_ID)
-          .setMessageId(meme.chatMessageId)
+          .setMessageId(meme.moderationChatMessageId)
           .disableNotification())
 
 

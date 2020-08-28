@@ -5,29 +5,24 @@ import java.io.Serializable
 import javax.persistence.*
 
 @Entity
-@IdClass(Meme.MemeKey::class)
 data class Meme(
-    @Id val moderationChatId: Long,
-    @Id val chatMessageId: Int,
+    val moderationChatId: Long,
+    val moderationChatMessageId: Int,
     val senderId: Int,
+    val privateReplyMessageId: Int,
     val fileId: String,
     val caption: String?,
-    val privateMessageId: Int?,
-    val channelMessageId: Int? = null,
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumns(
-        JoinColumn(name = "moderationChatId", referencedColumnName = "moderationChatId", nullable = false, insertable = false, updatable = false),
-        JoinColumn(name = "chatMessageId", referencedColumnName = "chatMessageId", nullable = false, insertable = false, updatable = false)
-    )
-    val votes: MutableList<Vote> = mutableListOf()) {
+    var channelMessageId: Int? = null,
 
-  @Embeddable
-  data class MemeKey(
-      val moderationChatId: Long,
-      val chatMessageId: Int) : Serializable
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "memeId", orphanRemoval = true)
+    val votes: MutableSet<Vote> = mutableSetOf()) {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  val id: Int = 0
 
   override fun toString(): String {
-    return "Meme(moderationChatId=$moderationChatId, chatMessageId=$chatMessageId, senderId=$senderId, caption=$caption, privateMessageId=$privateMessageId, votes=$votes)"
+    return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, votes=$votes)"
   }
 }
 
@@ -36,33 +31,29 @@ data class TelegramUser(
     @Id val id: Int,
     val username: String?,
     val firstName: String?,
-    val lastName: String?
-) {
+    val lastName: String?) {
   fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
 }
 
 @Entity
 @IdClass(Vote.VoteKey::class)
 data class Vote(
-    @Id val moderationChatId: Long,
-    @Id val chatMessageId: Int,
+    @Id val memeId: Int,
     @Id val voterId: Int,
-    @Enumerated(EnumType.STRING) val value: VoteValue,
-    @Enumerated(EnumType.STRING) val source: VoteSourceType
-) {
+    val sourceChatId: Long,
+    @Enumerated(EnumType.STRING)
+    var value: VoteValue) {
 
   @Embeddable
-  data class VoteKey(
-      val moderationChatId: Long,
-      val chatMessageId: Int,
+  class VoteKey(
+      val memeId: Int,
       val voterId: Int) : Serializable
 }
 
 @Entity
 data class Image(
     @Id val fileId: String,
-    @Lob @Type(type = "org.hibernate.type.BinaryType") val file: ByteArray
-) {
+    @Lob @Type(type = "org.hibernate.type.BinaryType") val file: ByteArray) {
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
