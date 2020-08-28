@@ -51,18 +51,3 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
       it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
       it.callbackData = voteValue.name
     }
-
-fun contestNumberToString(num: Int): String =
-    when (num) {
-      1 -> "первый"
-      2 -> "второй"
-      3 -> "третий"
-      4 -> "четвертый"
-      5 -> "пятый"
-      6 -> "шестой"
-      7 -> "седьмой"
-      8 -> "восьмой"
-      9 -> "девятый"
-      10 -> "десятый и одновременно последний"
-      else -> num.toString()
-    }

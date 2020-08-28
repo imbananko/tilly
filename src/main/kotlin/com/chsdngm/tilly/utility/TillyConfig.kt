@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
-import java.time.Instant
 
 @Component
 class TillyConfig {
@@ -31,8 +30,6 @@ class TillyConfig {
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
     }
-
-    val CONTEST_END_DATETIME: Instant = Instant.parse("2020-08-26T19:00:00.000Z")
   }
 
   @Value("\${bot.token}")
