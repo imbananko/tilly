@@ -2,7 +2,6 @@ package com.chsdngm.tilly
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.repository.MemeRepository
-import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
@@ -20,12 +19,11 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 
 @Service
 @EnableScheduling
-final class Schedulers(private val memeRepository: MemeRepository,
-                       private val voteRepository: VoteRepository) {
+final class Schedulers(private val memeRepository: MemeRepository) {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Scheduled(cron = "0 0 19 * * WED")
+  @Scheduled(cron = "0 0 19 * * THU")
   private fun sendMemeOfTheWeek() =
       runCatching {
         memeRepository.findMemeOfTheWeek()?.let { meme ->
@@ -45,7 +43,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
                 api.execute(PinChatMessage(it.chatId, it.messageId))
               }
 
-          memeRepository.saveMemeOfWeek(meme.channelMessageId!!)
+          memeRepository.saveMemeOfWeek(meme.id)
         } ?: log.info("can't find meme of the week")
       }
           .onSuccess { log.info("successful send meme of the week") }
