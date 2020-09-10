@@ -9,7 +9,7 @@ data class Meme(
     val moderationChatId: Long,
     val moderationChatMessageId: Int,
     val senderId: Int,
-    val privateReplyMessageId: Int,
+    val privateReplyMessageId: Int?,
     val fileId: String,
     val caption: String?,
     var channelMessageId: Int? = null,
