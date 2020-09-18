@@ -8,11 +8,10 @@ import org.telegram.telegrambots.meta.api.objects.User
 import java.io.File
 import java.time.Instant
 
-
 private val trashCaptionParts = listOf("sender", "photo from")
 const val week: Long = 60 * 60 * 24 * 7
 
-class VoteUpdate(update: Update) {
+class VoteUpdate(update: Update) : ConcreteUpdate {
   val voterId: Int = update.callbackQuery.from.id
   val messageId: Int = update.callbackQuery.message.messageId
   val isFrom: VoteSourceType = when {
@@ -29,7 +28,7 @@ class VoteUpdate(update: Update) {
   }
 }
 
-class MemeUpdate(update: Update) {
+class MemeUpdate(update: Update) : ConcreteUpdate {
   val messageId: Int = update.message.messageId
   val caption: String? = update.message.caption?.takeIf { caption ->
     val lowerCaseCaption = caption.toLowerCase()
@@ -46,7 +45,7 @@ class MemeUpdate(update: Update) {
   }
 }
 
-class CommandUpdate(update: Update) {
+class CommandUpdate(update: Update) : ConcreteUpdate {
   val senderId: Long = update.message.chatId
   val value: Command? = Command.from(update.message.text)
 
@@ -67,8 +66,12 @@ class CommandUpdate(update: Update) {
   }
 }
 
-class PrivateVoteUpdate(update: Update) {
+class PrivateVoteUpdate(update: Update) : ConcreteUpdate {
   val user: User = update.callbackQuery.from
   val messageId: Int = update.callbackQuery.message.messageId
   val voteValue: PrivateVoteValue = PrivateVoteValue.valueOf(update.callbackQuery.data)
+}
+
+interface ConcreteUpdate {
+
 }

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.Update
 
 @Service
 class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandler<CommandUpdate> {
@@ -71,4 +72,10 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
           .setText(infoText)
       )
   }
+
+  override fun match(update: Update) =
+      update.hasMessage() && update.message.chat.isUserChat && update.message.isCommand
+
+  override fun transform(update: Update) = CommandUpdate(update)
+
 }

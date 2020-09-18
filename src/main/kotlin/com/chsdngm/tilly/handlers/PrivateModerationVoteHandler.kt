@@ -13,6 +13,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
+import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
@@ -86,4 +87,9 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setParseMode(ParseMode.HTML)
         .let { TillyConfig.api.execute(it) }
   }
+
+  override fun match(update: Update) = update.hasCallbackQuery() && update.callbackQuery.message.chat.isUserChat
+      && setOf(*PrivateVoteValue.values()).map { it.name }.contains(update.callbackQuery.data)
+
+  override fun transform(update: Update) = PrivateVoteUpdate(update)
 }

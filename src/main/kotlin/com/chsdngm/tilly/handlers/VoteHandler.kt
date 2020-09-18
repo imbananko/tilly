@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
+import org.telegram.telegrambots.meta.api.objects.Update
 import javax.transaction.Transactional
 
 @Service
@@ -130,4 +131,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
           .setChatId(meme.senderId.toString())
           .setMessageId(meme.privateReplyMessageId)
           .setText(stats).let { api.execute(it) }
+
+  override fun match(update: Update) = update.hasCallbackQuery()
+      && (update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)
+      && setOf(*VoteValue.values()).map { it.name }.contains(update.callbackQuery.data)
+
+
+  override fun transform(update: Update) = VoteUpdate(update)
 }
