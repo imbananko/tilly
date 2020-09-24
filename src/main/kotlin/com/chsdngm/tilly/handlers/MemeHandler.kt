@@ -91,9 +91,8 @@ class MemeHandler(private val userRepository: UserRepository,
       else
         forwardMemeFromChannelToUser(meme, update.user)
       log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
+      sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
     }
-
-    sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = update.fileId)
   }
 
   fun moderateWithGroup(update: MemeUpdate): Meme =
