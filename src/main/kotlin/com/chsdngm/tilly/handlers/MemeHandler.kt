@@ -14,7 +14,6 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.hasLocalTag
-import com.chsdngm.tilly.utility.isFromChat
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -22,7 +21,6 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
@@ -99,7 +97,7 @@ class MemeHandler(private val userRepository: UserRepository,
       SendPhoto()
           .setChatId(CHAT_ID)
           .setPhoto(update.fileId)
-          .setCaption(runCatching { resolveCaption(update) }.getOrNull())
+          .setCaption(update.caption?.let { it + "\n\n" } ?: "" + "Отправитель: ${update.senderName}")
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSender(update).messageId
@@ -110,20 +108,13 @@ class MemeHandler(private val userRepository: UserRepository,
       SendPhoto()
           .setChatId(moderatorId)
           .setPhoto(update.fileId)
-          .setCaption(update.caption?.let { it + "\n\n"} ?: "" + "Теперь ты модератор!")
+          .setCaption(update.caption?.let { it + "\n\n" }
+              ?: "" + "Ты был выбран модератором на основе рейтинга за последние 3 дня")
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
             memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, senderMessageId, update.fileId, update.caption))
           }
-
-  fun resolveCaption(update: MemeUpdate): String =
-      update.caption ?: "" +
-      if (GetChatMember()
-              .setChatId(CHAT_ID)
-              .setUserId(update.user.id).let { api.execute(it) }
-              .isFromChat()) ""
-      else "\n\nSender: ${update.senderName}"
 
   private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
       api.execute(ForwardMessage()
@@ -159,7 +150,7 @@ class MemeHandler(private val userRepository: UserRepository,
           .setChatId(update.user.id)
           .setReplyToMessageId(update.messageId)
           .disableNotification()
-          .setText("мем на приватной модерации"))
+          .setText("мем на приватной модерации у одного из подписчиков канала"))
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
       SendMediaGroup(
@@ -173,7 +164,7 @@ class MemeHandler(private val userRepository: UserRepository,
       SendPhoto()
           .setChatId(BETA_CHAT_ID)
           .setPhoto(meme.fileId)
-          .setCaption("мем авторства ${memeSender.mention()} отправлен на личную модерацию к ${moderator.mention()}")
+          .setCaption("мем авторства ${memeSender.mention()} отправлен на приватную модерацию к ${moderator.mention()}")
           .setParseMode(ParseMode.HTML)
           .let { api.execute(it) }
 
