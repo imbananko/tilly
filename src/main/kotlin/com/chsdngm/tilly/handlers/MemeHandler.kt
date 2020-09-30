@@ -56,8 +56,8 @@ class MemeHandler(private val userRepository: UserRepository,
     val memeSender = TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName)
     userRepository.save(memeSender)
 
-    imageMatcher.tryFindDuplicate(update.file)?.also {
-      handleDuplicate(update)
+    imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
+      handleDuplicate(update, duplicateFileId)
     } ?: run {
       if (!hasLocalTag(update.caption)
           && memeCount.incrementAndGet() % 5 == 0L
@@ -82,10 +82,10 @@ class MemeHandler(private val userRepository: UserRepository,
     log.info("processed meme update=$update")
   }
 
-  fun handleDuplicate(update: MemeUpdate) {
+  fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
     sendSorryText(update)
 
-    memeRepository.findByFileId(update.fileId)?.also { meme ->
+    memeRepository.findByFileId(duplicateFileId)?.also { meme ->
       if (meme.channelMessageId == null)
         forwardMemeFromChatToUser(meme, update.user)
       else
