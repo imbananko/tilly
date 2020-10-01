@@ -10,6 +10,7 @@ import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
@@ -128,6 +129,7 @@ class MemeHandler(private val userRepository: UserRepository,
   private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
       api.execute(ForwardMessage()
           .setChatId(user.id)
+          .setFromChatId(CHANNEL_ID)
           .setMessageId(meme.channelMessageId)
           .disableNotification())
 
