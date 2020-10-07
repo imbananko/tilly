@@ -1,17 +1,21 @@
 package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.Meme
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import javax.persistence.LockModeType
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Long> {
+  @Lock(LockModeType.PESSIMISTIC_FORCE_INCREMENT)
   fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
 
+  @Lock(LockModeType.PESSIMISTIC_FORCE_INCREMENT)
   fun findMemeByChannelMessageId(messageId: Int): Meme?
 
   fun findByFileId(fileId: String): Meme?

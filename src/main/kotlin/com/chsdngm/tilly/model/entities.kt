@@ -21,6 +21,9 @@ data class Meme(
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   val id: Int = 0
 
+  @Version
+  val version: Long = 1
+
   override fun toString(): String {
     return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id)"
   }

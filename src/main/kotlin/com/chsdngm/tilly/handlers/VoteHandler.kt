@@ -15,18 +15,19 @@ import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.hasLocalTag
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
-import javax.transaction.Transactional
 
 @Service
 class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<VoteUpdate> {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   override fun handle(update: VoteUpdate) {
     if (update.isOld) {
       sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
