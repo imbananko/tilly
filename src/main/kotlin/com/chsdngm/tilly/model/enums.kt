@@ -5,12 +5,6 @@ enum class VoteValue(val emoji: String) {
   DOWN("\uD83D\uDCA9")
 }
 
-enum class VoteSourceType {
-  CHAT,
-  CHANNEL,
-  PRIVATE_CHAT
-}
-
 enum class PrivateVoteValue(val emoji: String) {
   APPROVE("\uD83D\uDC8E"),
   DECLINE("\uD83D\uDCA9")

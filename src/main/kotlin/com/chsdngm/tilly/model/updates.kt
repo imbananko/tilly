@@ -15,9 +15,9 @@ const val week: Long = 60 * 60 * 24 * 7
 class VoteUpdate(update: Update) {
   val voterId: Int = update.callbackQuery.from.id
   val messageId: Int = update.callbackQuery.message.messageId
-  val isFrom: VoteSourceType = when {
-    update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId == CHANNEL_ID -> VoteSourceType.CHANNEL
-    update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId == CHAT_ID -> VoteSourceType.CHAT
+  val isFrom: Long = when {
+    update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId == CHANNEL_ID -> CHANNEL_ID
+    update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId == CHAT_ID -> CHAT_ID
     else -> throw Exception("Unknown vote source type")
   }
   val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
