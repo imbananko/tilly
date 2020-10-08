@@ -2,8 +2,6 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.Vote
-import com.chsdngm.tilly.model.VoteSourceType.CHANNEL
-import com.chsdngm.tilly.model.VoteSourceType.CHAT
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeRepository
@@ -34,13 +32,12 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     }
 
     val meme = when (update.isFrom) {
-      CHANNEL -> memeRepository.findMemeByChannelMessageId(update.messageId)
-      CHAT -> memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID, update.messageId)
+      CHANNEL_ID -> memeRepository.findMemeByChannelMessageId(update.messageId)
+      CHAT_ID -> memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID, update.messageId)
       else -> return
     } ?: return
 
-    //TODO: refactor this
-    val vote = Vote(meme.id, update.voterId, if (update.isFrom == CHANNEL) CHANNEL_ID else CHAT_ID, update.voteValue)
+    val vote = Vote(meme.id, update.voterId, update.isFrom, update.voteValue)
 
     if (meme.senderId == vote.voterId) {
       sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
@@ -48,10 +45,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     }
 
     meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-      if (meme.votes.remove(vote)) {
+      if (meme.votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
         sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
       } else {
         found.value = vote.value
+        found.sourceChatId = vote.sourceChatId
 
         when (vote.value) {
           VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"

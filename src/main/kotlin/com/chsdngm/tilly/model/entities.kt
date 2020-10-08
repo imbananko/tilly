@@ -40,7 +40,7 @@ data class TelegramUser(
 data class Vote(
     @Id val memeId: Int,
     @Id val voterId: Int,
-    val sourceChatId: Long,
+    var sourceChatId: Long,
     @Enumerated(EnumType.STRING)
     var value: VoteValue) {
 
