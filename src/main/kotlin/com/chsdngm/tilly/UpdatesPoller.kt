@@ -16,6 +16,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
+import java.lang.reflect.UndeclaredThrowableException
 
 @Component
 class UpdatesPoller(val memeHandler: MemeHandler,
@@ -54,16 +55,24 @@ fun Throwable.format(update: Update): String {
     else -> "unknown update=$update"
   }
 
+  val exForBeta = when (this) {
+    is UndeclaredThrowableException ->
+      ExceptionForBeta(this.undeclaredThrowable.message, this, this.undeclaredThrowable.stackTrace)
+    else ->
+      ExceptionForBeta(this.message, this.cause, this.stackTrace)
+  }
+
   return """
-  |Exception: ${this.message}
+  |Exception: ${exForBeta.message}
   |
-  |Cause: ${this.cause}
+  |Cause: ${exForBeta.cause}
   |
   |Update: $updateInfo
   |
   |Stacktrace: 
-  |${this.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { it.toString() }}
+  |${exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }}
   """.trimMargin()
 }
 
+private data class ExceptionForBeta(val message: String?, val cause: Throwable?, val stackTrace: Array<StackTraceElement>)
 
