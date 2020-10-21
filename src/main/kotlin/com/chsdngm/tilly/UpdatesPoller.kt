@@ -16,7 +16,6 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
-import java.lang.reflect.UndeclaredThrowableException
 
 @Component
 class UpdatesPoller(val memeHandler: MemeHandler,
@@ -56,14 +55,14 @@ fun Throwable.format(update: Update): String {
   }
 
   return """
-  |Exception: ${(this as UndeclaredThrowableException).undeclaredThrowable.message}
+  |Exception: ${this.message}
   |
-  |Cause: ${this.undeclaredThrowable.cause}
+  |Cause: ${this.cause}
   |
   |Update: $updateInfo
   |
   |Stacktrace: 
-  |${this.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { it.className }}
+  |${this.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { it.toString() }}
   """.trimMargin()
 }
 
