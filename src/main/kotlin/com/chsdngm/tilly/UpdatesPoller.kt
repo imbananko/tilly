@@ -55,16 +55,24 @@ fun Throwable.format(update: Update): String {
     else -> "unknown update=$update"
   }
 
+  val exForBeta = when (this) {
+    is UndeclaredThrowableException ->
+      ExceptionForBeta(this.undeclaredThrowable.message, this, this.undeclaredThrowable.stackTrace)
+    else ->
+      ExceptionForBeta(this.message, this.cause, this.stackTrace)
+  }
+
   return """
-  |Exception: ${(this as UndeclaredThrowableException).undeclaredThrowable.message}
+  |Exception: ${exForBeta.message}
   |
-  |Cause: ${this.undeclaredThrowable.cause}
+  |Cause: ${exForBeta.cause}
   |
   |Update: $updateInfo
   |
   |Stacktrace: 
-  |${this.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { it.className }}
+  |${exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }}
   """.trimMargin()
 }
 
+private data class ExceptionForBeta(val message: String?, val cause: Throwable?, val stackTrace: Array<StackTraceElement>)
 
