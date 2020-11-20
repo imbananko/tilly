@@ -1,6 +1,5 @@
 package com.chsdngm.tilly.similarity
 
-import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.repository.ImageRepository
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher
@@ -36,10 +35,7 @@ class ImageMatcher(private val imageRepository: ImageRepository,
     it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
   }
 
-  fun add(fileId: String, image: File) {
-    imageRepository.save(Image(fileId, image.readBytes()))
-    matcher.addImage(fileId, image)
-  }
+  fun add(fileId: String, image: File) = matcher.addImage(fileId, image)
 
   fun tryFindDuplicate(imageFile: File): String? =
       matcher.getMatchingImages(imageFile).poll()

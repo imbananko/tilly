@@ -1,12 +1,15 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.model.TelegramUser
+import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.similarity.GoogleImageRecognizer
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
@@ -39,9 +42,13 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.PostConstruct
 
 @Service
-class MemeHandler(private val userRepository: UserRepository,
-                  private val imageMatcher: ImageMatcher,
-                  private val memeRepository: MemeRepository) : AbstractHandler<MemeUpdate> {
+class MemeHandler(
+    private val userRepository: UserRepository,
+    private val imageMatcher: ImageMatcher,
+    private val imageRecognizer: GoogleImageRecognizer,
+    private val imageRepository: ImageRepository,
+    private val memeRepository: MemeRepository,
+) : AbstractHandler<MemeUpdate> {
 
   private val log = LoggerFactory.getLogger(javaClass)
   private val memeCount = AtomicLong(0)
@@ -79,6 +86,7 @@ class MemeHandler(private val userRepository: UserRepository,
         log.info("sent for moderation to group chat. meme=$meme")
       }
       imageMatcher.add(update.fileId, update.file)
+      imageRepository.save(imageRecognizer.enrich(Image(update.fileId, update.file.readBytes())))
     }
     log.info("processed meme update=$update")
   }
