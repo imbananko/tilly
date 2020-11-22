@@ -4,7 +4,7 @@ group = "com.chsdngm"
 version = "1.0"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
-val kotlinVersion = "1.3.70"
+val kotlinVersion = "1.4.0"
 val springVersion = "2.3.0.RELEASE"
 val jupiterVersion = "5.5.2"
 
@@ -18,9 +18,9 @@ plugins {
   id("com.google.cloud.tools.jib") version "0.10.0"
   id("org.springframework.boot") version "2.2.0.RELEASE"
   id("io.spring.dependency-management") version "1.0.8.RELEASE"
-  kotlin("jvm") version "1.3.70"
-  kotlin("plugin.spring") version "1.3.70"
-  kotlin("plugin.jpa") version "1.3.70"
+  kotlin("jvm") version "1.4.0"
+  kotlin("plugin.spring") version "1.4.0"
+  kotlin("plugin.jpa") version "1.4.0"
 }
 
 dependencies {
@@ -37,6 +37,9 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("com.github.kilianB:JImageHash:3.0.0")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
+  implementation("org.springframework.cloud:spring-cloud-gcp-starters:1.2.6.RELEASE")
+  implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.6.RELEASE")
+  implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
