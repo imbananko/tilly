@@ -80,3 +80,6 @@ data class Image(
     return result
   }
 }
+
+@Entity
+inline class PublishMemeTask(@Id val memeId: Int)

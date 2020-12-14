@@ -1,9 +1,12 @@
 package com.chsdngm.tilly.utility
 
+import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.ChatMember
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -45,6 +48,19 @@ fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup = InlineKeybo
             createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
             createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
         )))
+
+fun updateStatsInSenderChat(meme: Meme, status: MemeStatus) {
+  if (meme.privateReplyMessageId != null) {
+    val caption = status.description +
+        meme.votes.groupingBy { it.value }.eachCount().entries.sortedBy { it.key }
+          .joinToString(prefix = " статистика: \n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
+
+    EditMessageText()
+      .setChatId(meme.senderId.toString())
+      .setMessageId(meme.privateReplyMessageId)
+      .setText(caption).let { TillyConfig.api.execute(it) }
+  }
+}
 
 private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int) =
     InlineKeyboardButton().also {

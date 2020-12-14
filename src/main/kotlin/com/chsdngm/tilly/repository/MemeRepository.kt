@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
 @Repository
-interface MemeRepository : CrudRepository<Meme, Long> {
+interface MemeRepository : CrudRepository<Meme, Int> {
   fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
 
   fun findMemeByChannelMessageId(messageId: Int): Meme?

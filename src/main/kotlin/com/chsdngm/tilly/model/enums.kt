@@ -9,3 +9,12 @@ enum class PrivateVoteValue(val emoji: String) {
   APPROVE("\uD83D\uDC8E"),
   DECLINE("\uD83D\uDCA9")
 }
+
+enum class MemeStatus(val description: String) {
+  MODERATION("мем на модерации."),
+  LOCAL("так как мем локальный, на канал он отправлен не будет."),
+  SCHEDULED("мем будет отправлен на канал."),
+  PUBLISHED("мем отправлен на канал.");
+
+  override fun toString(): String = description
+}
