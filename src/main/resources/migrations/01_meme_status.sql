@@ -2,6 +2,8 @@ create type meme_status as enum ('LOCAL', 'MODERATION', 'SCHEDULED', 'PUBLISHED'
 
 alter table meme add column status meme_status not null default 'MODERATION';
 
+update meme set status = 'PUBLISHED' where channel_message_id is not null;
+
 create function meme_status_from_str(character varying) returns meme_status
     immutable
     strict
