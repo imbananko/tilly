@@ -12,6 +12,8 @@ data class Meme(
     val moderationChatId: Long,
     val moderationChatMessageId: Int,
     val senderId: Int,
+    @Enumerated(EnumType.STRING)
+    var status: MemeStatus,
     val privateReplyMessageId: Int?,
     val fileId: String,
     val caption: String?,
@@ -25,7 +27,7 @@ data class Meme(
   val id: Int = 0
 
   override fun toString(): String {
-    return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id)"
+    return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
   }
 }
 
@@ -80,6 +82,3 @@ data class Image(
     return result
   }
 }
-
-@Entity
-inline class PublishMemeTask(@Id val memeId: Int)

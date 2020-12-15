@@ -27,7 +27,8 @@ final class Schedulers(private val memeRepository: MemeRepository,
   private val log = LoggerFactory.getLogger(javaClass)
 
 // every 2 hours since 8 till 24 Moscow time
-  @Scheduled(cron = "0 0 5-21/2 * * *")
+//  @Scheduled(cron = "0 0 5-21/2 * * *")
+  @Scheduled(cron = "*/10 * * * * *")
   private fun publishMeme() =
   runCatching {
     memePublisher.publishMemeIfSomethingExists()

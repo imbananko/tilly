@@ -24,6 +24,17 @@ interface MemeRepository : CrudRepository<Meme, Int> {
         """)
   fun findBySenderId(senderId: Int): List<Meme>
 
+  @Query("""
+    select m.*
+    from meme m
+             join vote v on m.id = v.meme_id
+    where m.status = 'SCHEDULED'
+    order by created
+    limit 1
+    """, nativeQuery = true
+  )
+  fun findMemeToPublish(): Meme?
+
   @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
   @Modifying
   @Transactional

@@ -10,11 +10,23 @@ enum class PrivateVoteValue(val emoji: String) {
   DECLINE("\uD83D\uDCA9")
 }
 
-enum class MemeStatus(val description: String) {
-  MODERATION("мем на модерации."),
-  LOCAL("так как мем локальный, на канал он отправлен не будет."),
-  SCHEDULED("мем будет отправлен на канал."),
-  PUBLISHED("мем отправлен на канал.");
+enum class MemeStatus(val value: String) {
+  MODERATION("MODERATION") {
+    override val description: String = "мем на модерации."
+  },
+  LOCAL("LOCAL") {
+    override val description: String = "так как мем локальный, на канал он отправлен не будет."
+  },
+  SCHEDULED("SCHEDULED") {
+    override val description: String = "мем будет отправлен на канал."
+  },
+  PUBLISHED("PUBLISHED") {
+    override val description: String = "мем отправлен на канал."
+  };
 
-  override fun toString(): String = description
+  abstract val description: String
+
+  override fun toString(): String = value
+
+  fun canBeScheduled(): Boolean = this == MODERATION
 }

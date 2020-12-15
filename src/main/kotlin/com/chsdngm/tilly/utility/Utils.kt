@@ -38,8 +38,6 @@ private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CR
 
 fun ForwardMessage.setChatId(chatId: Int): ForwardMessage = this.setChatId(chatId.toLong())
 
-fun hasLocalTag(caption: String?) = caption?.contains("#local") ?: false
-
 fun SendMessage.setChatId(chatId: Int): SendMessage = this.setChatId(chatId.toLong())
 
 fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup = InlineKeyboardMarkup().setKeyboard(
@@ -49,9 +47,9 @@ fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup = InlineKeybo
             createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
         )))
 
-fun updateStatsInSenderChat(meme: Meme, status: MemeStatus) {
+fun updateStatsInSenderChat(meme: Meme) {
   if (meme.privateReplyMessageId != null) {
-    val caption = status.description +
+    val caption = meme.status.description +
         meme.votes.groupingBy { it.value }.eachCount().entries.sortedBy { it.key }
           .joinToString(prefix = " статистика: \n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
 

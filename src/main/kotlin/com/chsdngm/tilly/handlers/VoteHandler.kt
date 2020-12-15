@@ -2,18 +2,15 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.model.PublishMemeTask
 import com.chsdngm.tilly.model.Vote
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeRepository
-import com.chsdngm.tilly.repository.PublishMemeRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.hasLocalTag
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -22,8 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageRe
 import javax.transaction.Transactional
 
 @Service
-class VoteHandler(private val memeRepository: MemeRepository,
-                  private val publishMemeRepository: PublishMemeRepository) : AbstractHandler<VoteUpdate> {
+class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<VoteUpdate> {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
@@ -68,21 +64,10 @@ class VoteHandler(private val memeRepository: MemeRepository,
 
     updateMarkup(meme)
 
-    val readyForShipment = readyForShipment(meme)
-    val isInPublishQueue = meme.channelMessageId == null && publishMemeRepository.existsById(meme.id)
+    if (meme.status.canBeScheduled() && readyForShipment(meme))
+      meme.status = MemeStatus.SCHEDULED
 
-    if (meme.channelMessageId == null && readyForShipment && !isInPublishQueue)
-      publishMemeRepository.save(PublishMemeTask(meme.id))
-
-    val status =
-      when {
-        hasLocalTag(meme.caption) -> MemeStatus.LOCAL
-        meme.channelMessageId != null -> MemeStatus.PUBLISHED
-        readyForShipment || isInPublishQueue -> MemeStatus.SCHEDULED
-        else -> MemeStatus.MODERATION
-      }
-
-    updateStatsInSenderChat(meme, status)
+    updateStatsInSenderChat(meme)
     log.info("processed vote update=$update")
   }
 
@@ -110,8 +95,9 @@ class VoteHandler(private val memeRepository: MemeRepository,
     }
   }
 
-  private fun readyForShipment(meme: Meme): Boolean = with(meme.votes.map { it.value }) {
-    this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD && !hasLocalTag(meme.caption)
-  }
+  private fun readyForShipment(meme: Meme): Boolean =
+    with(meme.votes.map { it.value }) {
+      this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD
+    }
 
 }

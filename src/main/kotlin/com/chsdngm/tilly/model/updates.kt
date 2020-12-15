@@ -35,9 +35,12 @@ class MemeUpdate(update: Update) {
     val lowerCaseCaption = caption.toLowerCase()
     !trashCaptionParts.any { lowerCaseCaption.contains(it) }
   }
-  val fileId: String = update.message.photo.maxBy { it.fileSize }!!.fileId
+  val fileId: String = update.message.photo.maxByOrNull { it.fileSize }!!.fileId
   val user: User = update.message.from
   val senderName: String = update.message.from.mention()
+  val newMemeStatus: MemeStatus =
+    if (caption?.contains("#local") == true) MemeStatus.LOCAL
+    else MemeStatus.MODERATION
 
   lateinit var file: File
 

@@ -17,7 +17,6 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.hasLocalTag
 import com.chsdngm.tilly.utility.isFromChat
 import com.chsdngm.tilly.utility.setChatId
 import org.apache.commons.io.IOUtils
@@ -67,7 +66,7 @@ class MemeHandler(
     imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
       handleDuplicate(update, duplicateFileId)
     } ?: run {
-      if (!hasLocalTag(update.caption)
+      if (update.newMemeStatus.canBeScheduled()
           && memeCount.incrementAndGet() % 5 == 0L
           && userRepository.isRankedModerationAvailable()) {
 
@@ -112,7 +111,7 @@ class MemeHandler(
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSender(update).messageId
-            memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, senderMessageId, update.fileId, update.caption))
+            memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, update.newMemeStatus, senderMessageId, update.fileId, update.caption))
           }
 
   fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
@@ -123,7 +122,7 @@ class MemeHandler(
           .setParseMode(ParseMode.HTML)
           .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
-            memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, senderMessageId, update.fileId, update.caption))
+            memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, update.newMemeStatus, senderMessageId, update.fileId, update.caption))
           }
 
   fun resolveCaption(update: MemeUpdate): String =
