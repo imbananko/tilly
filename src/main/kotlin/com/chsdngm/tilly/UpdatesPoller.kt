@@ -71,7 +71,7 @@ fun Throwable.format(update: Update?): String {
   |Update: $updateInfo
   |
   |Stacktrace: 
-  |${exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }}
+  |${exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }}
   """.trimMargin()
 }
 

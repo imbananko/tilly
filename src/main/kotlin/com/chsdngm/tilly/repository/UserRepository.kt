@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UserRepository : CrudRepository<TelegramUser, Long> {
+interface UserRepository : CrudRepository<TelegramUser, Int> {
   @Query(nativeQuery = true, value = """
     select u.*
     from meme m

@@ -31,7 +31,8 @@ class ImageMatcherTest {
 
   @BeforeEach
   fun init() {
-    imageMatcher = ImageMatcher(mock(ImageRepository::class.java), normalizedHammingDistance = .15)
+    imageMatcher = ImageMatcher(mock(ImageRepository::class.java))
+    imageMatcher.init()
   }
 
   @ParameterizedTest

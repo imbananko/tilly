@@ -1,44 +1,77 @@
 package com.chsdngm.tilly.similarity
 
 import com.chsdngm.tilly.repository.ImageRepository
+import com.github.kilianB.hash.Hash
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.awt.image.BufferedImage
 import java.io.File
+import java.math.BigInteger
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
 import kotlin.system.measureTimeMillis
 
 
 @Service
-class ImageMatcher(private val imageRepository: ImageRepository,
-                   private val normalizedHammingDistance: Double = .15) {
+class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMatcher(true) {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
   @PostConstruct
+  @Suppress("unused")
   fun init() {
-    matcher.addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))
-    loadImages()
-  }
+    addHashingAlgorithm(mainHashingAlgorithm, normalizedHammingDistance, true)
+    addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))
 
-  fun loadImages() {
-    log.info("start loading memes into matcher")
     measureTimeMillis {
-      imageRepository.findAll().forEach { matcher.addImage(it.fileId, ImageIO.read(it.file.inputStream())) }
+      log.info("start loading memes into matcher")
+
+      imageRepository.findAllHashes().forEach {
+        addImageInternal(it.fileId, BigInteger(it.hash))
+      }
     }.also { log.info("finished loading memes into matcher. took: $it ms") }
   }
 
-  private val matcher = ConsecutiveMatcher(true).also {
-    it.addHashingAlgorithm(PerceptiveHash(128), normalizedHammingDistance, true)
+  private fun addImageInternal(uniqueId: String, computedHash: BigInteger) {
+    if (addedImages.contains(uniqueId)) {
+      log.info("An image with uniqueId already exists. Skip request")
+    }
+
+    val hash: Hash = mainHashingAlgorithm.hash(computedHash)
+    binTreeMap[mainHashingAlgorithm]!!.addHash(hash, uniqueId)
+    cachedHashes[mainHashingAlgorithm]!![uniqueId] = hash
+
+    addedImages.add(uniqueId)
   }
 
-  fun add(fileId: String, image: File) = matcher.addImage(fileId, image)
+  fun calculateHash(file: File): ByteArray = mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
+
+  fun add(fileId: String, file: File) = addImageInternal(fileId, mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue)
 
   fun tryFindDuplicate(imageFile: File): String? =
-      matcher.getMatchingImages(imageFile).poll()
-          ?.takeIf { it.normalizedHammingDistance < this.normalizedHammingDistance }
+      getMatchingImages(imageFile).poll()
+          ?.takeIf { it.normalizedHammingDistance < normalizedHammingDistance }
           ?.value
+
+  companion object {
+    private const val normalizedHammingDistance: Double = .15
+
+    private val mainHashingAlgorithm = object : PerceptiveHash(128) {
+      fun hash(hashValue: BigInteger): Hash {
+        this.immutableState = true
+
+        if (keyResolution < 0) {
+          keyResolution = bitResolution
+        }
+
+        return Hash(hashValue, keyResolution, algorithmId())
+      }
+    }
+
+    fun calculateHash(file: ByteArray): ByteArray = mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
+  }
 }
+
+

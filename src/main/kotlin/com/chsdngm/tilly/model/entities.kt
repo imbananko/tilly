@@ -4,6 +4,7 @@ import com.vladmihalcea.hibernate.type.array.ListArrayType
 import org.hibernate.annotations.Type
 import org.hibernate.annotations.TypeDef
 import java.io.Serializable
+import java.math.BigInteger
 import java.time.Instant
 import java.util.*
 import javax.persistence.*
@@ -74,6 +75,7 @@ data class Image(
     @Lob @Type(type = "org.hibernate.type.BinaryType") val file: ByteArray,
     @Type(type = "list-array") @Column(columnDefinition = "text[]") var words: List<String>? = null,
     @Type(type = "list-array") @Column(columnDefinition = "text[]") var labels: List<String>? = null,
+    @Lob @Type(type = "org.hibernate.type.BinaryType") val hash: ByteArray,
 ) {
 
   override fun equals(other: Any?): Boolean {

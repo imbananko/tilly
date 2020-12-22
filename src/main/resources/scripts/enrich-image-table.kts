@@ -7,7 +7,6 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.kotlin.script.util.DependsOn
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.ApiContext
@@ -16,6 +15,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.script.experimental.dependencies.DependsOn
 
 val token = "dumb"
 val dbUrl = "dumb"

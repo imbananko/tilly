@@ -56,6 +56,8 @@ class MemeHandler(
   override fun handle(update: MemeUpdate) {
     update.file = download(update.fileId)
 
+    update.isFreshman = !userRepository.existsById(update.user.id)
+
     val memeSender = TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName)
     userRepository.save(memeSender)
 
@@ -65,8 +67,9 @@ class MemeHandler(
       val currentModerators = privateModeratorRepository.findCurrentModeratorsIds()
 
       if (update.newMemeStatus.canBeScheduled()
-          && memeRepository.count().toInt() % 5 == 0
-          && currentModerators.size < 5) {
+          && !update.isFreshman
+          && currentModerators.size < 5
+          && memeRepository.count().toInt() % 5 == 0) {
 
         userRepository
             .findTopSenders(memeSender.id)
@@ -80,15 +83,14 @@ class MemeHandler(
             } ?: run {
 
           log.info("cannot perform ranked moderation. unable to pick moderator")
-          moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
+          moderateWithGroup(update)
         }
 
       } else {
-        val meme = moderateWithGroup(update)
-        log.info("sent for moderation to group chat. meme=$meme")
+        moderateWithGroup(update)
       }
       imageMatcher.add(update.fileId, update.file)
-      imageRepository.save(imageRecognizer.enrich(Image(update.fileId, update.file.readBytes())))
+      imageRepository.save(imageRecognizer.enrich(Image(update.fileId, update.file.readBytes(), hash = imageMatcher.calculateHash(update.file))))
     }
     log.info("processed meme update=$update")
   }
@@ -115,6 +117,8 @@ class MemeHandler(
           .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSender(update).messageId
             memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, update.newMemeStatus, senderMessageId, update.fileId, update.caption))
+          }.also {
+            log.info("sent for moderation to group chat. meme=$it")
           }
 
   fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
@@ -134,7 +138,9 @@ class MemeHandler(
               .setChatId(CHAT_ID)
               .setUserId(update.user.id).let { api.execute(it) }
               .isFromChat()) ""
-      else "\n\nSender: ${update.senderName}"
+      else
+        "\n\nSender: ${update.senderName}" +
+        if (update.isFreshman) "\n\n#freshman" else ""
 
   private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
       api.execute(ForwardMessage()
@@ -147,7 +153,7 @@ class MemeHandler(
   private fun forwardMemeFromChatToUser(meme: Meme, user: User) =
       api.execute(ForwardMessage()
           .setChatId(user.id)
-          .setFromChatId(CHAT_ID)
+          .setFromChatId(meme.moderationChatId)
           .setMessageId(meme.moderationChatMessageId)
           .disableNotification())
 

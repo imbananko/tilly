@@ -43,6 +43,7 @@ class MemeUpdate(update: Update) {
     else MemeStatus.MODERATION
 
   lateinit var file: File
+  var isFreshman: Boolean = false
 
   override fun toString(): String {
     return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='${user.id})"
