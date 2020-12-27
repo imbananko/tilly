@@ -1,7 +1,9 @@
 package com.chsdngm.tilly
 
 import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.publish.MemePublisher
 import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
@@ -19,9 +21,23 @@ import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 
 @Service
 @EnableScheduling
-final class Schedulers(private val memeRepository: MemeRepository) {
+final class Schedulers(private val memeRepository: MemeRepository,
+                       private val memePublisher: MemePublisher) {
 
   private val log = LoggerFactory.getLogger(javaClass)
+
+// every 2 hours since 8 till 24 Moscow time
+  @Scheduled(cron = "0 0 5-22/1 * * *")
+  private fun publishMeme() =
+  runCatching {
+    memePublisher.publishMemeIfSomethingExists()
+  }.onFailure {
+    SendMessage()
+      .setChatId(TillyConfig.BETA_CHAT_ID)
+      .setText(it.format(update = null))
+      .setParseMode(ParseMode.HTML)
+      .apply { api.execute(this) }
+  }
 
   @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() =

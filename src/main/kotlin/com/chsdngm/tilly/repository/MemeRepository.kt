@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.model.MemeStatus
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
 @Repository
-interface MemeRepository : CrudRepository<Meme, Long> {
+interface MemeRepository : CrudRepository<Meme, Int> {
   fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
 
   fun findMemeByChannelMessageId(messageId: Int): Meme?
@@ -23,6 +24,8 @@ interface MemeRepository : CrudRepository<Meme, Long> {
         where meme.senderId = ?1
         """)
   fun findBySenderId(senderId: Int): List<Meme>
+
+  fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus = MemeStatus.SCHEDULED): Meme?
 
   @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
   @Modifying

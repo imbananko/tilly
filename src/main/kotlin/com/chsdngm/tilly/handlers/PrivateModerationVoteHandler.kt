@@ -4,15 +4,14 @@ import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
-import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.mention
+import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
@@ -33,22 +32,13 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
     EditMessageCaption()
         .setChatId(update.user.id.toString())
         .setMessageId(update.messageId)
-        .setCaption("мем отправлен на канал")
+        .setCaption("мем одобрен и будет отправлен на канал")
         .let { TillyConfig.api.execute(it) }
 
     meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.UP))
+    meme.status = MemeStatus.SCHEDULED
 
-    meme.channelMessageId = SendPhoto()
-        .setChatId(TillyConfig.CHANNEL_ID)
-        .setPhoto(meme.fileId)
-        .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-        .setCaption(meme.caption)
-        .let { TillyConfig.api.execute(it) }.messageId
-
-    EditMessageText()
-        .setChatId(meme.senderId.toString())
-        .setMessageId(meme.privateReplyMessageId)
-        .setText("мем отправлен на канал. статистика: \n\n${VoteValue.UP.emoji}: 1").let { TillyConfig.api.execute(it) }
+    updateStatsInSenderChat(meme)
 
     log.info("ranked moderator with id=${update.user.id} approved meme=$meme")
     sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.APPROVE)
@@ -63,12 +53,9 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
     //TODO fix long/int types in whole project
     meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.DOWN))
-    memeRepository.save(meme)
+    meme.status = MemeStatus.DECLINED
 
-    EditMessageText()
-        .setChatId(meme.senderId.toString())
-        .setMessageId(meme.privateReplyMessageId)
-        .setText("мем предан забвению").let { TillyConfig.api.execute(it) }
+    updateStatsInSenderChat(meme)
 
     log.info("ranked moderator with id=${update.user.id} declined meme=$meme")
     sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.DECLINE)

@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.Vote
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
@@ -10,13 +11,11 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.hasLocalTag
+import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import javax.transaction.Transactional
 
 @Service
@@ -65,25 +64,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
 
     updateMarkup(meme)
 
-    if (meme.channelMessageId == null && readyForShipment(meme))
-      meme.channelMessageId = sendMemeToChannel(meme).messageId
+    if (meme.status.canBeScheduled() && readyForShipment(meme))
+      meme.status = MemeStatus.SCHEDULED
 
-    with(StringBuilder()) {
-      this.append(
-          if (hasLocalTag(meme.caption))
-            "так как мем локальный, на канал он отправлен не будет. "
-          else if (meme.channelMessageId != null || readyForShipment(meme))
-            "мем отправлен на канал. "
-          else
-            "мем на модерации. "
-      )
-
-      this.append(meme.votes.groupingBy { it.value }.eachCount().entries.sortedBy { it.key }.joinToString(
-          prefix = "статистика: \n\n", transform = { (value, sum) -> "${value.emoji}: $sum" }))
-
-      updateStatsInSenderChat(meme, this.toString())
-      log.info("processed vote update=$update")
-    }
+    updateStatsInSenderChat(meme)
+    log.info("processed vote update=$update")
   }
 
   fun sendPopupNotification(callbackQueryId: String, text: String): Boolean = AnswerCallbackQuery()
@@ -110,22 +95,9 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     }
   }
 
-  private fun sendMemeToChannel(meme: Meme) =
-      SendPhoto()
-          .setChatId(CHANNEL_ID)
-          .setPhoto(meme.fileId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-          .setCaption(meme.caption)
-          .let { api.execute(it) }
-          .also { log.info("sent meme to channel. meme=$meme") }
+  private fun readyForShipment(meme: Meme): Boolean =
+    with(meme.votes.map { it.value }) {
+      this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD
+    }
 
-  private fun readyForShipment(meme: Meme): Boolean = with(meme.votes.map { it.value }) {
-    this.filter { it == VoteValue.UP }.size - this.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD && !hasLocalTag(meme.caption)
-  }
-
-  private fun updateStatsInSenderChat(meme: Meme, stats: String) =
-      EditMessageText()
-          .setChatId(meme.senderId.toString())
-          .setMessageId(meme.privateReplyMessageId)
-          .setText(stats).let { api.execute(it) }
 }

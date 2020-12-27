@@ -46,8 +46,9 @@ class UpdatesPoller(val memeHandler: MemeHandler,
   }
 }
 
-fun Throwable.format(update: Update): String {
+fun Throwable.format(update: Update?): String {
   val updateInfo = when {
+    update == null -> "no update"
     update.hasVote() -> VoteUpdate(update).toString()
     update.hasMeme() -> MemeUpdate(update).toString()
     update.hasStatsCommand() -> CommandUpdate(update).toString()
