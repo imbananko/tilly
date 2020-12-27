@@ -1,16 +1,6 @@
-create type meme_status as enum ('LOCAL', 'MODERATION', 'SCHEDULED', 'PUBLISHED');
+alter table meme
+    add column status varchar not null default 'MODERATION';
 
-alter table meme add column status meme_status not null default 'MODERATION';
-
-update meme set status = 'PUBLISHED' where channel_message_id is not null;
-
-create function meme_status_from_str(character varying) returns meme_status
-    immutable
-    strict
-    language sql
-as
-$$
-select $1::text::meme_status
-$$;
-
-create cast (character varying as meme_status) WITH FUNCTION meme_status_from_str(character varying) AS ASSIGNMENT;
+update meme
+set status = 'PUBLISHED'
+where channel_message_id is not null;

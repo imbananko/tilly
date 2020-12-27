@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.model.MemeStatus
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -24,16 +25,7 @@ interface MemeRepository : CrudRepository<Meme, Int> {
         """)
   fun findBySenderId(senderId: Int): List<Meme>
 
-  @Query("""
-    select m.*
-    from meme m
-             join vote v on m.id = v.meme_id
-    where m.status = 'SCHEDULED'
-    order by created
-    limit 1
-    """, nativeQuery = true
-  )
-  fun findMemeToPublish(): Meme?
+  fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus = MemeStatus.SCHEDULED): Meme?
 
   @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
   @Modifying

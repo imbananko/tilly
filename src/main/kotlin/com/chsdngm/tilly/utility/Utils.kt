@@ -1,7 +1,6 @@
 package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.model.Meme
-import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage

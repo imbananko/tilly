@@ -17,7 +17,7 @@ class MemePublisher(private val memeRepository: MemeRepository) {
 
   @Transactional
   fun publishMemeIfSomethingExists() {
-    val memeToPublish = memeRepository.findMemeToPublish()
+    val memeToPublish = memeRepository.findFirstByStatusOrderByCreated()
 
     if (memeToPublish != null) {
       memeToPublish.channelMessageId = sendMemeToChannel(memeToPublish).messageId

@@ -4,6 +4,7 @@ import com.vladmihalcea.hibernate.type.array.ListArrayType
 import org.hibernate.annotations.Type
 import org.hibernate.annotations.TypeDef
 import java.io.Serializable
+import java.time.Instant
 import javax.persistence.*
 
 
@@ -26,6 +27,8 @@ data class Meme(
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   val id: Int = 0
 
+  val created: Instant = Instant.now()
+
   override fun toString(): String {
     return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
   }
@@ -36,7 +39,8 @@ data class TelegramUser(
     @Id val id: Int,
     val username: String?,
     val firstName: String?,
-    val lastName: String?) {
+    val lastName: String?,
+) {
   fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
 }
 
@@ -47,12 +51,14 @@ data class Vote(
     @Id val voterId: Int,
     var sourceChatId: Long,
     @Enumerated(EnumType.STRING)
-    var value: VoteValue) {
+    var value: VoteValue,
+) {
 
   @Embeddable
   class VoteKey(
       val memeId: Int,
-      val voterId: Int) : Serializable
+      val voterId: Int,
+  ) : Serializable
 }
 
 @Entity
