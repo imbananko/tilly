@@ -56,8 +56,8 @@ class CommandUpdate(update: Update) {
   enum class Command(val value: String) {
     STATS("/stats"),
     HELP("/help"),
-    START("/start")
-    ;
+    START("/start"),
+    DONATE("/donate");
 
     companion object {
       private val map = values().associateBy(Command::value)

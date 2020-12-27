@@ -27,6 +27,9 @@ class TillyConfig {
     @JvmField
     var BOT_USERNAME = ""
 
+    @JvmField
+    var PAYMENT_URL = ""
+
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
     }
@@ -60,6 +63,11 @@ class TillyConfig {
   @Value("\${moderation.threshold}")
   fun setModerationThreshold(moderationThreshold: Long) {
     MODERATION_THRESHOLD = moderationThreshold
+  }
+
+  @Value("\${payment.url}")
+  fun setPaymentUrl(paymentUrl: String) {
+    PAYMENT_URL = paymentUrl
   }
 
 }

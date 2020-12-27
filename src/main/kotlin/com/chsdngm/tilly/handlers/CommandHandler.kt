@@ -4,12 +4,15 @@ import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
 @Service
 class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandler<CommandUpdate> {
@@ -19,6 +22,7 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
     when (update.value) {
       Command.STATS -> sendStats(update)
       Command.HELP, Command.START -> sendInfoMessage(update)
+      Command.DONATE -> sendDonationMarkup(update)
       else -> log.error("unknown command from update=$update")
     }
     log.info("processed command update=$update")
@@ -65,10 +69,27 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
       За динамикой оценки также можно следить тут.
     """.trimIndent()
 
-      api.execute(SendMessage()
-          .setChatId(update.senderId)
-          .setParseMode(ParseMode.HTML)
-          .setText(infoText)
-      )
+    api.execute(SendMessage()
+        .setChatId(update.senderId)
+        .setParseMode(ParseMode.HTML)
+        .setText(infoText)
+    )
+  }
+
+  fun sendDonationMarkup(update: CommandUpdate) {
+    val donationMarkup = InlineKeyboardMarkup(listOf(100, 250, 500).map {
+      listOf(InlineKeyboardButton("100").apply {
+        text = "$it rub."
+        callbackData = text
+        url = "${TillyConfig.PAYMENT_URL}?amount=${it * 100}"
+      })
+    })
+
+    SendMessage()
+        .setChatId(update.senderId)
+        .setParseMode(ParseMode.HTML)
+        .setReplyMarkup(donationMarkup)
+        .setText("Select donation sum: ")
+        .let { api.execute(it) }
   }
 }
