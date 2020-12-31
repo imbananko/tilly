@@ -84,6 +84,12 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
         callbackData = text
         url = "${TillyConfig.PAYMENT_URL}?amount=${it * 100}"
       })
+    }.toMutableList().also {
+      it.add(listOf(InlineKeyboardButton().apply {
+        text = "другая сумма"
+        callbackData = text
+        url = TillyConfig.PAYMENT_URL
+      }))
     })
 
     SendMessage()
