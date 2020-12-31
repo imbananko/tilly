@@ -51,13 +51,17 @@ class MemeUpdate(update: Update) {
 
 class CommandUpdate(update: Update) {
   val senderId: Long = update.message.chatId
-  val value: Command? = Command.from(update.message.text)
+  val chatId: Long = update.message.chatId
+  val messageId: Int = update.message.messageId
+  val value: Command? = Command.from(update.message.text.split(' ').first())
+  val text: String = update.message.text
 
   enum class Command(val value: String) {
     STATS("/stats"),
     HELP("/help"),
     START("/start"),
-    DONATE("/donate");
+    DONATE("/donate"),
+    CONFIG("/config");
 
     companion object {
       private val map = values().associateBy(Command::value)

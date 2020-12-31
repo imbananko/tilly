@@ -15,7 +15,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
-fun Update.hasStatsCommand() = this.hasMessage() && this.message.chat.isUserChat && this.message.isCommand
+fun Update.hasCommand() = this.hasMessage() &&
+    (this.message.chat.isUserChat || this.message.chatId == TillyConfig.BETA_CHAT_ID) &&
+    this.message.isCommand
 
 fun Update.hasVote() = this.hasCallbackQuery()
     && (this.callbackQuery.message.isSuperGroupMessage || this.callbackQuery.message.isChannelMessage)

@@ -23,7 +23,8 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
       Command.STATS -> sendStats(update)
       Command.HELP, Command.START -> sendInfoMessage(update)
       Command.DONATE -> sendDonationMarkup(update)
-      else -> log.error("unknown command from update=$update")
+      Command.CONFIG -> if (update.chatId == TillyConfig.BETA_CHAT_ID) changeConfig(update)
+      else -> log.warn("unknown command from update=$update")
     }
     log.info("processed command update=$update")
   }
@@ -91,5 +92,31 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
         .setReplyMarkup(donationMarkup)
         .setText("Select donation sum: ")
         .let { api.execute(it) }
+  }
+
+  fun changeConfig(update: CommandUpdate) {
+    val message = when {
+      update.text.contains("enable publishing") -> {
+        TillyConfig.publishEnabled = true
+        "Публикация мемов включена"
+      }
+      update.text.contains("disable publishing") -> {
+        TillyConfig.publishEnabled = false
+        "Публикация мемов выключена"
+      }
+      else ->
+        """
+          Не удается прочитать сообщение. Правильные команды выглядят так:
+          /config enable publishing
+          /config disable publishing
+        """.trimIndent()
+    }
+
+    SendMessage()
+      .setChatId(TillyConfig.BETA_CHAT_ID)
+      .setParseMode(ParseMode.HTML)
+      .setReplyToMessageId(update.messageId)
+      .setText(message)
+      .let { api.execute(it) }
   }
 }

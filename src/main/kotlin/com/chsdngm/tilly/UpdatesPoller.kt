@@ -33,7 +33,7 @@ class UpdatesPoller(val memeHandler: MemeHandler,
       when {
         update.hasVote() -> voteHandler.handle(VoteUpdate(update))
         update.hasMeme() -> memeHandler.handle(MemeUpdate(update))
-        update.hasStatsCommand() -> commandHandler.handle(CommandUpdate(update))
+        update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
         update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
       }
     }.onFailure {
@@ -51,7 +51,7 @@ fun Throwable.format(update: Update?): String {
     update == null -> "no update"
     update.hasVote() -> VoteUpdate(update).toString()
     update.hasMeme() -> MemeUpdate(update).toString()
-    update.hasStatsCommand() -> CommandUpdate(update).toString()
+    update.hasCommand() -> CommandUpdate(update).toString()
     update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
     else -> "unknown update=$update"
   }
