@@ -51,6 +51,7 @@ class MemeUpdate(update: Update) {
 
 class CommandUpdate(update: Update) {
   val senderId: Long = update.message.chatId
+  val chatId: Long = update.message.chatId
   val messageId: Int = update.message.messageId
   val value: Command? = Command.from(update.message.text.split(' ').first())
   val text: String = update.message.text

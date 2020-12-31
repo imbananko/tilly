@@ -23,7 +23,7 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
       Command.STATS -> sendStats(update)
       Command.HELP, Command.START -> sendInfoMessage(update)
       Command.DONATE -> sendDonationMarkup(update)
-      Command.CONFIG -> changeConfig(update)
+      Command.CONFIG -> if (update.chatId == TillyConfig.BETA_CHAT_ID) changeConfig(update)
       else -> log.warn("unknown command from update=$update")
     }
     log.info("processed command update=$update")
