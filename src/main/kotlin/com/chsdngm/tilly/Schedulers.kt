@@ -30,7 +30,7 @@ final class Schedulers(private val memeRepository: MemeRepository,
   @Scheduled(cron = "0 0 5-22/1 * * *")
   private fun publishMeme() =
   runCatching {
-    if (TillyConfig.publishedEnabled) {
+    if (TillyConfig.publishEnabled) {
       memePublisher.publishMemeIfSomethingExists()
     } else {
       log.info("meme publishing is disabled")

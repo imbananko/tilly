@@ -34,7 +34,7 @@ class TillyConfig {
       override fun getBotToken(): String = BOT_TOKEN
     }
 
-    var publishedEnabled: Boolean = true
+    var publishEnabled: Boolean = true
   }
 
   @Value("\${bot.token}")

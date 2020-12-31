@@ -97,11 +97,11 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
   fun changeConfig(update: CommandUpdate) {
     val message = when {
       update.text.contains("enable publishing") -> {
-        TillyConfig.publishedEnabled = true
+        TillyConfig.publishEnabled = true
         "Публикация мемов включена"
       }
       update.text.contains("disable publishing") -> {
-        TillyConfig.publishedEnabled = false
+        TillyConfig.publishEnabled = false
         "Публикация мемов выключена"
       }
       else ->
