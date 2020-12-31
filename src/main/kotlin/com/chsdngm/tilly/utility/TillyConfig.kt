@@ -33,6 +33,8 @@ class TillyConfig {
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
     }
+
+    var publishedEnabled: Boolean = true
   }
 
   @Value("\${bot.token}")
