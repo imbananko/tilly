@@ -5,8 +5,14 @@ import org.hibernate.annotations.Type
 import org.hibernate.annotations.TypeDef
 import java.io.Serializable
 import java.time.Instant
+import java.util.*
 import javax.persistence.*
 
+@Entity
+data class PrivateModerator(
+    @Id val userId: Int,
+    val assigned: Date
+)
 
 @Entity
 data class Meme(
