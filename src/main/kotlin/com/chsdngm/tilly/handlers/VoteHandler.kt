@@ -1,10 +1,6 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.Meme
-import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.model.Vote
-import com.chsdngm.tilly.model.VoteUpdate
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID

@@ -8,6 +8,7 @@ import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.model.TelegramUser
 import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.GoogleImageRecognizer
 import com.chsdngm.tilly.similarity.ImageMatcher
@@ -37,6 +38,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.PostConstruct
 
@@ -46,16 +48,10 @@ class MemeHandler(
     private val imageMatcher: ImageMatcher,
     private val imageRecognizer: GoogleImageRecognizer,
     private val imageRepository: ImageRepository,
+    private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeRepository: MemeRepository,
 ) : AbstractHandler<MemeUpdate> {
-
   private val log = LoggerFactory.getLogger(javaClass)
-  private val memeCount = AtomicLong(0)
-
-  @PostConstruct
-  private fun init() {
-    memeCount.set(memeRepository.count())
-  }
 
   override fun handle(update: MemeUpdate) {
     update.file = download(update.fileId)
@@ -66,16 +62,23 @@ class MemeHandler(
     imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
       handleDuplicate(update, duplicateFileId)
     } ?: run {
-      if (update.newMemeStatus.canBeScheduled()
-          && memeCount.incrementAndGet() % 5 == 0L
-          && userRepository.isRankedModerationAvailable()) {
+      val currentModerators = privateModeratorRepository.findCurrentModeratorsIds()
 
-        userRepository.findTopSenders(5, update.user.id).find { userRepository.tryPickUserForModeration(it.id) }?.let { moderator ->
-          moderateWithUser(update, moderator.id.toLong()).also { meme ->
-            log.info("sent for moderation to user=$moderator. meme=$meme")
-            sendPrivateModerationEventToBeta(meme, memeSender, moderator)
-          }
-        } ?: run {
+      if (update.newMemeStatus.canBeScheduled()
+          && memeRepository.count().toInt() % 5 == 0
+          && currentModerators.size < 5) {
+
+        userRepository
+            .findTopSenders(memeSender.id)
+            .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) }
+            ?.let { newModerator ->
+              moderateWithUser(update, newModerator.id.toLong()).also { meme ->
+                log.info("sent for moderation to user=$newModerator. meme=$meme")
+                privateModeratorRepository.addPrivateModerator(newModerator.id)
+                sendPrivateModerationEventToBeta(meme, memeSender, newModerator)
+              }
+            } ?: run {
+
           log.info("cannot perform ranked moderation. unable to pick moderator")
           moderateWithGroup(update).also { log.info("sent for moderation to group chat. meme=$it") }
         }

@@ -30,7 +30,7 @@ interface MemeRepository : CrudRepository<Meme, Int> {
   @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
   @Modifying
   @Transactional
-  fun saveMemeOfWeek(@Param("memeId") memeId: Int): Unit
+  fun saveMemeOfWeek(@Param("memeId") memeId: Int)
 
   @Query(value = """
     select m.*
