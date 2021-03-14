@@ -2,6 +2,7 @@ package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
+import com.chsdngm.tilly.utility.TillyConfig
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -43,6 +44,27 @@ interface MemeRepository : CrudRepository<Meme, Int> {
     limit 1
   """, nativeQuery = true)
   fun findMemeOfTheWeek(): Meme?
+
+  @Query(value = """
+    select memeWithVotes.*
+    from (select meme.*,
+                 count(vote) filter ( where vote.value = 'UP' )   as ups,
+                 count(vote) filter ( where vote.value = 'DOWN' ) as downs
+          from meme
+                   left join vote on meme.id = vote.meme_id
+          where meme.created between now() - interval '7 days' and now() - interval '1 days'
+            and meme.status = 'MODERATION'
+            and moderation_chat_id = (:moderationChatId)
+          group by meme.id) as memeWithVotes
+    where ((memeWithVotes.ups - memeWithVotes.downs) = :moderationThreshold - 1
+       or (memeWithVotes.ups + memeWithVotes.downs) < :moderationThreshold) and (memeWithVotes.ups - memeWithVotes.downs) > -3
+    order by memeWithVotes.created
+    limit 5
+  """, nativeQuery = true)
+  fun findForgottenMemes(
+      @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID,
+      @Param("moderationThreshold") moderationThreshold: Long = TillyConfig.MODERATION_THRESHOLD,
+  ): List<Meme>
 }
 
 

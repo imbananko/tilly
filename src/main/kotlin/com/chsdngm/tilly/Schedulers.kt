@@ -8,40 +8,49 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.mention
+import com.chsdngm.tilly.utility.setChatId
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.util.ResourceUtils
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
+import java.io.File
+import javax.imageio.ImageIO
 
 @Service
 @EnableScheduling
-final class Schedulers(private val memeRepository: MemeRepository,
-                       private val memePublisher: MemePublisher) {
+final class Schedulers(
+    private val memeRepository: MemeRepository,
+    private val memePublisher: MemePublisher,
+) {
 
   private val log = LoggerFactory.getLogger(javaClass)
 
-// every 2 hours since 8 till 24 Moscow time
+  private val ebuchkaImage = ResourceUtils.getFile("classpath:images/ebuchka.jpg")
+
+  // every hour since 8 am till 1 am Moscow time
   @Scheduled(cron = "0 0 5-22/1 * * *")
   private fun publishMeme() =
-  runCatching {
-    if (TillyConfig.publishEnabled) {
-      memePublisher.publishMemeIfSomethingExists()
-    } else {
-      log.info("meme publishing is disabled")
-    }
-  }.onFailure {
-    SendMessage()
-      .setChatId(TillyConfig.BETA_CHAT_ID)
-      .setText(it.format(update = null))
-      .setParseMode(ParseMode.HTML)
-      .apply { api.execute(this) }
-  }
+      runCatching {
+        if (TillyConfig.publishEnabled) {
+          memePublisher.publishMemeIfSomethingExists()
+        } else {
+          log.info("meme publishing is disabled")
+        }
+      }.onFailure {
+        SendMessage()
+            .setChatId(TillyConfig.BETA_CHAT_ID)
+            .setText(it.format(update = null))
+            .setParseMode(ParseMode.HTML)
+            .apply { api.execute(this) }
+      }
 
   @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() =
@@ -69,31 +78,18 @@ final class Schedulers(private val memeRepository: MemeRepository,
           .onSuccess { log.info("successful send meme of the week") }
           .onFailure { log.error("can't send meme of the week because of", it) }
 
-  @Scheduled(cron = "0 0 20 31 12 *")
-  private fun sendMemesOfTheYear() =
-      runCatching {
-        fun formatMemeOfTheYearCaption(meme: Meme): String {
-          val userMention = api.execute(GetChatMember()
-              .setChatId(CHAT_ID)
-              .setUserId(meme.senderId))
-              .user.mention()
-          val votes = meme.votes
-              .groupingBy { vote -> vote.value }
-              .eachCount()
-              .map { entry -> entry.key.emoji + " " + entry.value }
-              .joinToString(prefix = "(", postfix = ")", separator = ", ")
-          return "$userMention $votes"
-        }
+  @Scheduled(cron = "0 0 17 * * *")
+  private fun replyOnForgottenMemes() = memeRepository.findForgottenMemes().also { memes ->
+    log.info("Found ${memes.size} forgotten memes. Replying...")
 
-        SendMessage(CHANNEL_ID, "Топ мемсы прошедшего года:").let { api.execute(it) }
-        //TODO add date filter there
-        SendMediaGroup(CHANNEL_ID, memeRepository.findAll().map {
-          InputMediaPhoto(it.fileId, formatMemeOfTheYearCaption(it))
-              .setParseMode(ParseMode.HTML)
-        }).let { api.execute(it) }
-      }
-          .onSuccess { log.info("successfully sent memes of the year") }
-          .onFailure { log.error("can't send memes of the year because of", it) }
+    memes.forEach { meme ->
+      SendPhoto()
+          .setChatId(CHAT_ID)
+          .setPhoto(ebuchkaImage)
+          .setReplyToMessageId(meme.moderationChatMessageId)
+          .let { api.execute(it) }
+    }
+  }
 }
 
 
