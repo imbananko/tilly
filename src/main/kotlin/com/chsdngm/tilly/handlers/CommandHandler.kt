@@ -4,18 +4,28 @@ import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.repository.VoteRepository
 import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
+import com.chsdngm.tilly.utility.minusDays
+import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.time.Instant
 
 @Service
-class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandler<CommandUpdate> {
+class CommandHandler(
+  private val userRepository: UserRepository,
+  private val memeRepository: MemeRepository,
+  private val voteRepository: VoteRepository
+) :
+  AbstractHandler<CommandUpdate> {
   private val log = LoggerFactory.getLogger(javaClass)
 
   override fun handle(update: CommandUpdate) {
@@ -29,29 +39,56 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
     log.info("processed command update=$update")
   }
 
-  private fun sendStats(update: CommandUpdate) {
-    val userMemes = memeRepository.findBySenderId(update.senderId.toInt())
 
-    val likes = userMemes.flatMap { it.votes }.map { it.value }.filter { it == VoteValue.UP }.size
-    val dislikes = userMemes.flatMap { it.votes }.map { it.value }.filter { it == VoteValue.DOWN }.size
-    val published = userMemes.filter { it.channelMessageId != null }.size
+  private fun sendStats(update: CommandUpdate) = runBlocking {
 
-    val message =
-        if (userMemes.isEmpty())
-          "You have no statistics yet!"
-        else
-          """
-          Your statistics:
+    val memesByUserAll = withContext(Dispatchers.IO) { memeRepository.findBySenderId(update.senderId.toInt()) }
+    val votesByUserAll = withContext(Dispatchers.IO) { voteRepository.findAllByVoterId(update.senderId.toInt()) }
 
-          Memes sent: ${userMemes.size} (on channel: $published)
-          ${VoteValue.UP.emoji}: $likes
-          ${VoteValue.DOWN.emoji}: $dislikes
-        """.trimIndent()
+    if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
+      "Статистика недоступна. Отправляй и оценивай мемы!"
+    } else {
+      val memesByUserWeek = memesByUserAll.filter { it.created > Instant.now().minusDays(7) }
+      val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
 
-      api.execute(SendMessage()
-          .setChatId(update.senderId)
-          .setText(message)
-      )
+      val likeDislikeByUserWeek = votesByUserWeek.groupingBy { it.value }.eachCount()
+      val userMemesVotesWeek = memesByUserWeek.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+
+      val likeDislikeByUserAll = votesByUserAll.groupingBy { it.value }.eachCount()
+      val userMemesVotesAll = memesByUserAll.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+
+      """
+          <u><b>Статистика за неделю:</b></u>
+          
+          Мемов отправлено: <b>${memesByUserWeek.size}</b>
+          Прошло модерацию: <b>${memesByUserWeek.filter { it.channelMessageId != null }.size}</b>
+          Получено: <b>${VoteValue.UP.emoji} ${userMemesVotesWeek[VoteValue.UP] ?: 0} · ${userMemesVotesWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
+          
+          Мемов оценено: <b>${votesByUserWeek.size}</b>
+          Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
+          
+          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { userRepository.findUserWeekRank(update.senderId) } ?: "NaN"}</b>
+          
+          <u><b>Статистика за все время:</b></u>
+          
+          Мемов отправлено: <b>${memesByUserAll.size}</b>
+          Прошло модерацию: <b>${memesByUserAll.filter { it.channelMessageId != null }.size}</b>
+          Получено: <b>${VoteValue.UP.emoji} ${userMemesVotesAll[VoteValue.UP] ?: 0} · ${userMemesVotesAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
+          
+          Мемов оценено: <b>${votesByUserAll.size}</b>
+          Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
+          
+          Ранк: <b>#${withContext(Dispatchers.IO) { userRepository.findUserRank(update.senderId) } ?: "NaN"}</b>
+          
+          """.trimIndent()
+    }
+  }.let {
+    api.execute(
+      SendMessage()
+        .setParseMode(ParseMode.HTML)
+        .setChatId(update.senderId)
+        .setText(it)
+    )
   }
 
   fun sendInfoMessage(update: CommandUpdate) {
@@ -70,7 +107,8 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
       За динамикой оценки также можно следить тут.
     """.trimIndent()
 
-    api.execute(SendMessage()
+    api.execute(
+      SendMessage()
         .setChatId(update.senderId)
         .setParseMode(ParseMode.HTML)
         .setText(infoText)
@@ -93,11 +131,11 @@ class CommandHandler(private val memeRepository: MemeRepository) : AbstractHandl
     })
 
     SendMessage()
-        .setChatId(update.senderId)
-        .setParseMode(ParseMode.HTML)
-        .setReplyMarkup(donationMarkup)
-        .setText("Select donation sum: ")
-        .let { api.execute(it) }
+      .setChatId(update.senderId)
+      .setParseMode(ParseMode.HTML)
+      .setReplyMarkup(donationMarkup)
+      .setText("Select donation sum: ")
+      .let { api.execute(it) }
   }
 
   fun changeConfig(update: CommandUpdate) {

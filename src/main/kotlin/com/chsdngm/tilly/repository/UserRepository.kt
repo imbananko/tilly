@@ -28,4 +28,33 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
     limit 5
     """)
   fun findTopSenders(@Param("idToExclude") idToExclude: Int): List<TelegramUser>
+
+  @Query(nativeQuery = true, value = """
+    select rank
+    from (select m.sender_id,
+                 row_number() over (
+                     order by count(v) filter ( where v.value = 'UP' ) - count(v) filter ( where v.value = 'DOWN' ) -
+                              2 * count(distinct m.id) desc ) as rank
+          from meme m
+                   left join vote v
+                             on m.id = v.meme_id
+          group by m.sender_id) as data
+    where sender_id = :userId
+    """)
+  fun findUserRank(@Param("userId") userId: Long): Int?
+
+  @Query(nativeQuery = true, value = """
+    select rank
+    from (select m.sender_id,
+                 row_number() over (
+                     order by count(v) filter ( where v.value = 'UP' ) - count(v) filter ( where v.value = 'DOWN' ) -
+                              2 * count(distinct m.id) desc ) as rank
+          from meme m
+                   left join vote v
+                             on m.id = v.meme_id
+          where m.created >= now() - interval '7 days' and v.created >= now() - interval '7 days'
+          group by m.sender_id) as data
+    where sender_id = :userId
+    """)
+  fun findUserWeekRank(@Param("userId") userId: Long): Int?
 }

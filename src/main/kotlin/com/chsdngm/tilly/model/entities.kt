@@ -26,6 +26,7 @@ data class Meme(
     val fileId: String,
     val caption: String?,
     var channelMessageId: Int? = null,
+    var created: Instant = Instant.now(),
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "memeId", orphanRemoval = true)
     val votes: MutableSet<Vote> = mutableSetOf()) {
@@ -33,8 +34,6 @@ data class Meme(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   val id: Int = 0
-
-  val created: Instant = Instant.now()
 
   override fun toString(): String {
     return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
@@ -59,6 +58,7 @@ data class Vote(
     var sourceChatId: Long,
     @Enumerated(EnumType.STRING)
     var value: VoteValue,
+    var created: Instant = Instant.now(),
 ) {
 
   @Embeddable

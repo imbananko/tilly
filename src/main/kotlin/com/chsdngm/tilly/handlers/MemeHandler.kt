@@ -53,8 +53,32 @@ class MemeHandler(
 ) : AbstractHandler<MemeUpdate> {
   private val log = LoggerFactory.getLogger(javaClass)
 
+  private val natashaId = 117901733
+  private fun MemeUpdate.isFromNatasha() = this.user.id == natashaId
+
+  fun replyToNatasha(update: MemeUpdate): Message =
+      SendMessage()
+          .setChatId(natashaId)
+          .setReplyToMessageId(update.messageId)
+          .setText("Мем на привитой модерации")
+          .let { api.execute(it) }
+
+  private fun sendNatashaEventToBeta(update: MemeUpdate) =
+      SendPhoto()
+          .setChatId(BETA_CHAT_ID)
+          .setPhoto(update.fileId)
+          .setCaption("мем Натахи отправлен на личную модерацию в НИКУДА")
+          .setParseMode(ParseMode.HTML)
+          .let { api.execute(it) }
+
   override fun handle(update: MemeUpdate) {
     update.file = download(update.fileId)
+
+    if (update.isFromNatasha()) {
+      replyToNatasha(update)
+      sendNatashaEventToBeta(update)
+      return
+    }
 
     update.isFreshman = !userRepository.existsById(update.user.id)
 
