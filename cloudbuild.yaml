@@ -5,4 +5,4 @@ steps:
 
   - name: gcr.io/cloud-builders/docker
     args: [ 'build', '-t', 'openjdk:11-jre-slim', '--build-arg=JAR_FILE=build/libs/*', '.' ]
-    images: [ 'gcr.io/tilly-304221/tilly' ]
+  images: [ 'gcr.io/tilly-304221/tilly' ]
