@@ -62,7 +62,6 @@ class MemeHandler(
     userRepository.save(memeSender)
 
 
-
     imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
       handleDuplicate(update, duplicateFileId)
     } ?: run {
