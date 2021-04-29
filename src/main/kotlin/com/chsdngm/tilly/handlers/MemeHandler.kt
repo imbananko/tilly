@@ -61,6 +61,8 @@ class MemeHandler(
     val memeSender = TelegramUser(update.user.id, update.user.userName, update.user.firstName, update.user.lastName)
     userRepository.save(memeSender)
 
+
+
     imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
       handleDuplicate(update, duplicateFileId)
     } ?: run {
