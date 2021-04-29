@@ -4,7 +4,7 @@ steps:
     args: ['bootJar']
 
   - name: gcr.io/cloud-builders/docker
-    args: [ 'build', '-t', 'openjdk:11-jre-slim', '--build-arg=JAR_FILE=build/libs/*', '.' ]
+    args: [ 'build', '-t', 'gcr.io/tilly-304221/tilly:latest', '.' ]
 
 images: [ 'gcr.io/tilly-304221/tilly:latest' ]
 
