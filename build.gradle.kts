@@ -49,28 +49,6 @@ tasks.bootJar {
   "${project.name}.jar"
 }
 
-jib {
-  from {
-    image = "openjdk:11-jre-slim"
-  }
-  to {
-    auth {
-      username =
-          if (project.hasProperty("dockerUser"))
-            project.property("dockerUser") as String
-          else "dumb"
-      password =
-          if (project.hasProperty("dockerPassword"))
-            project.property("dockerPassword") as String
-          else "dumb"
-    }
-    val imageVersion =
-        if (project.hasProperty("tag")) project.property("tag") as String
-        else "latest"
-    image = "registry.hub.docker.com/imbananko/${project.name}:$imageVersion"
-  }
-}
-
 tasks.withType<Test> {
   useJUnitPlatform()
 }
