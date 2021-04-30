@@ -49,6 +49,15 @@ tasks.bootJar {
   "${project.name}.jar"
 }
 
+jib {
+  from {
+    image = "openjdk:11-jre-slim"
+  }
+  to {
+    image = "gcr.io/${project.property("projectId")}/tilly:latest"
+  }
+}
+
 tasks.withType<Test> {
   useJUnitPlatform()
 }

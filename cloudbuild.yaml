@@ -1,7 +1,7 @@
 steps:
   - name: gradle:6.8-jdk11
     entrypoint: gradle
-    args: ['bootJar']
+    args: ['bootJar', 'jib', '-PprojectId=$PROJECT_ID']
 
   - name: gcr.io/cloud-builders/docker
     args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/tilly:latest', '.' ]
