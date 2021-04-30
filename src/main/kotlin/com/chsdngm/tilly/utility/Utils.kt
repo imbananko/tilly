@@ -12,6 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.time.Instant
 
 fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
@@ -66,3 +67,5 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
       it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
       it.callbackData = voteValue.name
     }
+
+fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)

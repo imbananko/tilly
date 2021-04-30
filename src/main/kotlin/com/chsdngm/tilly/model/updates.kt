@@ -3,6 +3,7 @@ package com.chsdngm.tilly.model
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.mention
+import com.chsdngm.tilly.utility.minusDays
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.io.File
@@ -10,7 +11,6 @@ import java.time.Instant
 
 
 private val trashCaptionParts = listOf("sender", "photo from")
-const val week: Long = 60 * 60 * 24 * 7
 
 class VoteUpdate(update: Update) {
   val voterId: Int = update.callbackQuery.from.id
@@ -20,7 +20,7 @@ class VoteUpdate(update: Update) {
     update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId == CHAT_ID -> CHAT_ID
     else -> throw Exception("Unknown vote source type")
   }
-  val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusSeconds(week)
+  val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusDays(7)
   val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
   val callbackQueryId: String = update.callbackQuery.id
 
