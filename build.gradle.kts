@@ -36,6 +36,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-configuration-processor")
   implementation("com.github.kilianB:JImageHash:3.0.0")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinVersion")
   implementation("org.springframework.cloud:spring-cloud-gcp-starters:1.2.6.RELEASE")
   implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.6.RELEASE")
   implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
