@@ -1,6 +1,5 @@
 package com.chsdngm.tilly
 
-import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.publish.MemePublisher
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig
@@ -8,21 +7,18 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.mention
-import com.chsdngm.tilly.utility.setChatId
+import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
+import org.springframework.core.io.ClassPathResource
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.util.ResourceUtils
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
-import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import java.io.File
-import javax.imageio.ImageIO
 
 @Service
 @EnableScheduling
@@ -33,7 +29,11 @@ final class Schedulers(
 
   private val log = LoggerFactory.getLogger(javaClass)
 
-  private val ebuchkaImage = ResourceUtils.getFile("classpath:images/ebuchka.jpg")
+  private val ebuchkaImage = File("ebuchka").also {
+    ClassPathResource("classpath:images/ebuchka.jpg").apply {
+      FileUtils.copyInputStreamToFile(this.inputStream, it)
+    }
+  }
 
   // every hour since 8 am till 1 am Moscow time
   @Scheduled(cron = "0 0 5-22/1 * * *")
