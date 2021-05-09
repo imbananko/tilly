@@ -71,6 +71,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         .setPhoto(meme.fileId)
         .setCaption(caption)
         .setParseMode(ParseMode.HTML)
+        .disableNotification()
         .let { TillyConfig.api.execute(it) }
   }
 }

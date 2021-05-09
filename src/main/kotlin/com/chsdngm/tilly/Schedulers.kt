@@ -38,11 +38,19 @@ final class Schedulers(
   // every hour since 8 am till 1 am Moscow time
   @Scheduled(cron = "0 0 5-22/1 * * *")
   private fun publishMeme() =
+      runCatching {
         if (TillyConfig.publishEnabled) {
           memePublisher.publishMemeIfSomethingExists()
         } else {
           log.info("meme publishing is disabled")
         }
+      }.onFailure {
+        SendMessage()
+            .setChatId(TillyConfig.BETA_CHAT_ID)
+            .setText(it.format(update = null))
+            .setParseMode(ParseMode.HTML)
+            .apply { api.execute(this) }
+      }
 
   @Scheduled(cron = "0 0 19 * * WED")
   private fun sendMemeOfTheWeek() =
@@ -68,7 +76,14 @@ final class Schedulers(
         } ?: log.info("can't find meme of the week")
       }
           .onSuccess { log.info("successful send meme of the week") }
-          .onFailure { log.error("can't send meme of the week because of", it) }
+          .onFailure {
+            log.error("can't send meme of the week because of", it)
+            SendMessage()
+              .setChatId(TillyConfig.BETA_CHAT_ID)
+              .setText(it.format(update = null))
+              .setParseMode(ParseMode.HTML)
+              .apply { api.execute(this) }
+          }
 
   @Scheduled(cron = "0 0 17 * * *")
   private fun replyOnForgottenMemes() = memeRepository.findForgottenMemes().also { memes ->

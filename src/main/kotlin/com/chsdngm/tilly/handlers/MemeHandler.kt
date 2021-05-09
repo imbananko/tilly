@@ -69,6 +69,7 @@ class MemeHandler(
           .setPhoto(update.fileId)
           .setCaption("мем Натахи отправлен на личную модерацию в НИКУДА")
           .setParseMode(ParseMode.HTML)
+          .disableNotification()
           .let { api.execute(it) }
 
   override fun handle(update: MemeUpdate) {
@@ -205,12 +206,15 @@ class MemeHandler(
           .setText("мем на приватной модерации"))
 
   private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
-      SendMediaGroup(
-          BETA_CHAT_ID,
-          listOf(
-              InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
-              InputMediaPhoto(originalFileId, "оригинал")
-          )).let { api.execute(it) }
+    SendMediaGroup(
+      BETA_CHAT_ID,
+      listOf(
+        InputMediaPhoto(duplicateFileId, "дубликат, отправленный $username").setParseMode(ParseMode.HTML),
+        InputMediaPhoto(originalFileId, "оригинал")
+      )
+    )
+      .disableNotification()
+      .let { api.execute(it) }
 
   private fun sendPrivateModerationEventToBeta(meme: Meme, memeSender: TelegramUser, moderator: TelegramUser) =
       SendPhoto()
@@ -218,6 +222,7 @@ class MemeHandler(
           .setPhoto(meme.fileId)
           .setCaption("мем авторства ${memeSender.mention()} отправлен на личную модерацию к ${moderator.mention()}")
           .setParseMode(ParseMode.HTML)
+          .disableNotification()
           .let { api.execute(it) }
 
   fun download(fileId: String): File =
