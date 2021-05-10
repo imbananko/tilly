@@ -3,6 +3,7 @@ package com.chsdngm.tilly.repository
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.utility.TillyConfig
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository

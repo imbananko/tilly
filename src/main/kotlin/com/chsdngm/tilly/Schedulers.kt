@@ -30,7 +30,7 @@ final class Schedulers(
   private val log = LoggerFactory.getLogger(javaClass)
 
   private val ebuchkaImage = File("ebuchka").also {
-    ClassPathResource("classpath:images/ebuchka.jpg").apply {
+    ClassPathResource("images/ebuchka.jpg").apply {
       FileUtils.copyInputStreamToFile(this.inputStream, it)
     }
   }

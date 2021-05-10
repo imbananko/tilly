@@ -75,6 +75,12 @@ class CommandUpdate(update: Update) {
   }
 }
 
+class InlineCommandUpdate(update: Update) {
+  val id: String = update.inlineQuery.id
+  val value: String = update.inlineQuery.query
+  val offset: String = update.inlineQuery.offset
+}
+
 class PrivateVoteUpdate(update: Update) {
   val user: User = update.callbackQuery.from
   val messageId: Int = update.callbackQuery.message.messageId

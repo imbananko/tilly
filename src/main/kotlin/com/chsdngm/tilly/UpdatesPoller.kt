@@ -1,13 +1,7 @@
 package com.chsdngm.tilly
 
-import com.chsdngm.tilly.handlers.CommandHandler
-import com.chsdngm.tilly.handlers.MemeHandler
-import com.chsdngm.tilly.handlers.PrivateModerationVoteHandler
-import com.chsdngm.tilly.handlers.VoteHandler
-import com.chsdngm.tilly.model.CommandUpdate
-import com.chsdngm.tilly.model.MemeUpdate
-import com.chsdngm.tilly.model.PrivateVoteUpdate
-import com.chsdngm.tilly.model.VoteUpdate
+import com.chsdngm.tilly.handlers.*
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.utility.*
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
@@ -24,6 +18,7 @@ class UpdatesPoller(
   val memeHandler: MemeHandler,
   val voteHandler: VoteHandler,
   val commandHandler: CommandHandler,
+  val inlineCommandHandler: InlineCommandHandler,
   val privateModerationVoteHandler: PrivateModerationVoteHandler
 ) : TelegramLongPollingBot() {
 
@@ -40,6 +35,7 @@ class UpdatesPoller(
         update.hasMeme() -> memeHandler.handle(MemeUpdate(update))
         update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
         update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
+        update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
       }
     }.onFailure {
       log.error("can't handle handle $update because of", it)
