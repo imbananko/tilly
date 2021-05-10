@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.mockito.Mockito.mock
 import java.io.File
 
-class ImageMatcherTest {
+class HashedTextedImageMatcherTest {
   private lateinit var imageMatcher: ImageMatcher
 
   @Suppress("unused")

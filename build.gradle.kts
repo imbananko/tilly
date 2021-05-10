@@ -40,6 +40,11 @@ dependencies {
   implementation("org.springframework.cloud:spring-cloud-gcp-starters:1.2.6.RELEASE")
   implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.6.RELEASE")
   implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
+  implementation("com.github.haifengl:smile-core:2.4.0")
+  implementation("com.github.haifengl:smile-nlp:2.4.0")
+  implementation("org.apache.opennlp:opennlp-tools:1.9.3")
+  implementation("org.ktorm:ktorm-core:3.3.0")
+  implementation("org.ktorm:ktorm-support-postgresql:3.3.0")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
