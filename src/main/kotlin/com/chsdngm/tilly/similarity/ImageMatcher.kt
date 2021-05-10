@@ -46,7 +46,7 @@ class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMa
 //      .map { SnowballStemmer(SnowballStemmer.ALGORITHM.RUSSIAN).stem(it).toString() }
 //      .toTypedArray()
 
-    return corpus.search(BM25(), text)
+    return corpus.search(BM25(), text.split(' ').toTypedArray())
       .asSequence()
       .drop(page.pageNumber * page.pageSize)
       .map { it.text }
