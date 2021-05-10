@@ -1,11 +1,11 @@
 package com.chsdngm.tilly.similarity
 
+import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.utility.DocumentPage
 import com.github.kilianB.hash.Hash
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher
-import opennlp.tools.stemmer.snowball.SnowballStemmer
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import smile.nlp.SimpleCorpus
@@ -16,7 +16,6 @@ import java.io.File
 import java.math.BigInteger
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
-import kotlin.system.measureTimeMillis
 
 
 @Service
@@ -67,7 +66,10 @@ class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMa
 
   fun calculateHash(file: File): ByteArray = mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
 
-  fun add(fileId: String, file: File) = addImageInternal(fileId, mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue)
+  fun add(image: Image) {
+    addImageInternal(image.fileId, BigInteger(image.hash))
+    corpus.add(Text(image.fileId, "", image.words?.joinToString()))
+  }
 
   fun tryFindDuplicate(imageFile: File): String? =
       getMatchingImages(imageFile).poll()
