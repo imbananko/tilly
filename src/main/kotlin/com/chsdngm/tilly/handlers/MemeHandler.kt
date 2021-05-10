@@ -112,15 +112,15 @@ class MemeHandler(
       } else {
         moderateWithGroup(update)
       }
-      imageMatcher.add(update.fileId, update.file)
-      Image(update.fileId, update.file.readBytes(), hash = imageMatcher.calculateHash(update.file), words = imageTextRecognizer.detectText(update.file.readBytes()))
 
-      imageRepository.save(
-        Image(update.fileId,
-          update.file.readBytes(),
-          hash = imageMatcher.calculateHash(update.file),
-          words = imageTextRecognizer.detectText(update.file.readBytes()))
-      )
+      val image = Image(
+        update.fileId,
+        update.file.readBytes(),
+        hash = imageMatcher.calculateHash(update.file),
+        words = imageTextRecognizer.detectText(update.file.readBytes()))
+
+      imageMatcher.add(image)
+      imageRepository.save(image)
     }
 
     log.info("processed meme update=$update")
