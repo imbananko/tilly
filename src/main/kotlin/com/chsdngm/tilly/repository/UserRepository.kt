@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UserRepository : CrudRepository<TelegramUser, Int> {
+interface UserRepository : CrudRepository<TelegramUser, Long> {
   @Query(nativeQuery = true, value = """
     select u.*
     from meme m
@@ -27,7 +27,7 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
     order by sum(up) - sum(down) - 2 * count(1) desc
     limit 5
     """)
-  fun findTopSenders(@Param("idToExclude") idToExclude: Int): List<TelegramUser>
+  fun findTopSenders(@Param("idToExclude") idToExclude: Long): List<TelegramUser>
 
   @Query(nativeQuery = true, value = """
     select rank
@@ -41,7 +41,7 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
           group by m.sender_id) as data
     where sender_id = :userId
     """)
-  fun findUserRank(@Param("userId") userId: Long): Int?
+  fun findUserRank(@Param("userId") userId: Long): Long?
 
   @Query(nativeQuery = true, value = """
     select rank
@@ -56,5 +56,5 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
           group by m.sender_id) as data
     where sender_id = :userId
     """)
-  fun findUserWeekRank(@Param("userId") userId: Long): Int?
+  fun findUserWeekRank(@Param("userId") userId: Long): Long?
 }

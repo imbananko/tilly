@@ -13,7 +13,7 @@ import java.time.Instant
 private val trashCaptionParts = listOf("sender", "photo from")
 
 class VoteUpdate(update: Update) {
-  val voterId: Int = update.callbackQuery.from.id
+  val voterId: Long = update.callbackQuery.from.id
   val messageId: Int = update.callbackQuery.message.messageId
   val isFrom: Long = when {
     update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId == CHANNEL_ID -> CHANNEL_ID

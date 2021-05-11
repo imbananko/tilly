@@ -30,7 +30,7 @@ dependencies {
   implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
-  implementation("org.telegram:telegrambots-spring-boot-starter:4.8.1")
+  implementation("org.telegram:telegrambots-spring-boot-starter:5.2.0")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa:2.4.5")
   implementation("org.postgresql:postgresql:42.2.6")
   implementation("com.github.kilianB:JImageHash:3.0.0")

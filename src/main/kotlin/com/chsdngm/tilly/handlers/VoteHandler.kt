@@ -68,25 +68,31 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
   }
 
   fun sendPopupNotification(callbackQueryId: String, text: String): Boolean = AnswerCallbackQuery()
-      .setCacheTime(0)
-      .setCallbackQueryId(callbackQueryId)
-      .setText(text)
+      .also {
+        it.setCacheTime(0)
+        it.setCallbackQueryId(callbackQueryId)
+        it.setText(text)
+      }
       .let { api.execute(it) }
 
   private fun updateMarkup(meme: Meme) {
     meme.channelMessageId?.let {
       EditMessageReplyMarkup()
-          .setChatId(CHANNEL_ID)
-          .setMessageId(meme.channelMessageId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-          .let { api.execute(it) }
+        .also {
+          it.setChatId(CHANNEL_ID.toString())
+          it.setMessageId(meme.channelMessageId)
+          it.setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+        }
+        .let { api.execute(it) }
     }
 
     if (meme.moderationChatId == CHAT_ID) {
       EditMessageReplyMarkup()
-          .setChatId(CHAT_ID)
-          .setMessageId(meme.moderationChatMessageId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+        .also {
+          it.setChatId(CHAT_ID.toString())
+          it.setMessageId(meme.moderationChatMessageId)
+          it.setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+        }
           .let { api.execute(it) }
     }
   }

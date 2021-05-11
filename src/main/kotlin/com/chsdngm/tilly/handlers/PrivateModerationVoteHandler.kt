@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
@@ -30,10 +31,12 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
   private fun approve(update: PrivateVoteUpdate, meme: Meme) {
     EditMessageCaption()
-        .setChatId(update.user.id.toString())
-        .setMessageId(update.messageId)
-        .setCaption("мем одобрен и будет отправлен на канал")
-        .let { TillyConfig.api.execute(it) }
+      .also {
+        it.setChatId(update.user.id.toString())
+        it.setMessageId(update.messageId)
+        it.setCaption("мем одобрен и будет отправлен на канал")
+      }
+      .let { TillyConfig.api.execute(it) }
 
     meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.UP))
     meme.status = MemeStatus.SCHEDULED
@@ -46,9 +49,11 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
   private fun decline(update: PrivateVoteUpdate, meme: Meme) {
     EditMessageCaption()
-        .setChatId(update.user.id.toString())
-        .setMessageId(update.messageId)
-        .setCaption("мем предан забвению")
+      .also {
+        it.setChatId(update.user.id.toString())
+        it.setMessageId(update.messageId)
+        it.setCaption("мем предан забвению")
+      }
         .let { TillyConfig.api.execute(it) }
 
     //TODO fix long/int types in whole project
@@ -67,11 +72,13 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
         else "предал(а) мем забвению"
 
     SendPhoto()
-        .setChatId(BETA_CHAT_ID)
-        .setPhoto(meme.fileId)
-        .setCaption(caption)
-        .setParseMode(ParseMode.HTML)
-        .disableNotification()
+      .also {
+        it.setChatId(BETA_CHAT_ID.toString())
+        it.setPhoto(InputFile(meme.fileId))
+        it.setCaption(caption)
+        it.setParseMode(ParseMode.HTML)
+        it.disableNotification()
+      }
         .let { TillyConfig.api.execute(it) }
   }
 }

@@ -30,6 +30,7 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMem
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
@@ -50,24 +51,28 @@ class MemeHandler(
 ) : AbstractHandler<MemeUpdate> {
   private val log = LoggerFactory.getLogger(javaClass)
 
-  private val natashaId = 117901733
+  private val natashaId = 117901733L
   private fun MemeUpdate.isFromNatasha() = this.user.id == natashaId
 
   fun replyToNatasha(update: MemeUpdate): Message =
       SendMessage()
-          .setChatId(natashaId)
-          .setReplyToMessageId(update.messageId)
-          .setText("Мем на привитой модерации")
-          .let { api.execute(it) }
+        .also {
+          it.setChatId(natashaId.toString())
+          it.setReplyToMessageId(update.messageId)
+          it.setText("Мем на привитой модерации")
+        }
+        .let { api.execute(it) }
 
   private fun sendNatashaEventToBeta(update: MemeUpdate) =
       SendPhoto()
-          .setChatId(BETA_CHAT_ID)
-          .setPhoto(update.fileId)
-          .setCaption("мем Натахи отправлен на личную модерацию в НИКУДА")
-          .setParseMode(ParseMode.HTML)
-          .disableNotification()
-          .let { api.execute(it) }
+        .also {
+          it.setChatId(BETA_CHAT_ID.toString())
+          it.setPhoto(InputFile(update.fileId))
+          it.setCaption("мем Натахи отправлен на личную модерацию в НИКУДА")
+          it.setParseMode(ParseMode.HTML)
+          it.disableNotification()
+        }
+        .let { api.execute(it) }
 
   override fun handle(update: MemeUpdate) {
     update.file = download(update.fileId)
@@ -141,11 +146,14 @@ class MemeHandler(
 
   fun moderateWithGroup(update: MemeUpdate): Meme =
       SendPhoto()
-          .setChatId(CHAT_ID)
-          .setPhoto(update.fileId)
-          .setCaption(runCatching { resolveCaption(update) }.getOrNull())
-          .setParseMode(ParseMode.HTML)
-          .setReplyMarkup(createMarkup(emptyMap())).let { api.execute(it) }.let { sent ->
+        .also {
+          it.setChatId(CHAT_ID.toString())
+          it.setPhoto(InputFile(update.fileId))
+          it.setCaption(runCatching { resolveCaption(update) }.getOrNull())
+          it.setParseMode(ParseMode.HTML)
+          it.setReplyMarkup(createMarkup(emptyMap()))
+        }
+        .let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSender(update).messageId
             memeRepository.save(Meme(CHAT_ID, sent.messageId, update.user.id, update.newMemeStatus, senderMessageId, update.fileId, update.caption))
           }.also {
@@ -154,11 +162,14 @@ class MemeHandler(
 
   fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
       SendPhoto()
-          .setChatId(moderatorId)
-          .setPhoto(update.fileId)
-          .setCaption(update.caption?.let { it + "\n\n"} ?: "" + "Теперь ты модератор!")
-          .setParseMode(ParseMode.HTML)
-          .setReplyMarkup(createPrivateModerationMarkup()).let { api.execute(it) }.let { sent ->
+        .also {
+          it.setChatId(moderatorId.toString())
+          it.setPhoto(InputFile(update.fileId))
+          it.setCaption(update.caption?.let { it + "\n\n"} ?: "" + "Теперь ты модератор!")
+          it.setParseMode(ParseMode.HTML)
+          it.setReplyMarkup(createPrivateModerationMarkup())
+        }
+        .let { api.execute(it) }.let { sent ->
             val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
             memeRepository.save(Meme(moderatorId, sent.messageId, update.user.id, update.newMemeStatus, senderMessageId, update.fileId, update.caption))
           }
@@ -175,10 +186,12 @@ class MemeHandler(
 
   private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
       api.execute(ForwardMessage()
-          .setChatId(user.id)
-          .setFromChatId(CHANNEL_ID)
-          .setMessageId(meme.channelMessageId)
-          .disableNotification())
+        .also {
+          it.setChatId(user.id)
+          it.setFromChatId(CHANNEL_ID)
+          it.setMessageId(meme.channelMessageId)
+          it.disableNotification()
+        })
 
 
   private fun forwardMemeFromChatToUser(meme: Meme, user: User) =

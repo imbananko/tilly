@@ -19,7 +19,7 @@ data class PrivateModerator(
 data class Meme(
     val moderationChatId: Long,
     val moderationChatMessageId: Int,
-    val senderId: Int,
+    val senderId: Long,
     @Enumerated(EnumType.STRING)
     var status: MemeStatus,
     val privateReplyMessageId: Int?,
@@ -42,7 +42,7 @@ data class Meme(
 
 @Entity
 data class TelegramUser(
-    @Id val id: Int,
+    @Id val id: Long,
     val username: String?,
     val firstName: String?,
     val lastName: String?,
@@ -54,7 +54,7 @@ data class TelegramUser(
 @IdClass(Vote.VoteKey::class)
 data class Vote(
     @Id val memeId: Int,
-    @Id val voterId: Int,
+    @Id val voterId: Long,
     var sourceChatId: Long,
     @Enumerated(EnumType.STRING)
     var value: VoteValue,

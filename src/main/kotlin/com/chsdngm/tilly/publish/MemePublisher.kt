@@ -9,6 +9,7 @@ import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import javax.transaction.Transactional
 
 @Service
@@ -30,10 +31,12 @@ class MemePublisher(private val memeRepository: MemeRepository) {
 
   private fun sendMemeToChannel(meme: Meme) =
     SendPhoto()
-      .setChatId(TillyConfig.CHANNEL_ID)
-      .setPhoto(meme.fileId)
-      .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-      .setCaption(meme.caption)
+      .also {
+        it.setChatId(TillyConfig.CHANNEL_ID.toString())
+        it.setPhoto(InputFile(meme.fileId))
+        it.setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
+        it.setCaption(meme.caption)
+      }
       .let { TillyConfig.api.execute(it) }
       .also { log.info("sent meme to channel. meme=$meme") }
 }

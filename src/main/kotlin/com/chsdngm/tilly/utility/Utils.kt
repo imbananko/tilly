@@ -38,16 +38,19 @@ fun ChatMember.isFromChat(): Boolean = chatUserStatuses.contains(this.status)
 
 private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER)
 
-fun ForwardMessage.setChatId(chatId: Int): ForwardMessage = this.setChatId(chatId.toLong())
+fun ForwardMessage.setChatId(chatId: Int): ForwardMessage = this.also { it.setChatId(chatId.toString()) }
 
-fun SendMessage.setChatId(chatId: Int): SendMessage = this.setChatId(chatId.toLong())
+fun SendMessage.setChatId(chatId: Int): SendMessage = this.also { it.setChatId(chatId.toString()) }
 
-fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup = InlineKeyboardMarkup().setKeyboard(
-    listOf(
+fun createMarkup(stats: Map<VoteValue, Int>): InlineKeyboardMarkup = InlineKeyboardMarkup()
+  .also {
+    it.setKeyboard(
+      listOf(
         listOf(
-            createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
-            createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
+          createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
+          createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
         )))
+  }
 
 fun updateStatsInSenderChat(meme: Meme) {
   if (meme.privateReplyMessageId != null) {
@@ -56,9 +59,12 @@ fun updateStatsInSenderChat(meme: Meme) {
           .joinToString(prefix = " статистика: \n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
 
     EditMessageText()
-      .setChatId(meme.senderId.toString())
-      .setMessageId(meme.privateReplyMessageId)
-      .setText(caption).let { TillyConfig.api.execute(it) }
+      .also {
+        it.setChatId(meme.senderId.toString())
+        it.setMessageId(meme.privateReplyMessageId)
+        it.setText(caption)
+      }
+      .let { TillyConfig.api.execute(it) }
   }
 }
 
