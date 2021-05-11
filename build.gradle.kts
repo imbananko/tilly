@@ -3,9 +3,8 @@ import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 
 group = "com.chsdngm"
 version = "1.0"
-java.sourceCompatibility = JavaVersion.VERSION_1_8
 
-val kotlinVersion = "1.4.0"
+val kotlinVersion = "1.5.0"
 val springVersion = "2.3.0.RELEASE"
 val jupiterVersion = "5.5.2"
 
@@ -36,7 +35,7 @@ dependencies {
   implementation("org.postgresql:postgresql:42.2.6")
   implementation("com.github.kilianB:JImageHash:3.0.0")
   implementation("org.jetbrains.exposed:exposed:0.17.7")
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinVersion")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
   implementation("org.springframework.cloud:spring-cloud-gcp-starters:1.2.8.RELEASE")
   implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.8.RELEASE")
   implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
@@ -44,7 +43,6 @@ dependencies {
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 tasks.bootJar {
