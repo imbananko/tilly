@@ -69,3 +69,5 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
     }
 
 fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)
+
+data class DocumentPage(val pageNumber: Int, val pageSize: Int)

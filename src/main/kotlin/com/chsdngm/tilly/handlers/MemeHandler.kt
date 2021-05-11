@@ -10,7 +10,7 @@ import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
-import com.chsdngm.tilly.similarity.GoogleImageRecognizer
+import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
@@ -38,18 +38,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
-import java.util.*
-import java.util.concurrent.atomic.AtomicLong
-import javax.annotation.PostConstruct
 
 @Service
 class MemeHandler(
-    private val userRepository: UserRepository,
-    private val imageMatcher: ImageMatcher,
-    private val imageRecognizer: GoogleImageRecognizer,
-    private val imageRepository: ImageRepository,
-    private val privateModeratorRepository: PrivateModeratorRepository,
-    private val memeRepository: MemeRepository,
+  private val userRepository: UserRepository,
+  private val imageMatcher: ImageMatcher,
+  private val imageTextRecognizer: ImageTextRecognizer,
+  private val imageRepository: ImageRepository,
+  private val privateModeratorRepository: PrivateModeratorRepository,
+  private val memeRepository: MemeRepository,
 ) : AbstractHandler<MemeUpdate> {
   private val log = LoggerFactory.getLogger(javaClass)
 
@@ -115,9 +112,17 @@ class MemeHandler(
       } else {
         moderateWithGroup(update)
       }
-      imageMatcher.add(update.fileId, update.file)
-      imageRepository.save(imageRecognizer.enrich(Image(update.fileId, update.file.readBytes(), hash = imageMatcher.calculateHash(update.file))))
+
+      val image = Image(
+        update.fileId,
+        update.file.readBytes(),
+        hash = imageMatcher.calculateHash(update.file),
+        words = imageTextRecognizer.detectText(update.file.readBytes()))
+
+      imageMatcher.add(image)
+      imageRepository.save(image)
     }
+
     log.info("processed meme update=$update")
   }
 
