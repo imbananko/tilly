@@ -28,11 +28,11 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
 
     val meme = when (update.isFrom) {
       CHANNEL_ID -> memeRepository.findMemeByChannelMessageId(update.messageId)
-      CHAT_ID -> memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID, update.messageId)
+      CHAT_ID -> memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID.toLong(), update.messageId)
       else -> return
     } ?: return
 
-    val vote = Vote(meme.id, update.voterId, update.isFrom, update.voteValue)
+    val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue)
 
     if (meme.senderId == vote.voterId) {
       sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
@@ -67,29 +67,31 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
     log.info("processed vote update=$update")
   }
 
-  fun sendPopupNotification(callbackQueryId: String, text: String): Boolean = AnswerCallbackQuery()
-      .setCacheTime(0)
-      .setCallbackQueryId(callbackQueryId)
-      .setText(text)
-      .let { api.execute(it) }
+  fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
+    AnswerCallbackQuery().apply {
+      cacheTime = 0
+      callbackQueryId = userCallbackQueryId
+      text = popupText
+    }.let { api.execute(it) }
 
   private fun updateMarkup(meme: Meme) {
     meme.channelMessageId?.let {
-      EditMessageReplyMarkup()
-          .setChatId(CHANNEL_ID)
-          .setMessageId(meme.channelMessageId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-          .let { api.execute(it) }
+      EditMessageReplyMarkup().apply {
+        chatId = CHANNEL_ID
+        messageId = meme.channelMessageId
+        replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+      }.let { api.execute(it) }
     }
 
-    if (meme.moderationChatId == CHAT_ID) {
-      EditMessageReplyMarkup()
-          .setChatId(CHAT_ID)
-          .setMessageId(meme.moderationChatMessageId)
-          .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-          .let { api.execute(it) }
+    if (meme.moderationChatId.toString() == CHAT_ID) {
+      EditMessageReplyMarkup().apply {
+        chatId = CHAT_ID
+        messageId = meme.moderationChatMessageId
+        replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+      }.let { api.execute(it) }
     }
   }
+
 
   private fun readyForShipment(meme: Meme): Boolean =
     with(meme.votes.map { it.value }) {

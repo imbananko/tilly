@@ -13,11 +13,11 @@ import java.time.Instant
 private val trashCaptionParts = listOf("sender", "photo from")
 
 class VoteUpdate(update: Update) {
-  val voterId: Int = update.callbackQuery.from.id
+  val voterId: Long = update.callbackQuery.from.id
   val messageId: Int = update.callbackQuery.message.messageId
-  val isFrom: Long = when {
-    update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId == CHANNEL_ID -> CHANNEL_ID
-    update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId == CHAT_ID -> CHAT_ID
+  val isFrom: String = when {
+    update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId.toString() == CHANNEL_ID -> CHANNEL_ID
+    update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId.toString() == CHAT_ID -> CHAT_ID
     else -> throw Exception("Unknown vote source type")
   }
   val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusDays(7)
@@ -51,8 +51,8 @@ class MemeUpdate(update: Update) {
 }
 
 class CommandUpdate(update: Update) {
-  val senderId: Long = update.message.chatId
-  val chatId: Long = update.message.chatId
+  val senderId: String = update.message.chatId.toString()
+  val chatId: String = update.message.chatId.toString()
   val messageId: Int = update.message.messageId
   val value: Command? = Command.from(update.message.text.split(' ').first())
   val text: String = update.message.text

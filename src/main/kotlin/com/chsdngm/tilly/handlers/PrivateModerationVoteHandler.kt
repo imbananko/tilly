@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
@@ -29,13 +30,13 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
   }
 
   private fun approve(update: PrivateVoteUpdate, meme: Meme) {
-    EditMessageCaption()
-        .setChatId(update.user.id.toString())
-        .setMessageId(update.messageId)
-        .setCaption("мем одобрен и будет отправлен на канал")
-        .let { TillyConfig.api.execute(it) }
+    EditMessageCaption().apply {
+      chatId = update.user.id.toString()
+      messageId = update.messageId
+      caption = "мем одобрен и будет отправлен на канал"
+    }.let { TillyConfig.api.execute(it) }
 
-    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.UP))
+    meme.votes.add(Vote(meme.id, update.user.id.toInt(), update.user.id, VoteValue.UP))
     meme.status = MemeStatus.SCHEDULED
 
     updateStatsInSenderChat(meme)
@@ -45,14 +46,14 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
   }
 
   private fun decline(update: PrivateVoteUpdate, meme: Meme) {
-    EditMessageCaption()
-        .setChatId(update.user.id.toString())
-        .setMessageId(update.messageId)
-        .setCaption("мем предан забвению")
-        .let { TillyConfig.api.execute(it) }
+    EditMessageCaption().apply {
+      chatId = update.user.id.toString()
+      messageId = update.messageId
+      caption = "мем предан забвению"
+    }.let { TillyConfig.api.execute(it) }
 
     //TODO fix long/int types in whole project
-    meme.votes.add(Vote(meme.id, update.user.id, update.user.id.toLong(), VoteValue.DOWN))
+    meme.votes.add(Vote(meme.id, update.user.id.toInt(), update.user.id, VoteValue.DOWN))
     meme.status = MemeStatus.DECLINED
 
     updateStatsInSenderChat(meme)
@@ -62,16 +63,16 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
   }
 
   private fun sendPrivateModerationEventToBeta(meme: Meme, moderator: User, solution: PrivateVoteValue) {
-    val caption = "${moderator.mention()} " +
+    val memeCaption = "${moderator.mention()} " +
         if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
         else "предал(а) мем забвению"
 
-    SendPhoto()
-        .setChatId(BETA_CHAT_ID)
-        .setPhoto(meme.fileId)
-        .setCaption(caption)
-        .setParseMode(ParseMode.HTML)
-        .disableNotification()
-        .let { TillyConfig.api.execute(it) }
+    SendPhoto().apply {
+      chatId = BETA_CHAT_ID
+      photo = InputFile(meme.fileId)
+      caption = memeCaption
+      parseMode = ParseMode.HTML
+      disableNotification = true
+    }.let { TillyConfig.api.execute(it) }
   }
 }

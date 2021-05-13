@@ -5,6 +5,7 @@ import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.utility.*
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -39,11 +40,12 @@ class UpdatesPoller(
       }
     }.onFailure {
       log.error("can't handle handle $update because of", it)
-      SendMessage()
-          .setChatId(TillyConfig.BETA_CHAT_ID)
-          .setText(it.format(update))
-          .setParseMode(ParseMode.HTML)
-          .apply { TillyConfig.api.execute(this) }
+
+      SendMessage().apply {
+        chatId = TillyConfig.BETA_CHAT_ID
+        text = it.format(update)
+        parseMode = ParseMode.HTML
+      }.let { method -> api.execute(method) }
     }
   }
 }
@@ -73,9 +75,16 @@ fun Throwable.format(update: Update?): String {
   |Update: $updateInfo
   |
   |Stacktrace: 
-  |${exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }.joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }}
+  |${
+    exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }
+      .joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }
+  }
   """.trimMargin()
 }
 
-private data class ExceptionForBeta(val message: String?, val cause: Throwable?, val stackTrace: Array<StackTraceElement>)
+private data class ExceptionForBeta(
+  val message: String?,
+  val cause: Throwable?,
+  val stackTrace: Array<StackTraceElement>
+)
 

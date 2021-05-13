@@ -4,11 +4,16 @@ import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig
+import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.objects.InputFile
+import org.telegram.telegrambots.meta.api.objects.Message
 import javax.transaction.Transactional
 
 @Service
@@ -29,11 +34,11 @@ class MemePublisher(private val memeRepository: MemeRepository) {
   }
 
   private fun sendMemeToChannel(meme: Meme) =
-    SendPhoto()
-      .setChatId(TillyConfig.CHANNEL_ID)
-      .setPhoto(meme.fileId)
-      .setReplyMarkup(createMarkup(meme.votes.groupingBy { it.value }.eachCount()))
-      .setCaption(meme.caption)
-      .let { TillyConfig.api.execute(it) }
-      .also { log.info("sent meme to channel. meme=$meme") }
+    SendPhoto().apply {
+      chatId = CHANNEL_ID
+      photo = InputFile(meme.fileId)
+      replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+      parseMode = ParseMode.HTML
+      caption = meme.caption
+    }.let(api::execute).also { log.info("sent meme to channel. meme=$meme") }
 }

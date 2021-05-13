@@ -20,7 +20,7 @@ class InlineCommandHandler(val matcher: ImageMatcher) : AbstractHandler<InlineCo
 
     val offset = if (update.offset.isBlank()) 0 else update.offset.toInt()
 
-    val results = matcher
+    val memes = matcher
       .find(update.value, DocumentPage(offset, chunkSize))
       .map {
         InlineQueryResultCachedPhoto().apply {
@@ -30,10 +30,11 @@ class InlineCommandHandler(val matcher: ImageMatcher) : AbstractHandler<InlineCo
         }
       }.take(chunkSize)
 
-    AnswerInlineQuery()
-      .setInlineQueryId(update.id)
-      .setNextOffset("${offset + 1}")
-      .setResults(results).let { TillyConfig.api.execute(it) }
+    AnswerInlineQuery().apply {
+      inlineQueryId = update.id
+      nextOffset = "${offset + 1}"
+      results = memes
+    }.let { TillyConfig.api.execute(it) }
 
     log.info("Searched memes with text: ${update.value}, reached page: $offset")
   }
