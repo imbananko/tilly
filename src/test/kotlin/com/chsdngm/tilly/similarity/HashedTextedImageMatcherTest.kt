@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.similarity
 
+import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.repository.ImageRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import java.io.File
 
@@ -39,7 +41,12 @@ class HashedTextedImageMatcherTest {
   @MethodSource("imageProvider")
   fun `MemeMatcher should identify equal memes`(file: File) {
     val fileId = file.name
-    imageMatcher.add(fileId, file)
+
+    val image = mock(Image::class.java)
+    `when`(image.file).thenReturn(file.readBytes())
+    `when`(image.fileId).thenReturn(fileId)
+    `when`(image.hash).thenReturn(imageMatcher.calculateHash(file))
+    imageMatcher.add(image)
 
     assertEquals(fileId, imageMatcher.tryFindDuplicate(file))
   }
@@ -49,7 +56,12 @@ class HashedTextedImageMatcherTest {
     val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not found")
     val doctor3 = memes["doctor3.jpg"] ?: error("doctor3.jpg is not found")
 
-    imageMatcher.add(originalMeme.name, originalMeme)
+    val originalImage = mock(Image::class.java)
+    `when`(originalImage.file).thenReturn(originalMeme.readBytes())
+    `when`(originalImage.fileId).thenReturn("original_meme.jpg")
+    `when`(originalImage.hash).thenReturn(imageMatcher.calculateHash(originalMeme))
+
+    imageMatcher.add(originalImage)
     val memeMatch1 = imageMatcher.tryFindDuplicate(doctor3)
     assertNull(memeMatch1, "Changed meme ${doctor3.name} should be different from original one ${originalMeme.name}")
   }
@@ -61,7 +73,12 @@ class HashedTextedImageMatcherTest {
     val doctor1 = memes["doctor1.jpg"] ?: error("doctor1.jpg is not found")
     val doctor2 = memes["doctor2.jpg"] ?: error("doctor2.jpg is not found")
 
-    imageMatcher.add(doctor1.name, doctor1)
+    val image1 = mock(Image::class.java)
+    `when`(image1.file).thenReturn(doctor1.readBytes())
+    `when`(image1.fileId).thenReturn("meme1.jpg")
+    `when`(image1.hash).thenReturn(imageMatcher.calculateHash(doctor1))
+
+    imageMatcher.add(image1)
     val memeMatch1 = imageMatcher.tryFindDuplicate(doctor2)
     assertNull(memeMatch1, "Changed meme ${doctor2.name} should be different from original one ${doctor2.name}")
   }
@@ -70,7 +87,13 @@ class HashedTextedImageMatcherTest {
   fun `Meme1 and Meme2 should be the same`() {
     val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not found")
-    imageMatcher.add(meme1.name, meme1)
+
+    val image1 = mock(Image::class.java)
+    `when`(image1.file).thenReturn(meme1.readBytes())
+    `when`(image1.fileId).thenReturn("meme1.jpg")
+    `when`(image1.hash).thenReturn(imageMatcher.calculateHash(meme1))
+
+    imageMatcher.add(image1)
     val memeMatch = imageMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)
@@ -80,7 +103,13 @@ class HashedTextedImageMatcherTest {
   fun `Duplicate1 and Duplicate2 should be the same`() {
     val meme1 = memes["duplicate1.jpg"] ?: error("meme1.jpg is not found")
     val meme2 = memes["duplicate2.jpg"] ?: error("meme2.jpg is not found")
-    imageMatcher.add(meme1.name, meme1)
+
+    val image1 = mock(Image::class.java)
+    `when`(image1.file).thenReturn(meme1.readBytes())
+    `when`(image1.fileId).thenReturn("duplicate1.jpg")
+    `when`(image1.hash).thenReturn(imageMatcher.calculateHash(meme1))
+
+    imageMatcher.add(image1)
     val memeMatch = imageMatcher.tryFindDuplicate(meme2)
 
     assertEquals(memeMatch, meme1.name)

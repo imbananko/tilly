@@ -67,7 +67,7 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserWeek.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { userRepository.findUserWeekRank(update.senderId) } ?: "NaN"}</b>
+          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { userRepository.findUserWeekRank(update.senderId.toLong()) } ?: "NaN"}</b>
           
           <u><b>Статистика за все время:</b></u>
           
@@ -78,17 +78,16 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserAll.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк: <b>#${withContext(Dispatchers.IO) { userRepository.findUserRank(update.senderId) } ?: "NaN"}</b>
+          Ранк: <b>#${withContext(Dispatchers.IO) { userRepository.findUserRank(update.senderId.toLong()) } ?: "NaN"}</b>
           
           """.trimIndent()
     }
-  }.let {
-    api.execute(
-      SendMessage()
-        .setParseMode(ParseMode.HTML)
-        .setChatId(update.senderId)
-        .setText(it)
-    )
+  }.let { statsMessageText ->
+      SendMessage().apply {
+        parseMode = ParseMode.HTML
+        chatId = update.senderId
+        text = statsMessageText
+      }.let { api.execute(it) }
   }
 
   fun sendInfoMessage(update: CommandUpdate) {
@@ -107,12 +106,12 @@ class CommandHandler(
       За динамикой оценки также можно следить тут.
     """.trimIndent()
 
-    api.execute(
-      SendMessage()
-        .setChatId(update.senderId)
-        .setParseMode(ParseMode.HTML)
-        .setText(infoText)
-    )
+
+    SendMessage().apply {
+      chatId = update.senderId
+      parseMode = ParseMode.HTML
+      text = infoText
+    }.let { api.execute(it) }
   }
 
   fun sendDonationMarkup(update: CommandUpdate) {
@@ -130,12 +129,12 @@ class CommandHandler(
       }))
     })
 
-    SendMessage()
-      .setChatId(update.senderId)
-      .setParseMode(ParseMode.HTML)
-      .setReplyMarkup(donationMarkup)
-      .setText("Select donation sum: ")
-      .let { api.execute(it) }
+    SendMessage().apply {
+      chatId = update.senderId
+      parseMode = ParseMode.HTML
+      replyMarkup = donationMarkup
+      text = "Select donation sum: "
+    }.let { api.execute(it) }
   }
 
   fun changeConfig(update: CommandUpdate) {
@@ -156,11 +155,11 @@ class CommandHandler(
         """.trimIndent()
     }
 
-    SendMessage()
-      .setChatId(TillyConfig.BETA_CHAT_ID)
-      .setParseMode(ParseMode.HTML)
-      .setReplyToMessageId(update.messageId)
-      .setText(message)
-      .let { api.execute(it) }
+    SendMessage().apply {
+      chatId = TillyConfig.BETA_CHAT_ID
+      parseMode = ParseMode.HTML
+      replyToMessageId = update.messageId
+      text = message
+    }.let { api.execute(it) }
   }
 }

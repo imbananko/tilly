@@ -29,7 +29,7 @@ dependencies {
   implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
-  implementation("org.telegram:telegrambots-spring-boot-starter:4.8.1")
+  implementation("org.telegram:telegrambots-spring-boot-starter:5.2.0")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("org.postgresql:postgresql:42.2.6")
@@ -48,7 +48,7 @@ dependencies {
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
+  testImplementation("org.springframework.boot:spring-boot-starter-test:2.4.5")
 }
 
 tasks.bootJar {

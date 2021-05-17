@@ -10,13 +10,13 @@ class TillyConfig {
   companion object {
 
     @JvmField
-    var CHAT_ID = 0L
+    var CHAT_ID = ""
 
     @JvmField
-    var CHANNEL_ID = 0L
+    var CHANNEL_ID = ""
 
     @JvmField
-    var BETA_CHAT_ID = 0L
+    var BETA_CHAT_ID = ""
 
     @JvmField
     var BOT_TOKEN = ""
@@ -48,17 +48,17 @@ class TillyConfig {
   }
 
   @Value("\${beta.chat.id}")
-  fun setBetaChatId(betaChatId: Long) {
+  fun setBetaChatId(betaChatId: String) {
     BETA_CHAT_ID = betaChatId
   }
 
   @Value("\${target.channel.id}")
-  fun setChannelId(channelId: Long) {
+  fun setChannelId(channelId: String) {
     CHANNEL_ID = channelId
   }
 
   @Value("\${target.chat.id}")
-  fun setChatId(chatId: Long) {
+  fun setChatId(chatId: String) {
     CHAT_ID = chatId
   }
 

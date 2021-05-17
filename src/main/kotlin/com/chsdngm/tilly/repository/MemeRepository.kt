@@ -63,7 +63,7 @@ interface MemeRepository : CrudRepository<Meme, Int> {
     limit 5
   """, nativeQuery = true)
   fun findForgottenMemes(
-      @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID,
+      @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID.toLong(),
       @Param("moderationThreshold") moderationThreshold: Long = TillyConfig.MODERATION_THRESHOLD,
   ): List<Meme>
 }
