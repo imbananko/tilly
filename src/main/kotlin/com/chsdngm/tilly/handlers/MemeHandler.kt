@@ -66,7 +66,7 @@ class MemeHandler(
       if (update.newMemeStatus.canBeScheduled()
         && !update.isFreshman
         && currentModerators.size < 5
-        && memeRepository.count().toInt() % 5 == 0 || true
+        && memeRepository.count().toInt() % 5 == 0
       ) {
 
         userRepository
