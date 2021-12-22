@@ -1,16 +1,13 @@
 steps:
   - name: gradle:6.8-jdk11
     entrypoint: gradle
-    args: ['bootJar']
+    args: [ 'bootJar' ]
 
   - name: gcr.io/cloud-builders/docker
     args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/tilly:latest', '.' ]
 
   - name: gcr.io/cloud-builders/gcloud
-    args: [ compute, instances, stop, '${_INSTANCE_NAME}', '--zone=${_INSTANCE_ZONE}']
-
-  - name: gcr.io/cloud-builders/gcloud
-    args: [ compute, instances, start, '${_INSTANCE_NAME}', '--zone=${_INSTANCE_ZONE}']
+    args: [ 'run', 'deploy', '${_INSTANCE_NAME}', '--image', 'gcr.io/$PROJECT_ID/tilly:latest', '--zone=${_INSTANCE_ZONE}' ]
 
 images: [ 'gcr.io/$PROJECT_ID/tilly:latest' ]
 
