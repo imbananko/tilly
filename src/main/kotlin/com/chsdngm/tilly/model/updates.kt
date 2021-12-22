@@ -61,7 +61,6 @@ class CommandUpdate(update: Update) {
     STATS("/stats"),
     HELP("/help"),
     START("/start"),
-    DONATE("/donate"),
     CONFIG("/config");
 
     companion object {

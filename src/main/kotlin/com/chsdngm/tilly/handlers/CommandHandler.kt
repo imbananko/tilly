@@ -10,13 +10,13 @@ import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.minusDays
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.time.Instant
 
 @Service
@@ -32,13 +32,11 @@ class CommandHandler(
     when (update.value) {
       Command.STATS -> sendStats(update)
       Command.HELP, Command.START -> sendInfoMessage(update)
-      Command.DONATE -> sendDonationMarkup(update)
       Command.CONFIG -> if (update.chatId == TillyConfig.BETA_CHAT_ID) changeConfig(update)
       else -> log.warn("unknown command from update=$update")
     }
     log.info("processed command update=$update")
   }
-
 
   private fun sendStats(update: CommandUpdate) = runBlocking {
 
@@ -111,29 +109,6 @@ class CommandHandler(
       chatId = update.senderId
       parseMode = ParseMode.HTML
       text = infoText
-    }.let { api.execute(it) }
-  }
-
-  fun sendDonationMarkup(update: CommandUpdate) {
-    val donationMarkup = InlineKeyboardMarkup(listOf(100, 250, 500).map {
-      listOf(InlineKeyboardButton("100").apply {
-        text = "$it rub."
-        callbackData = text
-        url = "${TillyConfig.PAYMENT_URL}?amount=${it * 100}"
-      })
-    }.toMutableList().also {
-      it.add(listOf(InlineKeyboardButton().apply {
-        text = "другая сумма"
-        callbackData = text
-        url = TillyConfig.PAYMENT_URL
-      }))
-    })
-
-    SendMessage().apply {
-      chatId = update.senderId
-      parseMode = ParseMode.HTML
-      replyMarkup = donationMarkup
-      text = "Select donation sum: "
     }.let { api.execute(it) }
   }
 
