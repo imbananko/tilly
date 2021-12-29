@@ -2,28 +2,23 @@ package com.chsdngm.tilly.similarity
 
 import com.chsdngm.tilly.model.Image
 import com.chsdngm.tilly.repository.ImageRepository
-import com.chsdngm.tilly.utility.DocumentPage
 import com.github.kilianB.hash.Hash
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import smile.nlp.SimpleCorpus
-import smile.nlp.Text
-import smile.nlp.relevance.BM25
 import java.awt.image.BufferedImage
 import java.io.File
 import java.math.BigInteger
 import javax.annotation.PostConstruct
 import javax.imageio.ImageIO
 
-
 @Service
-class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMatcher(true) {
+class ImageMatcher(
+  private val imageRepository: ImageRepository
+) : ConsecutiveMatcher(true) {
 
   private val log = LoggerFactory.getLogger(javaClass)
-
-  private val corpus: SimpleCorpus = SimpleCorpus()
 
   @PostConstruct
   @Suppress("unused")
@@ -34,22 +29,6 @@ class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMa
     imageRepository.findAllHashes().forEach {
       addImageInternal(it.fileId, BigInteger(it.hash))
     }
-
-    imageRepository.findAllTexts().forEach { image ->
-      corpus.add(Text(image.fileId, "", image.words.joinToString()))
-    }
-  }
-
-  fun find(text: String, page: DocumentPage): List<Text> {
-//    val stemmedText = text.split(' ')
-//      .map { SnowballStemmer(SnowballStemmer.ALGORITHM.RUSSIAN).stem(it).toString() }
-//      .toTypedArray()
-
-    return corpus.search(BM25(), text.split(' ').toTypedArray())
-      .asSequence()
-      .drop(page.pageNumber * page.pageSize)
-      .map { it.text }
-      .toList()
   }
 
   private fun addImageInternal(uniqueId: String, computedHash: BigInteger) {
@@ -68,7 +47,6 @@ class ImageMatcher(private val imageRepository: ImageRepository) : ConsecutiveMa
 
   fun add(image: Image) {
     addImageInternal(image.fileId, BigInteger(image.hash))
-    corpus.add(Text(image.fileId, "", image.words?.joinToString()))
   }
 
   fun tryFindDuplicate(imageFile: File): String? =
