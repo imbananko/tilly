@@ -28,7 +28,7 @@ class TillyConfig {
     var BOT_USERNAME = ""
 
     @JvmField
-    var PAYMENT_URL = ""
+    var ELASTICSEARCH_URL = ""
 
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
@@ -67,9 +67,8 @@ class TillyConfig {
     MODERATION_THRESHOLD = moderationThreshold
   }
 
-  @Value("\${payment.url}")
-  fun setPaymentUrl(paymentUrl: String) {
-    PAYMENT_URL = paymentUrl
+  @Value("\${elasticsearch.url}")
+  fun setElasticsearchUrl(elasticsearchUrl: String) {
+    ELASTICSEARCH_URL = elasticsearchUrl
   }
-
 }

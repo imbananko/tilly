@@ -4,7 +4,6 @@ import com.vladmihalcea.hibernate.type.array.ListArrayType
 import org.hibernate.annotations.Type
 import org.hibernate.annotations.TypeDef
 import java.io.Serializable
-import java.math.BigInteger
 import java.time.Instant
 import java.util.*
 import javax.persistence.*

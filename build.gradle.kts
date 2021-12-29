@@ -24,6 +24,7 @@ plugins {
 }
 
 dependencies {
+  implementation("org.jetbrains.kotlin:kotlin-stdlib-common:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
   implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
@@ -45,6 +46,7 @@ dependencies {
   implementation("org.apache.opennlp:opennlp-tools:1.9.3")
   implementation("org.ktorm:ktorm-core:3.3.0")
   implementation("org.ktorm:ktorm-support-postgresql:3.3.0")
+  implementation("org.springframework.data:spring-data-elasticsearch:3.2.13.RELEASE")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
   testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
@@ -61,7 +63,7 @@ tasks.withType<Test> {
 
 tasks.withType<KotlinCompile> {
   kotlinOptions {
-    jvmTarget = "1.8"
+    jvmTarget = "11"
     freeCompilerArgs = listOf("-Xallow-result-return-type")
   }
 }

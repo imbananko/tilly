@@ -4,8 +4,6 @@ import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
-import org.telegram.telegrambots.meta.api.methods.ForwardMessage
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.ChatMember
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
@@ -69,5 +67,3 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
   }
 
 fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)
-
-data class DocumentPage(val pageNumber: Int, val pageSize: Int)

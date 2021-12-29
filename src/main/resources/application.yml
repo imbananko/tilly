@@ -13,6 +13,9 @@ spring:
     url: localhost
     username: tilly
 
+elasticsearch:
+  url: elasticsearch:9200
+
 bot:
   token: token
   username: username
