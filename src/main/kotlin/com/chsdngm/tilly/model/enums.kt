@@ -31,3 +31,8 @@ enum class MemeStatus {
 
   fun canBeScheduled(): Boolean = this == MODERATION
 }
+
+enum class UserStatus {
+  DEFAULT,
+  BANNED
+}

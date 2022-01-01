@@ -1,11 +1,8 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.model.Image
-import com.chsdngm.tilly.model.Meme
-import com.chsdngm.tilly.model.MemeUpdate
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
-import com.chsdngm.tilly.model.TelegramUser
 import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
@@ -56,9 +53,23 @@ class MemeHandler(
         update.file = download(update.fileId)
         update.isFreshman = !userRepository.existsById(update.user.id.toInt())
 
-        val memeSender =
-            TelegramUser(update.user.id.toInt(), update.user.userName, update.user.firstName, update.user.lastName)
-        userRepository.save(memeSender)
+        val memeSender = userRepository.findById(update.user.id.toInt()).let {
+            userRepository.save(
+                TelegramUser(
+                    update.user.id.toInt(),
+                    update.user.userName,
+                    update.user.firstName,
+                    update.user.lastName,
+                    if (it.isEmpty) UserStatus.DEFAULT else it.get().status
+                )
+            )
+        }
+
+        if (memeSender.status == UserStatus.BANNED) {
+            replyToBannedUser(update)
+            sendBannedEventToBeta(update, memeSender)
+            return
+        }
 
         imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
             handleDuplicate(update, duplicateFileId)
@@ -261,4 +272,21 @@ class MemeHandler(
             listOf(InlineKeyboardButton("Предать забвению ${DECLINE.emoji}").also { it.callbackData = DECLINE.name })
         )
     )
+
+    private fun replyToBannedUser(update: MemeUpdate): Message =
+        SendMessage().apply {
+            chatId = update.user.id.toString()
+            replyToMessageId = update.messageId
+            text = "Мем на привитой модерации"
+        }.let { api.execute(it) }
+
+    private fun sendBannedEventToBeta(update: MemeUpdate, telegramUser: TelegramUser) =
+        SendPhoto().apply {
+            chatId = BETA_CHAT_ID
+            photo = InputFile(update.fileId)
+            caption = "мем ${telegramUser.mention()} отправлен на личную модерацию в НИКУДА"
+            parseMode = ParseMode.HTML
+            disableNotification = true
+
+        }.let { api.execute(it) }
 }
