@@ -28,15 +28,16 @@ data class Meme(
     var created: Instant = Instant.now(),
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "memeId", orphanRemoval = true)
-    val votes: MutableSet<Vote> = mutableSetOf()) {
+    val votes: MutableSet<Vote> = mutableSetOf()
+) {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  val id: Int = 0
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Int = 0
 
-  override fun toString(): String {
-    return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
-  }
+    override fun toString(): String {
+        return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
+    }
 }
 
 @Entity
@@ -45,8 +46,10 @@ data class TelegramUser(
     val username: String?,
     val firstName: String?,
     val lastName: String?,
+    @Enumerated(EnumType.STRING)
+    val status: UserStatus
 ) {
-  fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
+    fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
 }
 
 @Entity
@@ -60,11 +63,11 @@ data class Vote(
     var created: Instant = Instant.now(),
 ) {
 
-  @Embeddable
-  class VoteKey(
-      val memeId: Int,
-      val voterId: Int,
-  ) : Serializable
+    @Embeddable
+    class VoteKey(
+        val memeId: Int,
+        val voterId: Int,
+    ) : Serializable
 }
 
 @Entity
@@ -77,21 +80,21 @@ data class Image(
     @Lob @Type(type = "org.hibernate.type.BinaryType") val hash: ByteArray,
 ) {
 
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
 
-    other as Image
+        other as Image
 
-    if (fileId != other.fileId) return false
-    if (!file.contentEquals(other.file)) return false
+        if (fileId != other.fileId) return false
+        if (!file.contentEquals(other.file)) return false
 
-    return true
-  }
+        return true
+    }
 
-  override fun hashCode(): Int {
-    var result = fileId.hashCode()
-    result = 31 * result + file.contentHashCode()
-    return result
-  }
+    override fun hashCode(): Int {
+        var result = fileId.hashCode()
+        result = 31 * result + file.contentHashCode()
+        return result
+    }
 }
