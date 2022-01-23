@@ -60,10 +60,16 @@ fun updateStatsInSenderChat(meme: Meme) {
   }
 }
 
-private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int) =
+fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int) =
   InlineKeyboardButton().also {
     it.text = if (voteCount == 0) voteValue.emoji else voteValue.emoji + " " + voteCount
     it.callbackData = voteValue.name
   }
 
 fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)
+
+class ExceptionForBeta(
+  val message: String?,
+  val cause: Throwable?,
+  val stackTrace: Array<StackTraceElement>
+)

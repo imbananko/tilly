@@ -82,9 +82,3 @@ fun Throwable.format(update: Update?): String {
   """.trimMargin()
 }
 
-private data class ExceptionForBeta(
-  val message: String?,
-  val cause: Throwable?,
-  val stackTrace: Array<StackTraceElement>
-)
-

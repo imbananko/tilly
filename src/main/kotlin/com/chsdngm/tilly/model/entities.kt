@@ -38,6 +38,21 @@ data class Meme(
     override fun toString(): String {
         return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Meme
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id
+    }
 }
 
 @Entity
@@ -68,6 +83,24 @@ data class Vote(
         val memeId: Int,
         val voterId: Int,
     ) : Serializable
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Vote
+
+        if (memeId != other.memeId) return false
+        if (voterId != other.voterId) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = memeId
+        result = 31 * result + voterId
+        return result
+    }
 }
 
 @Entity
