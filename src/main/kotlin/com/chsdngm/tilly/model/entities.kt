@@ -32,7 +32,7 @@ data class Meme(
 ) {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Int = 0
 
     override fun toString(): String {
