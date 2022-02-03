@@ -15,6 +15,7 @@ spring:
 
 elasticsearch:
   url: elasticsearch:9200
+  index: memes
 
 bot:
   token: token

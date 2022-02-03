@@ -9,6 +9,7 @@ import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
+import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
@@ -16,7 +17,10 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.isFromChat
+import com.chsdngm.tilly.utility.logExceptionInBetaChat
 import org.apache.commons.io.IOUtils
+import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.client.RequestOptions
 import org.elasticsearch.client.RestHighLevelClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -48,6 +52,7 @@ class MemeHandler(
     private val elasticsearchClient: RestHighLevelClient
 ) : AbstractHandler<MemeUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val textFieldName = "text"
 
     override fun handle(update: MemeUpdate) {
         update.file = download(update.fileId)
@@ -100,7 +105,9 @@ class MemeHandler(
                 moderateWithGroup(update)
             }
 
-            val text = imageTextRecognizer.detectText(update.file.readBytes())
+            val text: List<String>? = runCatching { imageTextRecognizer.detectText(update.file) }
+                    .onFailure { logExceptionInBetaChat(it) }
+                    .getOrNull()
 
             val image = Image(
                 update.fileId,
@@ -111,8 +118,14 @@ class MemeHandler(
 
             imageMatcher.add(image)
             imageRepository.save(image)
-            //TODO FINISH
-//            elasticsearchClient.index()
+
+            if (text?.isNotEmpty() == true) {
+                val indexRequest =
+                        IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME)
+                                .id(image.fileId)
+                                .source(textFieldName, text.joinToString(separator = " "))
+                elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
+            }
         }
 
         log.info("processed meme update=$update")
