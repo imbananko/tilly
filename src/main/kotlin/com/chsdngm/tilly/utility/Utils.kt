@@ -1,12 +1,9 @@
 package com.chsdngm.tilly.utility
 
-import com.chsdngm.tilly.format
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
-import org.telegram.telegrambots.meta.api.methods.ParseMode
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.ChatMember
 import org.telegram.telegrambots.meta.api.objects.MemberStatus
@@ -62,13 +59,6 @@ fun updateStatsInSenderChat(meme: Meme) {
     }.let { api.execute(it) }
   }
 }
-
-fun logExceptionInBetaChat(ex: Throwable) =
-        SendMessage().apply {
-          chatId = TillyConfig.BETA_CHAT_ID
-          text = ex.format(update = null)
-          parseMode = ParseMode.HTML
-        }.let { method -> api.execute(method) }
 
 private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int) =
   InlineKeyboardButton().also {

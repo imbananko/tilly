@@ -30,9 +30,6 @@ class TillyConfig {
     @JvmField
     var ELASTICSEARCH_URL = ""
 
-    @JvmField
-    var ELASTICSEARCH_INDEX_NAME = ""
-
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
     }
@@ -73,10 +70,5 @@ class TillyConfig {
   @Value("\${elasticsearch.url}")
   fun setElasticsearchUrl(elasticsearchUrl: String) {
     ELASTICSEARCH_URL = elasticsearchUrl
-  }
-
-  @Value("\${elasticsearch.index}")
-  fun setElasticsearchIndexName(elasticsearchIndexName: String) {
-    ELASTICSEARCH_INDEX_NAME = elasticsearchIndexName
   }
 }
