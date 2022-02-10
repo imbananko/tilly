@@ -3,6 +3,7 @@ package com.chsdngm.tilly.repository
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.utility.TillyConfig
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -12,20 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Int> {
-  @Query("""
-        select distinct meme 
-        from Meme meme 
-        left join fetch meme.votes
-        where meme.moderationChatId = ?1 and meme.moderationChatMessageId = ?2
-        """)
   fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
 
-  @Query("""
-        select distinct meme 
-        from Meme meme 
-        left join fetch meme.votes
-        where meme.channelMessageId = ?1
-        """)
   fun findMemeByChannelMessageId(messageId: Int): Meme?
 
   fun findByFileId(fileId: String): Meme?
