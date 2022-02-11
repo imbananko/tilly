@@ -7,6 +7,7 @@ import com.chsdngm.tilly.repository.ImageRepository
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.similarity.AnalyzingResults
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import com.chsdngm.tilly.utility.TillyConfig
@@ -53,6 +54,7 @@ class MemeHandler(
 ) : AbstractHandler<MemeUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
     private val textFieldName = "text"
+    private val indexDocumentType = "_doc"
 
     override fun handle(update: MemeUpdate) {
         update.file = download(update.fileId)
@@ -105,7 +107,7 @@ class MemeHandler(
                 moderateWithGroup(update)
             }
 
-            val text: List<String>? = runCatching { imageTextRecognizer.detectText(update.file) }
+            val analyzingResults: AnalyzingResults? = runCatching { imageTextRecognizer.analyze(update.file) }
                     .onFailure { logExceptionInBetaChat(it) }
                     .getOrNull()
 
@@ -113,17 +115,21 @@ class MemeHandler(
                 update.fileId,
                 update.file.readBytes(),
                 hash = imageMatcher.calculateHash(update.file),
-                words = text
+                words = analyzingResults?.words,
+                labels = analyzingResults?.labels
             )
 
             imageMatcher.add(image)
             imageRepository.save(image)
 
-            if (text?.isNotEmpty() == true) {
+            if (analyzingResults?.words?.isNotEmpty() == true) {
+                val text = analyzingResults.words.joinToString(separator = " ")
                 val indexRequest =
                         IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME)
                                 .id(image.fileId)
-                                .source(textFieldName, text.joinToString(separator = " "))
+                                .type(indexDocumentType)
+                                .source(textFieldName, text)
+                                .timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
                 elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
             }
         }
