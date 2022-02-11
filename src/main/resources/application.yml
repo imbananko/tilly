@@ -16,6 +16,7 @@ spring:
 elasticsearch:
   url: elasticsearch:9200
   index: memes
+  timeout: 5s
 
 bot:
   token: token

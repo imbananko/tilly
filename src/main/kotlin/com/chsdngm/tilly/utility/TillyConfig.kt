@@ -33,6 +33,9 @@ class TillyConfig {
     @JvmField
     var ELASTICSEARCH_INDEX_NAME = ""
 
+    @JvmField
+    var ELASTICSEARCH_REQUEST_TIMEOUT = ""
+
     val api = object : DefaultAbsSender(DefaultBotOptions()) {
       override fun getBotToken(): String = BOT_TOKEN
     }
@@ -78,5 +81,10 @@ class TillyConfig {
   @Value("\${elasticsearch.index}")
   fun setElasticsearchIndexName(elasticsearchIndexName: String) {
     ELASTICSEARCH_INDEX_NAME = elasticsearchIndexName
+  }
+
+  @Value("\${elasticsearch.timeout}")
+  fun setElasticsearchRequestTimeout(timeout: String) {
+    ELASTICSEARCH_REQUEST_TIMEOUT = timeout
   }
 }
