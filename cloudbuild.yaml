@@ -4,11 +4,11 @@ steps:
     args: [ 'bootJar' ]
 
   - name: gcr.io/cloud-builders/docker
-    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/tilly:latest', '.' ]
+    args: [ 'build', '--build-arg', 'COMMIT_SHA=$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA', '.' ]
 
   - name: gcr.io/cloud-builders/gcloud
     args: [ compute, instances, reset, '${_INSTANCE_NAME}', '--zone=${_INSTANCE_ZONE}']
 
-images: [ 'gcr.io/$PROJECT_ID/tilly:latest' ]
+images: [ 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA' ]
 
 timeout: 3600s
