@@ -19,7 +19,7 @@ fun main(args: Array<String>) {
     SpringApplication.run(TillyApplication::class.java, *args)
     SendMessage().apply {
         chatId = TillyConfig.BETA_CHAT_ID
-        text = "${TillyConfig.BOT_USERNAME} started"
+        text = "${TillyConfig.BOT_USERNAME} started with sha: ${TillyConfig.COMMIT_SHA}"
         parseMode = ParseMode.HTML
     }.let { method -> TillyConfig.api.execute(method) }
 }
