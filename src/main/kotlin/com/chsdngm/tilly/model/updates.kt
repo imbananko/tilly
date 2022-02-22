@@ -38,7 +38,7 @@ class MemeUpdate(update: Update) {
   val fileId: String = update.message.photo.maxByOrNull { it.fileSize }!!.fileId
   val user: User = update.message.from
   val senderName: String = update.message.from.mention()
-  val newMemeStatus: MemeStatus =
+  val status: MemeStatus =
     if (caption?.contains("#local") == true) MemeStatus.LOCAL
     else MemeStatus.MODERATION
 

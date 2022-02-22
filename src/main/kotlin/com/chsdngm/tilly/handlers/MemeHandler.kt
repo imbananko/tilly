@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.*
+import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.repository.ImageRepository
@@ -41,26 +42,38 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.util.*
 
 @Service
 class MemeHandler(
-    private val userRepository: UserRepository,
-    private val imageMatcher: ImageMatcher,
-    private val imageTextRecognizer: ImageTextRecognizer,
-    private val imageRepository: ImageRepository,
-    private val privateModeratorRepository: PrivateModeratorRepository,
-    private val memeRepository: MemeRepository,
+    private val userRepository: UserRepository, private val imageMatcher: ImageMatcher,
+    private val imageTextRecognizer: ImageTextRecognizer, private val imageRepository: ImageRepository,
+    private val privateModeratorRepository: PrivateModeratorRepository, private val memeRepository: MemeRepository,
     private val elasticsearchClient: RestHighLevelClient
 ) : AbstractHandler<MemeUpdate> {
+
     private val log = LoggerFactory.getLogger(javaClass)
     private val textFieldName = "text"
     private val indexDocumentType = "_doc"
 
+    private val moderationPool = TreeMap<Int, WeightedModerationType>()
+    private val moderationType = Random()
+    private val weightsSum = WeightedModerationType.values().sumOf { it.weight }
+
+    init {
+        WeightedModerationType.values().forEach {
+            moderationPool[it.weight] = it
+        }
+    }
+
     override fun handle(update: MemeUpdate) {
         update.file = download(update.fileId)
-        update.isFreshman = !userRepository.existsById(update.user.id.toInt())
 
         val memeSender = userRepository.findById(update.user.id.toInt()).let {
+            if (it.isEmpty) {
+                update.isFreshman = true
+            }
+
             userRepository.save(
                 TelegramUser(
                     update.user.id.toInt(),
@@ -81,35 +94,20 @@ class MemeHandler(
         imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
             handleDuplicate(update, duplicateFileId)
         } ?: run {
-            val currentModerators = privateModeratorRepository.findCurrentModeratorsIds()
-
-            if (update.newMemeStatus.canBeScheduled()
-                && !update.isFreshman
-                && currentModerators.size < 5
-                && memeRepository.count().toInt() % 5 == 0
-            ) {
-                userRepository
-                    .findTopSenders(memeSender.id)
-                    .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) }
-                    ?.let { newModerator ->
-                        moderateWithUser(update, newModerator.id.toLong()).also { meme ->
-                            log.info("sent for moderation to user=$newModerator. meme=$meme")
-                            privateModeratorRepository.addPrivateModerator(newModerator.id)
-                            sendPrivateModerationEventToBeta(meme, memeSender, newModerator)
-                        }
-                    } ?: run {
-
-                    log.info("cannot perform ranked moderation. unable to pick moderator")
-                    moderateWithGroup(update)
-                }
-
-            } else {
+            if (update.isFreshman || update.status == LOCAL) {
                 moderateWithGroup(update)
             }
 
+            // Balancing with weight
+            when (moderationPool.ceilingEntry(moderationType.nextInt(weightsSum)).value) {
+                WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                WeightedModerationType.DEFAULT -> moderateWithGroup(update)
+                else -> moderateWithGroup(update)
+            }
+
             val analyzingResults: AnalyzingResults? = runCatching { imageTextRecognizer.analyze(update.file) }
-                    .onFailure { logExceptionInBetaChat(it) }
-                    .getOrNull()
+                .onFailure { logExceptionInBetaChat(it) }
+                .getOrNull()
 
             val image = Image(
                 update.fileId,
@@ -125,11 +123,11 @@ class MemeHandler(
             if (analyzingResults?.words?.isNotEmpty() == true) {
                 val text = analyzingResults.words.joinToString(separator = " ")
                 val indexRequest =
-                        IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME)
-                                .id(image.fileId)
-                                .type(indexDocumentType)
-                                .source(textFieldName, text)
-                                .timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
+                    IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME)
+                        .id(image.fileId)
+                        .type(indexDocumentType)
+                        .source(textFieldName, text)
+                        .timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
                 elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
             }
         }
@@ -137,7 +135,29 @@ class MemeHandler(
         log.info("processed meme update=$update")
     }
 
-    fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
+    private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
+        val currentModerators = privateModeratorRepository.findCurrentModeratorsIds()
+
+        if (currentModerators.size >= 5) {
+            return false
+        }
+
+        val moderator = userRepository
+            .findTopSenders(sender.id)
+            .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
+
+        return runCatching {
+            moderateWithUser(update, moderator.id.toLong()).also { meme ->
+                log.info("sent for moderation to user=$moderator. meme=$meme")
+                privateModeratorRepository.addPrivateModerator(moderator.id)
+                sendPrivateModerationEventToBeta(meme, sender, moderator)
+            }
+        }.onFailure {
+            logExceptionInBetaChat(it)
+        }.isSuccess
+    }
+
+    private fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
         sendSorryText(update)
 
         memeRepository.findByFileId(duplicateFileId)?.also { meme ->
@@ -150,7 +170,7 @@ class MemeHandler(
         }
     }
 
-    fun moderateWithGroup(update: MemeUpdate): Unit =
+    private fun moderateWithGroup(update: MemeUpdate): Boolean = runCatching {
         SendPhoto().apply {
             chatId = CHAT_ID
             photo = InputFile(update.fileId)
@@ -158,8 +178,7 @@ class MemeHandler(
             parseMode = ParseMode.HTML
             replyMarkup = createMarkup(emptyMap())
         }.let {
-            api.execute(it)
-        }.let { sent ->
+            val sent = api.execute(it)
 
             val senderMessageId = replyToSender(update).messageId
             memeRepository.save(
@@ -167,13 +186,18 @@ class MemeHandler(
                     CHAT_ID.toLong(),
                     sent.messageId,
                     update.user.id.toInt(),
-                    update.newMemeStatus,
+                    update.status,
                     senderMessageId,
                     update.fileId,
                     update.caption
                 )
-            ).also { log.info("sent for moderation to group chat. meme=$it") }
+            )
         }
+    }.onFailure {
+        logExceptionInBetaChat(it)
+    }.onSuccess {
+        log.info("sent for moderation to group chat. meme=$it")
+    }.isSuccess
 
     private fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
         SendPhoto().apply {
@@ -189,7 +213,7 @@ class MemeHandler(
                     moderatorId,
                     sent.messageId,
                     update.user.id.toInt(),
-                    update.newMemeStatus,
+                    update.status,
                     senderMessageId,
                     update.fileId,
                     update.caption

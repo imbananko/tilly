@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.model.*
+import com.chsdngm.tilly.model.MemeStatus.MODERATION
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
@@ -60,8 +61,8 @@ class VoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<
 
     updateMarkup(meme)
 
-    if (meme.status.canBeScheduled() && readyForShipment(meme))
-      meme.status = MemeStatus.SCHEDULED
+      if (meme.status == MODERATION && readyForShipment(meme))
+          meme.status = MemeStatus.SCHEDULED
 
     updateStatsInSenderChat(meme)
     log.info("processed vote update=$update")
