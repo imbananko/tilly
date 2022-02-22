@@ -4,7 +4,7 @@ steps:
     args: [ 'bootJar' ]
 
   - name: gcr.io/cloud-builders/docker
-    args: [ 'build', '--build-arg', 'COMMIT_SHA=${SHORT_SHA}', '-t', 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA', '.' ]
+    args: [ 'build', '--build-arg="COMMIT_SHA=${COMMIT_SHA}"', '-t', 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA', '.' ]
 
   - name: gcr.io/cloud-builders/gcloud
     args: [ compute, instances, reset, '${_INSTANCE_NAME}', '--zone=${_INSTANCE_ZONE}']
