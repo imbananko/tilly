@@ -58,11 +58,12 @@ class MemeHandler(
 
     private val moderationPool = TreeMap<Int, WeightedModerationType>()
     private val moderationType = Random()
-    private val weightsSum = WeightedModerationType.values().sumOf { it.weight }
+    private var totalWeight: Int = 0
 
     init {
         WeightedModerationType.values().forEach {
-            moderationPool[it.weight] = it
+            totalWeight += it.weight
+            moderationPool[totalWeight] = it
         }
     }
 
@@ -99,7 +100,7 @@ class MemeHandler(
             }
 
             // Balancing with weight
-            when (moderationPool.ceilingEntry(moderationType.nextInt(weightsSum)).value) {
+            when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
                 else -> moderateWithGroup(update)
