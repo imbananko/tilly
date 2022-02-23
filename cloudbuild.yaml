@@ -7,7 +7,7 @@ steps:
     args: [ 'build', '--build-arg', 'COMMIT_SHA_ARG=$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA', '.' ]
 
   - name: gcr.io/cloud-builders/gcloud
-    args: [ compute, instances, update-container, '${_INSTANCE_NAME}', '--container-image=$SHORT_SHA', '--zone=${_INSTANCE_ZONE}']
+    args: [ compute, instances, update-container, '${_INSTANCE_NAME}', '--container-image=gcr.io/$PROJECT_ID/tilly:$SHORT_SHA', '--zone=${_INSTANCE_ZONE}']
 
 images: [ 'gcr.io/$PROJECT_ID/tilly:$SHORT_SHA' ]
 
