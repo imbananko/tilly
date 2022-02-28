@@ -4,10 +4,7 @@ import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
-import com.chsdngm.tilly.repository.ImageRepository
-import com.chsdngm.tilly.repository.MemeRepository
-import com.chsdngm.tilly.repository.PrivateModeratorRepository
-import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.repository.*
 import com.chsdngm.tilly.similarity.AnalyzingResults
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
@@ -43,6 +40,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import java.util.*
+
 
 @Service
 class MemeHandler(
@@ -97,13 +95,13 @@ class MemeHandler(
         } ?: run {
             if (update.isFreshman || update.status == LOCAL) {
                 moderateWithGroup(update)
-            }
-
-            // Balancing with weight
-            when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
-                WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
-                WeightedModerationType.DEFAULT -> moderateWithGroup(update)
-                else -> moderateWithGroup(update)
+            } else {
+                // Balancing with weight
+                when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
+                    WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                    WeightedModerationType.DEFAULT -> moderateWithGroup(update)
+                    else -> moderateWithGroup(update)
+                }
             }
 
             val analyzingResults: AnalyzingResults? = runCatching { imageTextRecognizer.analyze(update.file) }
