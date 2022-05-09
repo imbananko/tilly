@@ -24,18 +24,15 @@ class ElasticsearchService(val elasticsearchRestClient: RestHighLevelClient) {
 
     suspend fun search(text: String, pageNumber: Int, pageSize: Int): SearchHits {
         val searchRequest = SearchRequest(
-            arrayOf(INDEX_NAME),
-            SearchSourceBuilder
-                .searchSource()
-                .query(
-                    QueryBuilders.matchQuery(TEXT_FIELD, text)
-                ).from(pageSize * pageNumber)
-                .size(pageSize)
+            arrayOf(INDEX_NAME), SearchSourceBuilder.searchSource().query(
+                QueryBuilders.matchQuery(TEXT_FIELD, text)
+            ).from(pageSize * pageNumber).size(pageSize)
         )
 
         return suspendCoroutine { continuation ->
             elasticsearchRestClient.searchAsync(
-                searchRequest, RequestOptions.DEFAULT,
+                searchRequest,
+                RequestOptions.DEFAULT,
                 object : ActionListener<SearchResponse> {
 
                     override fun onResponse(searchResponse: SearchResponse) {

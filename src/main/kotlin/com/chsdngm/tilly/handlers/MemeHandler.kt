@@ -44,9 +44,12 @@ import java.util.*
 
 @Service
 class MemeHandler(
-    private val userRepository: UserRepository, private val imageMatcher: ImageMatcher,
-    private val imageTextRecognizer: ImageTextRecognizer, private val imageRepository: ImageRepository,
-    private val privateModeratorRepository: PrivateModeratorRepository, private val memeRepository: MemeRepository,
+    private val userRepository: UserRepository,
+    private val imageMatcher: ImageMatcher,
+    private val imageTextRecognizer: ImageTextRecognizer,
+    private val imageRepository: ImageRepository,
+    private val privateModeratorRepository: PrivateModeratorRepository,
+    private val memeRepository: MemeRepository,
     private val elasticsearchClient: RestHighLevelClient
 ) : AbstractHandler<MemeUpdate> {
 
@@ -98,15 +101,17 @@ class MemeHandler(
             } else {
                 // Balancing with weight
                 when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
-                    WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                    WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(
+                        update
+                    )
                     WeightedModerationType.DEFAULT -> moderateWithGroup(update)
                     else -> moderateWithGroup(update)
                 }
             }
 
-            val analyzingResults: AnalyzingResults? = runCatching { imageTextRecognizer.analyze(update.file) }
-                .onFailure { logExceptionInBetaChat(it) }
-                .getOrNull()
+            val analyzingResults: AnalyzingResults? =
+                runCatching { imageTextRecognizer.analyze(update.file) }.onFailure { logExceptionInBetaChat(it) }
+                    .getOrNull()
 
             val image = Image(
                 update.fileId,
@@ -122,11 +127,8 @@ class MemeHandler(
             if (analyzingResults?.words?.isNotEmpty() == true) {
                 val text = analyzingResults.words.joinToString(separator = " ")
                 val indexRequest =
-                    IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME)
-                        .id(image.fileId)
-                        .type(indexDocumentType)
-                        .source(textFieldName, text)
-                        .timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
+                    IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME).id(image.fileId).type(indexDocumentType)
+                        .source(textFieldName, text).timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
                 elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
             }
         }
@@ -141,8 +143,7 @@ class MemeHandler(
             return false
         }
 
-        val moderator = userRepository
-            .findTopSenders(sender.id)
+        val moderator = userRepository.findTopSenders(sender.id)
             .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
 
         return runCatching {
@@ -160,10 +161,8 @@ class MemeHandler(
         sendSorryText(update)
 
         memeRepository.findByFileId(duplicateFileId)?.also { meme ->
-            if (meme.channelMessageId == null)
-                forwardMemeFromChatToUser(meme, update.user)
-            else
-                forwardMemeFromChannelToUser(meme, update.user)
+            if (meme.channelMessageId == null) forwardMemeFromChatToUser(meme, update.user)
+            else forwardMemeFromChannelToUser(meme, update.user)
             log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
             sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
@@ -198,93 +197,81 @@ class MemeHandler(
         log.info("sent for moderation to group chat. meme=$it")
     }.isSuccess
 
-    private fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme =
-        SendPhoto().apply {
-            chatId = moderatorId.toString()
-            photo = InputFile(update.fileId)
-            caption = ((update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")))
-            parseMode = ParseMode.HTML
-            replyMarkup = createPrivateModerationMarkup()
-        }.let { api.execute(it) }.let { sent ->
-            val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
-            memeRepository.save(
-                Meme(
-                    moderatorId,
-                    sent.messageId,
-                    update.user.id.toInt(),
-                    update.status,
-                    senderMessageId,
-                    update.fileId,
-                    update.caption
-                )
+    private fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme = SendPhoto().apply {
+        chatId = moderatorId.toString()
+        photo = InputFile(update.fileId)
+        caption = ((update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")))
+        parseMode = ParseMode.HTML
+        replyMarkup = createPrivateModerationMarkup()
+    }.let { api.execute(it) }.let { sent ->
+        val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
+        memeRepository.save(
+            Meme(
+                moderatorId,
+                sent.messageId,
+                update.user.id.toInt(),
+                update.status,
+                senderMessageId,
+                update.fileId,
+                update.caption
             )
-        }
+        )
+    }
 
-    private fun resolveCaption(update: MemeUpdate): String =
-        update.caption ?: ("" +
-                if (GetChatMember().apply {
-                        chatId = CHAT_ID
-                        userId = update.user.id
-                    }.let {
-                        api.execute(it)
-                    }.isFromChat()) ""
-                else
-                    "\n\nSender: ${update.senderName}" +
-                            if (update.isFreshman) "\n\n#freshman" else "")
+    private fun resolveCaption(update: MemeUpdate): String = update.caption ?: ("" + if (GetChatMember().apply {
+            chatId = CHAT_ID
+            userId = update.user.id
+        }.let {
+            api.execute(it)
+        }.isFromChat()) ""
+    else "\n\nSender: ${update.senderName}" + if (update.isFreshman) "\n\n#freshman" else "")
 
-    private fun forwardMemeFromChannelToUser(meme: Meme, user: User) =
-        ForwardMessage().apply {
-            chatId = user.id.toString()
-            fromChatId = CHANNEL_ID
-            messageId = meme.channelMessageId!!
-            disableNotification = true
-        }.let { api.execute(it) }
+    private fun forwardMemeFromChannelToUser(meme: Meme, user: User) = ForwardMessage().apply {
+        chatId = user.id.toString()
+        fromChatId = CHANNEL_ID
+        messageId = meme.channelMessageId!!
+        disableNotification = true
+    }.let { api.execute(it) }
 
-    private fun forwardMemeFromChatToUser(meme: Meme, user: User) =
-        ForwardMessage().apply {
-            chatId = user.id.toString()
-            fromChatId = meme.moderationChatId.toString()
-            messageId = meme.moderationChatMessageId
-            disableNotification = true
-        }.let { api.execute(it) }
+    private fun forwardMemeFromChatToUser(meme: Meme, user: User) = ForwardMessage().apply {
+        chatId = user.id.toString()
+        fromChatId = meme.moderationChatId.toString()
+        messageId = meme.moderationChatMessageId
+        disableNotification = true
+    }.let { api.execute(it) }
 
-    private fun sendSorryText(update: MemeUpdate) =
-        SendMessage().apply {
-            chatId = update.user.id.toString()
-            replyToMessageId = update.messageId
-            disableNotification = true
-            text = "К сожалению, мем уже был отправлен ранее!"
-        }.let { api.execute(it) }
+    private fun sendSorryText(update: MemeUpdate) = SendMessage().apply {
+        chatId = update.user.id.toString()
+        replyToMessageId = update.messageId
+        disableNotification = true
+        text = "К сожалению, мем уже был отправлен ранее!"
+    }.let { api.execute(it) }
 
-    private fun replyToSender(update: MemeUpdate): Message =
-        SendMessage().apply {
-            chatId = update.user.id.toString()
-            replyToMessageId = update.messageId
-            disableNotification = true
-            text = "мем на модерации"
-        }.let { api.execute(it) }
+    private fun replyToSender(update: MemeUpdate): Message = SendMessage().apply {
+        chatId = update.user.id.toString()
+        replyToMessageId = update.messageId
+        disableNotification = true
+        text = "мем на модерации"
+    }.let { api.execute(it) }
 
-    private fun replyToSenderAboutPrivateModeration(update: MemeUpdate): Message =
-        SendMessage().apply {
-            chatId = update.user.id.toString()
-            replyToMessageId = update.messageId
-            disableNotification = true
-            text = "мем на приватной модерации"
-        }.let { api.execute(it) }
+    private fun replyToSenderAboutPrivateModeration(update: MemeUpdate): Message = SendMessage().apply {
+        chatId = update.user.id.toString()
+        replyToMessageId = update.messageId
+        disableNotification = true
+        text = "мем на приватной модерации"
+    }.let { api.execute(it) }
 
     private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
         SendMediaGroup().apply {
             chatId = BETA_CHAT_ID
-            medias = listOf(
-                InputMediaPhoto().apply {
-                    media = duplicateFileId
-                    caption = "дубликат, отправленный $username"
-                    parseMode = ParseMode.HTML
-                },
-                InputMediaPhoto().apply {
-                    media = originalFileId
-                    caption = "оригинал"
-                })
+            medias = listOf(InputMediaPhoto().apply {
+                media = duplicateFileId
+                caption = "дубликат, отправленный $username"
+                parseMode = ParseMode.HTML
+            }, InputMediaPhoto().apply {
+                media = originalFileId
+                caption = "оригинал"
+            })
             disableNotification = true
         }.let { api.execute(it) }
 
@@ -315,20 +302,18 @@ class MemeHandler(
         )
     )
 
-    private fun replyToBannedUser(update: MemeUpdate): Message =
-        SendMessage().apply {
-            chatId = update.user.id.toString()
-            replyToMessageId = update.messageId
-            text = "Мем на привитой модерации"
-        }.let { api.execute(it) }
+    private fun replyToBannedUser(update: MemeUpdate): Message = SendMessage().apply {
+        chatId = update.user.id.toString()
+        replyToMessageId = update.messageId
+        text = "Мем на привитой модерации"
+    }.let { api.execute(it) }
 
-    private fun sendBannedEventToBeta(update: MemeUpdate, telegramUser: TelegramUser) =
-        SendPhoto().apply {
-            chatId = BETA_CHAT_ID
-            photo = InputFile(update.fileId)
-            caption = "мем ${telegramUser.mention()} отправлен на личную модерацию в НИКУДА"
-            parseMode = ParseMode.HTML
-            disableNotification = true
+    private fun sendBannedEventToBeta(update: MemeUpdate, telegramUser: TelegramUser) = SendPhoto().apply {
+        chatId = BETA_CHAT_ID
+        photo = InputFile(update.fileId)
+        caption = "мем ${telegramUser.mention()} отправлен на личную модерацию в НИКУДА"
+        parseMode = ParseMode.HTML
+        disableNotification = true
 
-        }.let { api.execute(it) }
+    }.let { api.execute(it) }
 }

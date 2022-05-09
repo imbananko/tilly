@@ -18,27 +18,26 @@ import javax.transaction.Transactional
 
 @Service
 class MemePublisher(private val memeRepository: MemeRepository) {
-  private val log = LoggerFactory.getLogger(javaClass)
+    private val log = LoggerFactory.getLogger(javaClass)
 
-  @Transactional
-  fun publishMemeIfSomethingExists() {
-    val memeToPublish = memeRepository.findFirstByStatusOrderByCreated()
+    @Transactional
+    fun publishMemeIfSomethingExists() {
+        val memeToPublish = memeRepository.findFirstByStatusOrderByCreated()
 
-    if (memeToPublish != null) {
-      memeToPublish.channelMessageId = sendMemeToChannel(memeToPublish).messageId
-      memeToPublish.status = MemeStatus.PUBLISHED
-      updateStatsInSenderChat(memeToPublish)
-    } else {
-      log.info("there is nothing to post")
+        if (memeToPublish != null) {
+            memeToPublish.channelMessageId = sendMemeToChannel(memeToPublish).messageId
+            memeToPublish.status = MemeStatus.PUBLISHED
+            updateStatsInSenderChat(memeToPublish)
+        } else {
+            log.info("there is nothing to post")
+        }
     }
-  }
 
-  private fun sendMemeToChannel(meme: Meme) =
-    SendPhoto().apply {
-      chatId = CHANNEL_ID
-      photo = InputFile(meme.fileId)
-      replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
-      parseMode = ParseMode.HTML
-      caption = meme.caption
+    private fun sendMemeToChannel(meme: Meme) = SendPhoto().apply {
+        chatId = CHANNEL_ID
+        photo = InputFile(meme.fileId)
+        replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+        parseMode = ParseMode.HTML
+        caption = meme.caption
     }.let(api::execute).also { log.info("sent meme to channel. meme=$meme") }
 }

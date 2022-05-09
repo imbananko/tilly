@@ -15,62 +15,62 @@ import javax.imageio.ImageIO
 
 @Service
 class ImageMatcher(
-  private val imageRepository: ImageRepository
+    private val imageRepository: ImageRepository
 ) : ConsecutiveMatcher(true) {
 
-  private val log = LoggerFactory.getLogger(javaClass)
+    private val log = LoggerFactory.getLogger(javaClass)
 
-  @PostConstruct
-  @Suppress("unused")
-  fun init() {
-    addHashingAlgorithm(mainHashingAlgorithm, normalizedHammingDistance, true)
-    addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))
+    @PostConstruct
+    @Suppress("unused")
+    fun init() {
+        addHashingAlgorithm(mainHashingAlgorithm, normalizedHammingDistance, true)
+        addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))
 
-    imageRepository.findAllHashes().forEach {
-      addImageInternal(it.fileId, BigInteger(it.hash))
-    }
-  }
-
-  private fun addImageInternal(uniqueId: String, computedHash: BigInteger) {
-    if (addedImages.contains(uniqueId)) {
-      log.info("An image with uniqueId already exists. Skip request")
+        imageRepository.findAllHashes().forEach {
+            addImageInternal(it.fileId, BigInteger(it.hash))
+        }
     }
 
-    val hash: Hash = mainHashingAlgorithm.hash(computedHash)
-    binTreeMap[mainHashingAlgorithm]!!.addHash(hash, uniqueId)
-    cachedHashes[mainHashingAlgorithm]!![uniqueId] = hash
-
-    addedImages.add(uniqueId)
-  }
-
-  fun calculateHash(file: File): ByteArray = mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
-
-  fun add(image: Image) {
-    addImageInternal(image.fileId, BigInteger(image.hash))
-  }
-
-  fun tryFindDuplicate(imageFile: File): String? =
-      getMatchingImages(imageFile).poll()
-          ?.takeIf { it.normalizedHammingDistance < normalizedHammingDistance }
-          ?.value
-
-  companion object {
-    private const val normalizedHammingDistance: Double = .15
-
-    private val mainHashingAlgorithm = object : PerceptiveHash(128) {
-      fun hash(hashValue: BigInteger): Hash {
-        this.immutableState = true
-
-        if (keyResolution < 0) {
-          keyResolution = bitResolution
+    private fun addImageInternal(uniqueId: String, computedHash: BigInteger) {
+        if (addedImages.contains(uniqueId)) {
+            log.info("An image with uniqueId already exists. Skip request")
         }
 
-        return Hash(hashValue, keyResolution, algorithmId())
-      }
+        val hash: Hash = mainHashingAlgorithm.hash(computedHash)
+        binTreeMap[mainHashingAlgorithm]!!.addHash(hash, uniqueId)
+        cachedHashes[mainHashingAlgorithm]!![uniqueId] = hash
+
+        addedImages.add(uniqueId)
     }
 
-    fun calculateHash(file: ByteArray): ByteArray = mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
-  }
+    fun calculateHash(file: File): ByteArray =
+        mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
+
+    fun add(image: Image) {
+        addImageInternal(image.fileId, BigInteger(image.hash))
+    }
+
+    fun tryFindDuplicate(imageFile: File): String? =
+        getMatchingImages(imageFile).poll()?.takeIf { it.normalizedHammingDistance < normalizedHammingDistance }?.value
+
+    companion object {
+        private const val normalizedHammingDistance: Double = .15
+
+        private val mainHashingAlgorithm = object : PerceptiveHash(128) {
+            fun hash(hashValue: BigInteger): Hash {
+                this.immutableState = true
+
+                if (keyResolution < 0) {
+                    keyResolution = bitResolution
+                }
+
+                return Hash(hashValue, keyResolution, algorithmId())
+            }
+        }
+
+        fun calculateHash(file: ByteArray): ByteArray =
+            mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
+    }
 }
 
 

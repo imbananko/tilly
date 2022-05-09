@@ -8,7 +8,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface UserRepository : CrudRepository<TelegramUser, Int> {
-  @Query(nativeQuery = true, value = """
+    @Query(
+        nativeQuery = true, value = """
     select u.*
     from meme m
              inner join (select meme_id,
@@ -26,10 +27,12 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
     group by u.id
     order by sum(up) - sum(down) - 2 * count(1) desc
     limit 5
-    """)
-  fun findTopSenders(@Param("idToExclude") idToExclude: Int): List<TelegramUser>
+    """
+    )
+    fun findTopSenders(@Param("idToExclude") idToExclude: Int): List<TelegramUser>
 
-  @Query(nativeQuery = true, value = """
+    @Query(
+        nativeQuery = true, value = """
     select rank
     from (select m.sender_id,
                  row_number() over (
@@ -40,10 +43,12 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
                              on m.id = v.meme_id
           group by m.sender_id) as data
     where sender_id = :userId
-    """)
-  fun findUserRank(@Param("userId") userId: Long): Int?
+    """
+    )
+    fun findUserRank(@Param("userId") userId: Long): Int?
 
-  @Query(nativeQuery = true, value = """
+    @Query(
+        nativeQuery = true, value = """
     select rank
     from (select m.sender_id,
                  row_number() over (
@@ -55,6 +60,7 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
           where m.created >= now() - interval '7 days' and v.created >= now() - interval '7 days'
           group by m.sender_id) as data
     where sender_id = :userId
-    """)
-  fun findUserWeekRank(@Param("userId") userId: Long): Int?
+    """
+    )
+    fun findUserWeekRank(@Param("userId") userId: Long): Int?
 }

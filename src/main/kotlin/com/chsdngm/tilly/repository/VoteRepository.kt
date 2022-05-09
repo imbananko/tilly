@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface VoteRepository : CrudRepository<Vote, Vote.VoteKey> {
-  fun findAllByVoterId(id: Int): List<Vote>
+    fun findAllByVoterId(id: Int): List<Vote>
 }

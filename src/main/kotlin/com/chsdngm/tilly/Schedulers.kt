@@ -19,61 +19,61 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 @Service
 @EnableScheduling
 final class Schedulers(
-  private val memeRepository: MemeRepository,
-  private val memePublisher: MemePublisher,
+    private val memeRepository: MemeRepository,
+    private val memePublisher: MemePublisher,
 ) {
 
-  private val log = LoggerFactory.getLogger(javaClass)
+    private val log = LoggerFactory.getLogger(javaClass)
 
-  // every hour since 8 am till 1 am Moscow time
-  @Scheduled(cron = "0 0 5-22/1 * * *")
-  private fun publishMeme() =
-    runCatching {
-      if (TillyConfig.publishEnabled) {
-        memePublisher.publishMemeIfSomethingExists()
-      } else {
-        log.info("meme publishing is disabled")
-      }
-    }.onFailure {
-      SendMessage().apply {
-        chatId = BETA_CHAT_ID
-        text = it.format(update = null)
-        parseMode = ParseMode.HTML
-      }.let { method -> api.execute(method) }
-    }
-
-  @Scheduled(cron = "0 0 19 * * WED")
-  private fun sendMemeOfTheWeek() =
-    runCatching {
-      memeRepository.findMemeOfTheWeek()?.let { meme ->
-        val winner = api.execute(
-          GetChatMember(CHANNEL_ID, meme.senderId.toLong())
-        ).user.mention()
-
-        SendMessage().apply {
-          chatId = CHANNEL_ID
-          parseMode = ParseMode.HTML
-          replyToMessageId = meme.channelMessageId
-          text = "Поздравляем $winner с мемом недели!"
-        }.let {
-          api.execute(it)
-        }.also {
-          api.execute(PinChatMessage(it.chatId.toString(), it.messageId))
+    // every hour since 8 am till 1 am Moscow time
+    @Scheduled(cron = "0 0 5-22/1 * * *")
+    private fun publishMeme() =
+        runCatching {
+            if (TillyConfig.publishEnabled) {
+                memePublisher.publishMemeIfSomethingExists()
+            } else {
+                log.info("meme publishing is disabled")
+            }
+        }.onFailure {
+            SendMessage().apply {
+                chatId = BETA_CHAT_ID
+                text = it.format(update = null)
+                parseMode = ParseMode.HTML
+            }.let { method -> api.execute(method) }
         }
 
-        memeRepository.saveMemeOfWeek(meme.id)
-      } ?: log.info("can't find meme of the week")
-    }
-      .onSuccess { log.info("successful send meme of the week") }
-      .onFailure {
-        log.error("can't send meme of the week because of", it)
+    @Scheduled(cron = "0 0 19 * * WED")
+    private fun sendMemeOfTheWeek() =
+        runCatching {
+            memeRepository.findMemeOfTheWeek()?.let { meme ->
+                val winner = api.execute(
+                    GetChatMember(CHANNEL_ID, meme.senderId.toLong())
+                ).user.mention()
 
-        SendMessage().apply {
-          chatId = BETA_CHAT_ID
-          text = it.format(update = null)
-          parseMode = ParseMode.HTML
-        }.let { method -> api.execute(method) }
-      }
+                SendMessage().apply {
+                    chatId = CHANNEL_ID
+                    parseMode = ParseMode.HTML
+                    replyToMessageId = meme.channelMessageId
+                    text = "Поздравляем $winner с мемом недели!"
+                }.let {
+                    api.execute(it)
+                }.also {
+                    api.execute(PinChatMessage(it.chatId.toString(), it.messageId))
+                }
+
+                memeRepository.saveMemeOfWeek(meme.id)
+            } ?: log.info("can't find meme of the week")
+        }
+            .onSuccess { log.info("successful send meme of the week") }
+            .onFailure {
+                log.error("can't send meme of the week because of", it)
+
+                SendMessage().apply {
+                    chatId = BETA_CHAT_ID
+                    text = it.format(update = null)
+                    parseMode = ParseMode.HTML
+                }.let { method -> api.execute(method) }
+            }
 }
 
 
