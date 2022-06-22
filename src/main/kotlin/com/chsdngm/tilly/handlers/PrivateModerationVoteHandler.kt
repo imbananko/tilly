@@ -21,7 +21,7 @@ class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) :
 
     @Transactional
     override fun handle(update: PrivateVoteUpdate) {
-        memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id.toLong(), update.messageId)
+        memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
             ?.let {
                 when (update.voteValue) {
                     PrivateVoteValue.APPROVE -> approve(update, it)

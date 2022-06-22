@@ -1,4 +1,7 @@
 <configuration>
+    <logger name="Exposed" level="debug">
+        <appender-ref ref="STDOUT"/>
+    </logger>
     <appender name="TIME_BASED_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${HOME}\\logs\\tilly.%d{yyyy-MM-dd}.log</fileNamePattern>
@@ -17,7 +20,7 @@
         </encoder>
     </appender>
 
-    <root level="info">
+    <root level="debug">
         <appender-ref ref="TIME_BASED_FILE"/>
         <appender-ref ref="STDOUT"/>
     </root>

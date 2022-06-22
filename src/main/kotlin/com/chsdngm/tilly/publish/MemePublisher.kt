@@ -3,7 +3,6 @@ package com.chsdngm.tilly.publish
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.repository.MemeRepository
-import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
-import org.telegram.telegrambots.meta.api.objects.Message
 import javax.transaction.Transactional
 
 @Service
