@@ -13,31 +13,28 @@ import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Int> {
-    fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
+  fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
 
-    fun findMemeByChannelMessageId(messageId: Int): Meme?
+  fun findMemeByChannelMessageId(messageId: Int): Meme?
 
-    fun findByFileId(fileId: String): Meme?
+  fun findByFileId(fileId: String): Meme?
 
-    @Query(
-        """
+  @Query("""
         select distinct meme 
         from Meme meme 
         left join fetch meme.votes
         where meme.senderId = ?1
-        """
-    )
-    fun findBySenderId(senderId: Int): List<Meme>
+        """)
+  fun findBySenderId(senderId: Int): List<Meme>
 
-    fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus = MemeStatus.SCHEDULED): Meme?
+  fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus = MemeStatus.SCHEDULED): Meme?
 
-    @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
-    @Modifying
-    @Transactional
-    fun saveMemeOfWeek(@Param("memeId") memeId: Int)
+  @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
+  @Modifying
+  @Transactional
+  fun saveMemeOfWeek(@Param("memeId") memeId: Int)
 
-    @Query(
-        value = """
+  @Query(value = """
     select m.*
     from meme m
              join vote v on m.id = v.meme_id
@@ -46,12 +43,10 @@ interface MemeRepository : CrudRepository<Meme, Int> {
     group by m.id
     order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc
     limit 1
-  """, nativeQuery = true
-    )
-    fun findMemeOfTheWeek(): Meme?
+  """, nativeQuery = true)
+  fun findMemeOfTheWeek(): Meme?
 
-    @Query(
-        value = """
+  @Query(value = """
     select memeWithVotes.*
     from (select meme.*,
                  count(vote) filter ( where vote.value = 'UP' )   as ups,
@@ -66,12 +61,11 @@ interface MemeRepository : CrudRepository<Meme, Int> {
        or (memeWithVotes.ups + memeWithVotes.downs) < :moderationThreshold) and (memeWithVotes.ups - memeWithVotes.downs) > -3
     order by memeWithVotes.created
     limit 5
-  """, nativeQuery = true
-    )
-    fun findForgottenMemes(
-        @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID.toLong(),
-        @Param("moderationThreshold") moderationThreshold: Long = TillyConfig.MODERATION_THRESHOLD,
-    ): List<Meme>
+  """, nativeQuery = true)
+  fun findForgottenMemes(
+      @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID.toLong(),
+      @Param("moderationThreshold") moderationThreshold: Long = TillyConfig.MODERATION_THRESHOLD,
+  ): List<Meme>
 }
 
 

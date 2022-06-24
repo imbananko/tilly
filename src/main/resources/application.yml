@@ -27,7 +27,3 @@ target.channel.id: 0
 beta.chat.id: -1001401091410
 
 moderation.threshold: 5
-
-logging:
-  level:
-    Exposed: DEBUG
