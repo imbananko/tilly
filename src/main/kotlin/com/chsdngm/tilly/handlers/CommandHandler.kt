@@ -18,44 +18,55 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @Service
 class CommandHandler(
-  private val userRepository: UserRepository,
-  private val memeRepository: MemeRepository,
-  private val voteRepository: VoteRepository
+    private val userRepository: UserRepository,
+    private val memeRepository: MemeRepository,
+    private val voteRepository: VoteRepository
 ) :
-  AbstractHandler<CommandUpdate> {
-  private val log = LoggerFactory.getLogger(javaClass)
+    AbstractHandler<CommandUpdate> {
+    private val log = LoggerFactory.getLogger(javaClass)
 
-  override fun handle(update: CommandUpdate) {
-    when (update.value) {
-      Command.STATS -> sendStats(update)
-      Command.HELP, Command.START -> sendInfoMessage(update)
-      Command.CONFIG -> if (update.chatId == TillyConfig.BETA_CHAT_ID) changeConfig(update)
-      else -> log.warn("unknown command from update=$update")
+    var executor: ExecutorService = Executors.newFixedThreadPool(10)
+
+    override fun handle(update: CommandUpdate) {
+        CompletableFuture.supplyAsync({
+            if (update.value == Command.STATS)  {
+                sendStats(update)
+            } else if (update.value == Command.HELP || update.value == Command.START) {
+                sendInfoMessage(update)
+            } else if (update.value == Command.CONFIG && update.chatId == TillyConfig.BETA_CHAT_ID) {
+                changeConfig(update)
+            } else {
+                log.warn("unknown command from update=$update")
+            }
+        }, executor).thenAccept {
+            log.info("processed command update=$update")
+        }
     }
-    log.info("processed command update=$update")
-  }
 
-  private fun sendStats(update: CommandUpdate) = runBlocking {
+    private fun sendStats(update: CommandUpdate) = runBlocking {
 
-    val memesByUserAll = withContext(Dispatchers.IO) { memeRepository.findBySenderId(update.senderId.toInt()) }
-    val votesByUserAll = withContext(Dispatchers.IO) { voteRepository.findAllByVoterId(update.senderId.toInt()) }
+        val memesByUserAll = withContext(Dispatchers.IO) { memeRepository.findBySenderId(update.senderId.toInt()) }
+        val votesByUserAll = withContext(Dispatchers.IO) { voteRepository.findAllByVoterId(update.senderId.toInt()) }
 
-    if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
-      "Статистика недоступна. Отправляй и оценивай мемы!"
-    } else {
-      val memesByUserWeek = memesByUserAll.filter { it.created > Instant.now().minusDays(7) }
-      val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
+        if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
+            "Статистика недоступна. Отправляй и оценивай мемы!"
+        } else {
+            val memesByUserWeek = memesByUserAll.filter { it.created > Instant.now().minusDays(7) }
+            val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
 
-      val likeDislikeByUserWeek = votesByUserWeek.groupingBy { it.value }.eachCount()
-      val userMemesVotesWeek = memesByUserWeek.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+            val likeDislikeByUserWeek = votesByUserWeek.groupingBy { it.value }.eachCount()
+            val userMemesVotesWeek = memesByUserWeek.flatMap { it.votes }.groupingBy { it.value }.eachCount()
 
-      val likeDislikeByUserAll = votesByUserAll.groupingBy { it.value }.eachCount()
-      val userMemesVotesAll = memesByUserAll.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+            val likeDislikeByUserAll = votesByUserAll.groupingBy { it.value }.eachCount()
+            val userMemesVotesAll = memesByUserAll.flatMap { it.votes }.groupingBy { it.value }.eachCount()
 
-      """
+            """
           <u><b>Статистика за неделю:</b></u>
           
           Мемов отправлено: <b>${memesByUserWeek.size}</b>
@@ -79,17 +90,17 @@ class CommandHandler(
           Ранк: <b>#${withContext(Dispatchers.IO) { userRepository.findUserRank(update.senderId.toLong()) } ?: "NaN"}</b>
           
           """.trimIndent()
+        }
+    }.let { statsMessageText ->
+        SendMessage().apply {
+            parseMode = ParseMode.HTML
+            chatId = update.senderId
+            text = statsMessageText
+        }.let { api.execute(it) }
     }
-  }.let { statsMessageText ->
-      SendMessage().apply {
-        parseMode = ParseMode.HTML
-        chatId = update.senderId
-        text = statsMessageText
-      }.let { api.execute(it) }
-  }
 
-  fun sendInfoMessage(update: CommandUpdate) {
-    val infoText = """
+    fun sendInfoMessage(update: CommandUpdate) {
+        val infoText = """
       Привет, я $BOT_USERNAME. 
       
       Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
@@ -105,36 +116,36 @@ class CommandHandler(
     """.trimIndent()
 
 
-    SendMessage().apply {
-      chatId = update.senderId
-      parseMode = ParseMode.HTML
-      text = infoText
-    }.let { api.execute(it) }
-  }
+        SendMessage().apply {
+            chatId = update.senderId
+            parseMode = ParseMode.HTML
+            text = infoText
+        }.let { api.execute(it) }
+    }
 
-  fun changeConfig(update: CommandUpdate) {
-    val message = when {
-      update.text.contains("enable publishing") -> {
-        TillyConfig.publishEnabled = true
-        "Публикация мемов включена"
-      }
-      update.text.contains("disable publishing") -> {
-        TillyConfig.publishEnabled = false
-        "Публикация мемов выключена"
-      }
-      else ->
-        """
+    fun changeConfig(update: CommandUpdate) {
+        val message = when {
+            update.text.contains("enable publishing") -> {
+                TillyConfig.publishEnabled = true
+                "Публикация мемов включена"
+            }
+            update.text.contains("disable publishing") -> {
+                TillyConfig.publishEnabled = false
+                "Публикация мемов выключена"
+            }
+            else ->
+                """
           Не удается прочитать сообщение. Правильные команды выглядят так:
           /config enable publishing
           /config disable publishing
         """.trimIndent()
-    }
+        }
 
-    SendMessage().apply {
-      chatId = TillyConfig.BETA_CHAT_ID
-      parseMode = ParseMode.HTML
-      replyToMessageId = update.messageId
-      text = message
-    }.let { api.execute(it) }
-  }
+        SendMessage().apply {
+            chatId = TillyConfig.BETA_CHAT_ID
+            parseMode = ParseMode.HTML
+            replyToMessageId = update.messageId
+            text = message
+        }.let { api.execute(it) }
+    }
 }
