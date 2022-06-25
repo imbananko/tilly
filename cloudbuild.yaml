@@ -1,5 +1,5 @@
 steps:
-  - name: gradle:6.8-jdk11
+  - name: gradle:7.4.2-jdk11
     entrypoint: gradle
     args: [ 'bootJar' ]
 
