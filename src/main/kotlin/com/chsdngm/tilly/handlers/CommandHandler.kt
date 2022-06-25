@@ -18,9 +18,6 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
 class CommandHandler(
@@ -31,22 +28,14 @@ class CommandHandler(
     AbstractHandler<CommandUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    var executor: ExecutorService = Executors.newFixedThreadPool(10)
-
     override fun handle(update: CommandUpdate) {
-        CompletableFuture.supplyAsync({
-            if (update.value == Command.STATS)  {
-                sendStats(update)
-            } else if (update.value == Command.HELP || update.value == Command.START) {
-                sendInfoMessage(update)
-            } else if (update.value == Command.CONFIG && update.chatId == TillyConfig.BETA_CHAT_ID) {
-                changeConfig(update)
-            } else {
-                log.warn("unknown command from update=$update")
-            }
-        }, executor).thenAccept {
-            log.info("processed command update=$update")
+        when (update.value) {
+            Command.STATS -> sendStats(update)
+            Command.HELP, Command.START -> sendInfoMessage(update)
+            Command.CONFIG -> if (update.chatId == TillyConfig.BETA_CHAT_ID) changeConfig(update)
+            else -> log.warn("unknown command from update=$update")
         }
+        log.info("processed command update=$update")
     }
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
