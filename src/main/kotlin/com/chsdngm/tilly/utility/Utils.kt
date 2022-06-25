@@ -8,7 +8,10 @@ import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
-import org.telegram.telegrambots.meta.api.objects.*
+import org.telegram.telegrambots.meta.api.objects.ChatMember
+import org.telegram.telegrambots.meta.api.objects.MemberStatus
+import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.time.Instant
@@ -47,20 +50,6 @@ fun createMarkup(stats: Map<VoteValue, Int>) = InlineKeyboardMarkup().apply {
     )
 }
 
-fun updateStatsInSenderChat(memeEntity: com.chsdngm.tilly.exposed.MemeEntity) {
-    if (memeEntity.privateReplyMessageId != null) {
-        val caption = memeEntity.status.description +
-                memeEntity.votes.groupingBy { it.value }.eachCount().entries.sortedBy { it.key }
-                    .joinToString(prefix = " статистика: \n\n", transform = { (value, sum) -> "${value.emoji}: $sum" })
-
-        EditMessageText().apply {
-            chatId = memeEntity.senderId.toString()
-            messageId = memeEntity.privateReplyMessageId
-            text = caption
-        }.let { api.execute(it) }
-    }
-}
-
 fun updateStatsInSenderChat(meme: Meme) {
     if (meme.privateReplyMessageId != null) {
         val caption = meme.status.description +
@@ -75,7 +64,7 @@ fun updateStatsInSenderChat(meme: Meme) {
     }
 }
 
-fun logExceptionInBetaChat(ex: Throwable): Message =
+fun logExceptionInBetaChat(ex: Throwable) =
     SendMessage().apply {
         chatId = TillyConfig.BETA_CHAT_ID
         text = ex.format(update = null)
