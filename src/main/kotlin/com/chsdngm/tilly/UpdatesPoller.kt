@@ -13,6 +13,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.lang.reflect.UndeclaredThrowableException
+import java.util.concurrent.CompletableFuture
 
 @Component
 class UpdatesPoller(
@@ -37,6 +38,9 @@ class UpdatesPoller(
                 update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
                 update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
                 update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
+                else -> CompletableFuture.completedFuture {
+                    log.error("can't handle handle $update because of", update)
+                }
             }
         }.onFailure {
             log.error("can't handle handle $update because of", it)
