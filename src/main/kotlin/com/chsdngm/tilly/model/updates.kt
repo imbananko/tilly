@@ -78,16 +78,10 @@ class InlineCommandUpdate(update: Update) {
     val id: String = update.inlineQuery.id
     val value: String = update.inlineQuery.query
     val offset: String = update.inlineQuery.offset
-    override fun toString(): String {
-        return "InlineCommandUpdate(id='$id', value='$value', offset='$offset')"
-    }
 }
 
 class PrivateVoteUpdate(update: Update) {
     val user: User = update.callbackQuery.from
     val messageId: Int = update.callbackQuery.message.messageId
     val voteValue: PrivateVoteValue = PrivateVoteValue.valueOf(update.callbackQuery.data)
-    override fun toString(): String {
-        return "PrivateVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
-    }
 }

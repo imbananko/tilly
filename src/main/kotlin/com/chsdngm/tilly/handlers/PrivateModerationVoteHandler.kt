@@ -14,23 +14,20 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
-import java.util.concurrent.CompletableFuture
 
 @Service
 class PrivateModerationVoteHandler(private val memeRepository: MemeRepository) : AbstractHandler<PrivateVoteUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
-    override fun handle(update: PrivateVoteUpdate): CompletableFuture<Void> {
-        memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
+    override fun handle(update: PrivateVoteUpdate) {
+        memeRepository.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id.toLong(), update.messageId)
             ?.let {
                 when (update.voteValue) {
                     PrivateVoteValue.APPROVE -> approve(update, it)
                     PrivateVoteValue.DECLINE -> decline(update, it)
                 }
             } ?: log.error("cannot find meme by messageId=${update.messageId}")
-
-        return CompletableFuture.completedFuture(null)
     }
 
     private fun approve(update: PrivateVoteUpdate, meme: Meme) {
