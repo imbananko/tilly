@@ -114,9 +114,8 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<
             values.filter { it == VoteValue.UP }.size - values.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD
 
         if (isEnough && meme.status == MODERATION) {
-            transaction {
-                meme.status = SCHEDULED
-            }
+            meme.status = SCHEDULED
+            memeDao.update(meme)
         }
     }
 }

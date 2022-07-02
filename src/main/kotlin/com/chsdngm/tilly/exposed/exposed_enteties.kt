@@ -112,3 +112,8 @@ fun Vote.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statem
     it[Votes.sourceChatId] = this.sourceChatId
     it[Votes.created] = this.created
 }
+
+fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statement.also {
+    it[Memes.status] = this.status
+    it[Memes.channelMessageId] = this.channelMessageId
+}

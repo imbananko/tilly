@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -24,6 +25,10 @@ class MemeDao(val database: Database) {
             .select((Memes.moderationChatId eq moderationChatId) and (Memes.moderationChatMessageId eq moderationChatMessageId))
             .toList()
             .toMeme()
+    }
+
+    fun update(meme: Meme) = transaction {
+        Votes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
     }
 }
 
