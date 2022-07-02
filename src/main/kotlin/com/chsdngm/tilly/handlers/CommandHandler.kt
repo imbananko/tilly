@@ -26,27 +26,25 @@ import java.util.concurrent.Executors
 class CommandHandler(
     private val userRepository: UserRepository,
     private val memeRepository: MemeRepository,
-    private val voteRepository: VoteRepository
+    private val voteRepository: VoteRepository,
 ) :
     AbstractHandler<CommandUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
 
     var executor: ExecutorService = Executors.newFixedThreadPool(10)
 
-    override fun handle(update: CommandUpdate): CompletableFuture<Void> {
-        return CompletableFuture.supplyAsync({
-            if (update.value == Command.STATS)  {
-                sendStats(update)
-            } else if (update.value == Command.HELP || update.value == Command.START) {
-                sendInfoMessage(update)
-            } else if (update.value == Command.CONFIG && update.chatId == TillyConfig.BETA_CHAT_ID) {
-                changeConfig(update)
-            } else {
-                log.warn("unknown command from update=$update")
-            }
-        }, executor).thenAccept {
-            log.info("processed command update=$update")
+    override fun handle(update: CommandUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
+        if (update.value == Command.STATS) {
+            sendStats(update)
+        } else if (update.value == Command.HELP || update.value == Command.START) {
+            sendInfoMessage(update)
+        } else if (update.value == Command.CONFIG && update.chatId == TillyConfig.BETA_CHAT_ID) {
+            changeConfig(update)
+        } else {
+            log.warn("unknown command from update=$update")
         }
+    }, executor).thenAccept {
+        log.info("processed command update=$update")
     }
 
     private fun sendStats(update: CommandUpdate) = runBlocking {

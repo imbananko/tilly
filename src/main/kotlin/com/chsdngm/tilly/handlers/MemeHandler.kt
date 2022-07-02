@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
@@ -55,8 +56,8 @@ class MemeHandler(
     private val imageTextRecognizer: ImageTextRecognizer,
     private val imageRepository: ImageRepository,
     private val privateModeratorRepository: PrivateModeratorRepository,
-    private val memeRepository: MemeRepository,
-    private val elasticsearchClient: RestHighLevelClient
+    private val memeDao: MemeDao,
+    private val elasticsearchClient: RestHighLevelClient,
 ) : AbstractHandler<MemeUpdate> {
 
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -76,74 +77,71 @@ class MemeHandler(
         }
     }
 
-    override fun handle(update: MemeUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync(
-        {
-            update.file = download(update.fileId)
+    override fun handle(update: MemeUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
+        update.file = download(update.fileId)
 
-            val memeSender = userRepository.findById(update.user.id.toInt()).let {
-                if (it.isEmpty) {
-                    update.isFreshman = true
-                }
+        val memeSender = userRepository.findById(update.user.id.toInt()).let {
+            if (it.isEmpty) {
+                update.isFreshman = true
+            }
 
-                userRepository.save(
-                    TelegramUser(
-                        update.user.id.toInt(),
-                        update.user.userName,
-                        update.user.firstName,
-                        update.user.lastName,
-                        if (it.isEmpty) UserStatus.DEFAULT else it.get().status
-                    )
+            userRepository.save(
+                TelegramUser(
+                    update.user.id.toInt(),
+                    update.user.userName,
+                    update.user.firstName,
+                    update.user.lastName,
+                    if (it.isEmpty) UserStatus.DEFAULT else it.get().status
                 )
+            )
+        }
+
+        if (memeSender.status == UserStatus.BANNED) {
+            replyToBannedUser(update)
+            sendBannedEventToBeta(update, memeSender)
+            return@supplyAsync
+        }
+
+        val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
+        if (duplicateFileId != null) {
+            handleDuplicate(update, duplicateFileId)
+            return@supplyAsync
+        }
+
+        if (update.isFreshman || update.status == LOCAL) {
+            moderateWithGroup(update)
+        } else {
+            // Balancing with weight
+            when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
+                WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                WeightedModerationType.DEFAULT -> moderateWithGroup(update)
+                else -> moderateWithGroup(update)
             }
+        }
 
-            if (memeSender.status == UserStatus.BANNED) {
-                replyToBannedUser(update)
-                sendBannedEventToBeta(update, memeSender)
-                return@supplyAsync
-            }
+        val analyzingResults: AnalyzingResults? =
+            runCatching { imageTextRecognizer.analyze(update.file) }.onFailure { logExceptionInBetaChat(it) }
+                .getOrNull()
 
-            imageMatcher.tryFindDuplicate(update.file)?.also { duplicateFileId ->
-                handleDuplicate(update, duplicateFileId)
-            } ?: run {
-                if (update.isFreshman || update.status == LOCAL) {
-                    moderateWithGroup(update)
-                } else {
-                    // Balancing with weight
-                    when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
-                        WeightedModerationType.PRIVATE -> tryPrivateModeration(
-                            update, memeSender
-                        ) || moderateWithGroup(
-                            update
-                        )
-                        WeightedModerationType.DEFAULT -> moderateWithGroup(update)
-                        else -> moderateWithGroup(update)
-                    }
-                }
+        val image = Image(
+            update.fileId,
+            update.file.readBytes(),
+            hash = imageMatcher.calculateHash(update.file),
+            words = analyzingResults?.words,
+            labels = analyzingResults?.labels
+        )
 
-                val analyzingResults: AnalyzingResults? =
-                    runCatching { imageTextRecognizer.analyze(update.file) }.onFailure { logExceptionInBetaChat(it) }
-                        .getOrNull()
+        imageMatcher.add(image)
+        imageRepository.save(image)
 
-                val image = Image(
-                    update.fileId,
-                    update.file.readBytes(),
-                    hash = imageMatcher.calculateHash(update.file),
-                    words = analyzingResults?.words,
-                    labels = analyzingResults?.labels
-                )
-
-                imageMatcher.add(image)
-                imageRepository.save(image)
-
-                if (analyzingResults?.words?.isNotEmpty() == true) {
-                    val text = analyzingResults.words.joinToString(separator = " ")
-                    val indexRequest =
-                        IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME).id(image.fileId).type(indexDocumentType)
-                            .source(textFieldName, text).timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
-                    elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
-                }
-            }
-        }, executor
+        if (analyzingResults?.words?.isNotEmpty() == true) {
+            val text = analyzingResults.words.joinToString(separator = " ")
+            val indexRequest =
+                IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME).id(image.fileId).type(indexDocumentType)
+                    .source(textFieldName, text).timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
+            elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
+        }
+    }, executor
     ).thenAccept { log.info("processed meme update=$update") }
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
@@ -170,15 +168,18 @@ class MemeHandler(
     private fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
         sendSorryText(update)
 
-        memeRepository.findByFileId(duplicateFileId)?.also { meme ->
-            if (meme.channelMessageId == null) forwardMemeFromChatToUser(meme, update.user)
-            else forwardMemeFromChannelToUser(meme, update.user)
+        memeDao.findByFileId(duplicateFileId)?.also { meme ->
+            if (meme.channelMessageId == null) {
+                forwardMemeFromChatToUser(meme, update.user)
+            } else {
+                forwardMemeFromChannelToUser(meme, update.user)
+            }
             log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
             sendDuplicateToBeta(update.senderName, duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
     }
 
-    private fun moderateWithGroup(update: MemeUpdate): Boolean = runCatching {
+    private fun moderateWithGroup(update: MemeUpdate): Boolean {
         SendPhoto().apply {
             chatId = CHAT_ID
             photo = InputFile(update.fileId)
@@ -189,8 +190,8 @@ class MemeHandler(
             val sent = api.execute(it)
 
             val senderMessageId = replyToSender(update).messageId
-            memeRepository.save(
-                Meme(
+            val meme = memeDao.insert(
+                com.chsdngm.tilly.exposed.Meme(
                     CHAT_ID.toLong(),
                     sent.messageId,
                     update.user.id.toInt(),
@@ -200,33 +201,33 @@ class MemeHandler(
                     update.caption
                 )
             )
-        }
-    }.onFailure {
-        logExceptionInBetaChat(it)
-    }.onSuccess {
-        log.info("sent for moderation to group chat. meme=$it")
-    }.isSuccess
 
-    private fun moderateWithUser(update: MemeUpdate, moderatorId: Long): Meme = SendPhoto().apply {
-        chatId = moderatorId.toString()
-        photo = InputFile(update.fileId)
-        caption = ((update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")))
-        parseMode = ParseMode.HTML
-        replyMarkup = createPrivateModerationMarkup()
-    }.let { api.execute(it) }.let { sent ->
-        val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
-        memeRepository.save(
-            Meme(
-                moderatorId,
-                sent.messageId,
-                update.user.id.toInt(),
-                update.status,
-                senderMessageId,
-                update.fileId,
-                update.caption
-            )
-        )
+            log.info("sent for moderation to group chat. meme=$meme")
+            return true
+        }
     }
+
+    private fun moderateWithUser(update: MemeUpdate, moderatorId: Long): com.chsdngm.tilly.exposed.Meme =
+        SendPhoto().apply {
+            chatId = moderatorId.toString()
+            photo = InputFile(update.fileId)
+            caption = ((update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")))
+            parseMode = ParseMode.HTML
+            replyMarkup = createPrivateModerationMarkup()
+        }.let { api.execute(it) }.let { sent ->
+            val senderMessageId = replyToSenderAboutPrivateModeration(update).messageId
+            memeDao.insert(
+                com.chsdngm.tilly.exposed.Meme(
+                    moderatorId,
+                    sent.messageId,
+                    update.user.id.toInt(),
+                    update.status,
+                    senderMessageId,
+                    update.fileId,
+                    update.caption
+                )
+            )
+        }
 
     private fun resolveCaption(update: MemeUpdate): String = update.caption ?: ("" + if (GetChatMember().apply {
             chatId = CHAT_ID
@@ -236,14 +237,15 @@ class MemeHandler(
         }.isFromChat()) ""
     else "\n\nSender: ${update.senderName}" + if (update.isFreshman) "\n\n#freshman" else "")
 
-    private fun forwardMemeFromChannelToUser(meme: Meme, user: User) = ForwardMessage().apply {
-        chatId = user.id.toString()
-        fromChatId = CHANNEL_ID
-        messageId = meme.channelMessageId!!
-        disableNotification = true
-    }.let { api.execute(it) }
+    private fun forwardMemeFromChannelToUser(meme: com.chsdngm.tilly.exposed.Meme, user: User) =
+        ForwardMessage().apply {
+            chatId = user.id.toString()
+            fromChatId = CHANNEL_ID
+            messageId = meme.channelMessageId!!
+            disableNotification = true
+        }.let { api.execute(it) }
 
-    private fun forwardMemeFromChatToUser(meme: Meme, user: User) = ForwardMessage().apply {
+    private fun forwardMemeFromChatToUser(meme: com.chsdngm.tilly.exposed.Meme, user: User) = ForwardMessage().apply {
         chatId = user.id.toString()
         fromChatId = meme.moderationChatId.toString()
         messageId = meme.moderationChatMessageId
@@ -285,7 +287,11 @@ class MemeHandler(
             disableNotification = true
         }.let { api.execute(it) }
 
-    private fun sendPrivateModerationEventToBeta(meme: Meme, memeSender: TelegramUser, moderator: TelegramUser) =
+    private fun sendPrivateModerationEventToBeta(
+        meme: com.chsdngm.tilly.exposed.Meme,
+        memeSender: TelegramUser,
+        moderator: TelegramUser,
+    ) =
         SendPhoto().apply {
             chatId = BETA_CHAT_ID
             photo = InputFile(meme.fileId)

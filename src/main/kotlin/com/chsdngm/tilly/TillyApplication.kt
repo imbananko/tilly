@@ -27,7 +27,7 @@ fun main(args: Array<String>) {
 }
 
 @Configuration
-class ElasticsearchClientConfig(val tillyConfig: TillyConfig) : AbstractElasticsearchConfiguration() {
+class ElasticsearchClientConfig : AbstractElasticsearchConfiguration() {
     @Bean
     override fun elasticsearchClient(): RestHighLevelClient {
         val clientConfiguration = ClientConfiguration.builder()
@@ -47,5 +47,3 @@ class ExposedConfiguration {
         return Database.connect(dataSource)
     }
 }
-
-//GCP PARASHA
