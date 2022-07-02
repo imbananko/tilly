@@ -18,27 +18,27 @@ class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : Abs
     val chunkSize = 16
     var executor: ExecutorService = Executors.newFixedThreadPool(10)
 
-    override fun handle(update: InlineCommandUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync(
-        {
-            if (update.value.isBlank() || update.value.length < 2) return@supplyAsync
+    override fun handle(update: InlineCommandUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
+        if (update.value.isBlank() || update.value.length < 2) return@supplyAsync
 
-            val offset = if (update.offset.isBlank()) 0 else update.offset.toInt()
+        val offset = if (update.offset.isBlank()) 0 else update.offset.toInt()
 
-            val cachedPhotos = runBlocking {
-                elasticsearchService.search(update.value, offset, chunkSize).hits.map {
-                    InlineQueryResultCachedPhoto().apply {
-                        photoFileId = it.id
-                        id = it.id.take(64)
-                    }
+        val cachedPhotos = runBlocking {
+            elasticsearchService.search(update.value, offset, chunkSize).hits.map {
+                InlineQueryResultCachedPhoto().apply {
+                    photoFileId = it.id
+                    id = it.id.take(64)
                 }
             }
+        }
 
-            AnswerInlineQuery().apply {
-                inlineQueryId = update.id
-                nextOffset = "${offset + 1}"
-                results = cachedPhotos
-            }.let { TillyConfig.api.execute(it) }
+        AnswerInlineQuery().apply {
+            inlineQueryId = update.id
+            nextOffset = "${offset + 1}"
+            results = cachedPhotos
+        }.let { TillyConfig.api.execute(it) }
 
-        }, executor
+    },
+        executor
     ).thenAccept { log.info("processed inline command update=$update") }
 }

@@ -1,11 +1,9 @@
 package com.chsdngm.tilly.exposed
 
-import org.jetbrains.exposed.sql.Database
+import com.chsdngm.tilly.model.MemeStatus
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
 
 @Repository
@@ -27,8 +25,22 @@ class MemeDao(val database: Database) {
             .toMeme()
     }
 
+    fun insert(meme: Meme) = transaction {
+        Memes.insert { meme.toInsertStatement(it) }.resultedValues?.first()?.toMeme()
+            ?: throw NoSuchElementException("Error saving meme")
+    }
+
     fun update(meme: Meme) = transaction {
-        Votes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
+        Memes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
+    }
+
+    fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus): Meme? = transaction {
+        (Memes leftJoin Votes)
+            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toList().toMeme()
+    }
+
+    fun findByFileId(fileId: String): Meme? = transaction {
+        Memes.select { Memes.fileId eq fileId }.orderBy(Memes.created).singleOrNull()?.toMeme()
     }
 }
 

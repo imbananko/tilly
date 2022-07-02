@@ -13,11 +13,6 @@ import org.springframework.transaction.annotation.Transactional
 
 @Repository
 interface MemeRepository : CrudRepository<Meme, Int> {
-    fun findMemeByModerationChatIdAndModerationChatMessageId(chatId: Long, messageId: Int): Meme?
-
-    fun findMemeByChannelMessageId(messageId: Int): Meme?
-
-    fun findByFileId(fileId: String): Meme?
 
     @Query(
         """
@@ -28,8 +23,6 @@ interface MemeRepository : CrudRepository<Meme, Int> {
         """
     )
     fun findBySenderId(senderId: Int): List<Meme>
-
-    fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus = MemeStatus.SCHEDULED): Meme?
 
     @Query(value = "insert into meme_of_week (meme_id) values (:memeId)", nativeQuery = true)
     @Modifying

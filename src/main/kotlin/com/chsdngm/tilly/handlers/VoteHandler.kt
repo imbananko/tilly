@@ -28,58 +28,57 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<
     private val log = LoggerFactory.getLogger(javaClass)
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
-    override fun handle(update: VoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync(
-        {
-            if (update.isOld) {
-                sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-                return@supplyAsync
-            }
+    override fun handle(update: VoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
+        if (update.isOld) {
+            sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
+            return@supplyAsync
+        }
 
-            val meme = when (update.isFrom) {
-                CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
-                CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
-                    CHAT_ID.toLong(),
-                    update.messageId
-                )
-                else -> return@supplyAsync
-            } ?: return@supplyAsync
+        val meme = when (update.isFrom) {
+            CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
+            CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
+                CHAT_ID.toLong(),
+                update.messageId
+            )
+            else -> return@supplyAsync
+        } ?: return@supplyAsync
 
-            val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue)
+        val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue)
 
-            if (meme.senderId == vote.voterId) {
-                sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-                return@supplyAsync
-            }
+        if (meme.senderId == vote.voterId) {
+            sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
+            return@supplyAsync
+        }
 
-            lateinit var voteUpdate: Runnable
-            meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-                if (meme.votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
-                    sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
-                    voteUpdate = Runnable { voteDao.delete(found) }
-                } else {
-                    found.value = vote.value
-                    found.sourceChatId = vote.sourceChatId
-                    voteUpdate = Runnable { voteDao.update(found) }
+        lateinit var voteUpdate: Runnable
+        meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
+            if (meme.votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
+                sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
+                voteUpdate = Runnable { voteDao.delete(found) }
+            } else {
+                found.value = vote.value
+                found.sourceChatId = vote.sourceChatId
+                voteUpdate = Runnable { voteDao.update(found) }
 
-                    when (vote.value) {
-                        VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
-                        VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
-                    }.let { sendPopupNotification(update.callbackQueryId, it) }
-                }
-            } ?: meme.votes.add(vote).also {
                 when (vote.value) {
                     VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                     VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
                 }.let { sendPopupNotification(update.callbackQueryId, it) }
-                voteUpdate = Runnable { voteDao.insert(vote) }
             }
+        } ?: meme.votes.add(vote).also {
+            when (vote.value) {
+                VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
+                VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
+            }.let { sendPopupNotification(update.callbackQueryId, it) }
+            voteUpdate = Runnable { voteDao.insert(vote) }
+        }
 
-            updateMarkup(meme)
-            checkShipment(meme)
-            updateStatsInSenderChat(meme)
+        updateMarkup(meme)
+        checkShipment(meme)
+        updateStatsInSenderChat(meme)
 
-            voteUpdate.run()
-        },
+        voteUpdate.run()
+    },
         executor
     ).thenAccept { log.info("processed vote update=$update") }
 

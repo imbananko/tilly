@@ -1,8 +1,8 @@
 package com.chsdngm.tilly.publish
 
-import com.chsdngm.tilly.model.Meme
+import com.chsdngm.tilly.exposed.Meme
+import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
@@ -12,19 +12,18 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
-import javax.transaction.Transactional
 
 @Service
-class MemePublisher(private val memeRepository: MemeRepository) {
+class MemePublisher(private val memeDao: MemeDao) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Transactional
     fun publishMemeIfSomethingExists() {
-        val memeToPublish = memeRepository.findFirstByStatusOrderByCreated()
+        val memeToPublish = memeDao.findFirstByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
         if (memeToPublish != null) {
             memeToPublish.channelMessageId = sendMemeToChannel(memeToPublish).messageId
             memeToPublish.status = MemeStatus.PUBLISHED
+            memeDao.update(memeToPublish)
             updateStatsInSenderChat(memeToPublish)
         } else {
             log.info("there is nothing to post")

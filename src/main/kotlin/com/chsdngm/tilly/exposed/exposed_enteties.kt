@@ -39,7 +39,6 @@ data class Vote(
 )
 
 data class Meme(
-    val id: Int,
     val moderationChatId: Long,
     val moderationChatMessageId: Int,
     val senderId: Int,
@@ -48,8 +47,9 @@ data class Meme(
     val fileId: String,
     val caption: String?,
     var channelMessageId: Int? = null,
-    var created: Instant,
-    val votes: MutableList<Vote> = mutableListOf()
+    var created: Instant = Instant.now(),
+    val id: Int = 0,
+    val votes: MutableList<Vote> = mutableListOf(),
 )
 
 fun ResultRow.toVote(): Vote? {
@@ -86,17 +86,39 @@ fun ResultRow.toMeme(): Meme? {
 }
 
 fun Iterable<ResultRow>.toMeme(): Meme? {
-    return if (this.count() == 0) {
-        null
-    } else {
-        val meme = this.first().toMeme()
+    val iterator = this.iterator()
 
-        this.forEach {
-            it.toVote()?.let { it1 -> meme?.votes?.add(it1) }
+    if (!iterator.hasNext()) {
+        return null
+    }
+
+    var current = iterator.next()
+    val meme = current.toMeme() ?: return null
+    current.toVote()?.let { meme.votes.add(it) }
+
+    while (iterator.hasNext()) {
+        current = iterator.next()
+        val vote = current.toVote()
+        if (vote == null || vote.memeId != meme.id) {
+            return meme
         }
 
-        meme
+        meme.votes.add(vote)
     }
+
+    return meme
+}
+
+fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
+    it[Memes.status] = this.status
+    it[Memes.channelMessageId] = this.channelMessageId
+    it[Memes.caption] = this.caption
+    it[Memes.fileId] = this.fileId
+    it[Memes.moderationChatId] = this.moderationChatId
+    it[Memes.privateReplyMessageId] = this.privateReplyMessageId
+    it[Memes.senderId] = this.senderId
+    it[Memes.moderationChatMessageId] = this.moderationChatMessageId
+    it[Memes.created] = this.created
 }
 
 fun Vote.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
