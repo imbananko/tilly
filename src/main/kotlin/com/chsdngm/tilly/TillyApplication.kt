@@ -47,3 +47,5 @@ class ExposedConfiguration {
         return Database.connect(dataSource)
     }
 }
+
+//GCP PARASHA
