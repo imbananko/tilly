@@ -39,9 +39,6 @@ class TillyConfig {
         @JvmField
         var COMMIT_SHA = ""
 
-        @JvmField
-        var LOGS_CHAT_ID = ""
-
         val api = object : DefaultAbsSender(DefaultBotOptions()) {
             override fun getBotToken(): String = BOT_TOKEN
         }
@@ -97,10 +94,5 @@ class TillyConfig {
     @Value("\${commit.sha}")
     fun setCommitSha(commitSha: String) {
         COMMIT_SHA = commitSha
-    }
-
-    @Value("\${logs.chat.id}")
-    fun setLogsChatId(logsChatId: String) {
-        LOGS_CHAT_ID = logsChatId
     }
 }
