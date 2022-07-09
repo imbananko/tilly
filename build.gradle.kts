@@ -49,6 +49,7 @@ dependencies {
     implementation("org.springframework:spring-web")
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.data:spring-data-elasticsearch:3.2.13.RELEASE")
     implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.6.RELEASE")
 
