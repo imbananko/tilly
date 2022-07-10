@@ -234,7 +234,7 @@ class MemeHandler(
             userId = update.user.id
         }.let {
             api.execute(it)
-        }.isFromChat() && update.user.id != TillyConfig.BOT_ID) ""
+        }.isFromChat() && !update.isByTillyBot) ""
     else "\n\nSender: ${update.senderName}" + if (update.isFreshman) "\n\n#freshman" else "")
 
     private fun forwardMemeFromChannelToUser(meme: com.chsdngm.tilly.exposed.Meme, user: User) =
