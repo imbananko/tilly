@@ -8,7 +8,6 @@ import com.chsdngm.tilly.model.MemeStatus.MODERATION
 import com.chsdngm.tilly.model.MemeStatus.SCHEDULED
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.MODERATION_THRESHOLD
@@ -76,7 +75,7 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<
 
         updateMarkup(meme)
         checkShipment(meme)
-        if (meme.senderId.toLong() == TillyConfig.BOT_ID) updateStatsInSenderChat(meme)
+        updateStatsInSenderChat(meme)
 
         voteUpdate.run()
     },

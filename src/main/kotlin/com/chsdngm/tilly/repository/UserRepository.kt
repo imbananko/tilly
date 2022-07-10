@@ -23,13 +23,13 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
              inner join telegram_user u on m.sender_id = u.id
     where m.channel_message_id is not null
       and created >= now() - interval '7 days'
-      and u.id != :idToExclude and u.id != :botId
+      and u.id != :idToExclude
     group by u.id
     order by sum(up) - sum(down) - 2 * count(1) desc
     limit 5
     """
     )
-    fun findTopSenders(@Param("idToExclude") idToExclude: Int, @Param("botId") botId: Long): List<TelegramUser>
+    fun findTopSenders(@Param("idToExclude") idToExclude: Int): List<TelegramUser>
 
     @Query(
         nativeQuery = true, value = """

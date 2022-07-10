@@ -1,6 +1,5 @@
 package com.chsdngm.tilly.model
 
-import com.chsdngm.tilly.utility.TillyConfig
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.mention
@@ -30,55 +29,24 @@ class VoteUpdate(update: Update) {
     }
 }
 
-interface MemeUpdate {
-    val messageId: Int
-    val caption: String?
-    val fileId: String
-    val user: User
-    val senderName: String
-    val status: MemeStatus
-
-    var file: File
-    var isFreshman: Boolean
-
-    val isByTillyBot: Boolean
-        get() = user.id == TillyConfig.BOT_ID
-}
-
-class UserMemeUpdate(update: Update) : MemeUpdate {
-    override val messageId: Int = update.message.messageId
-    override val caption: String? = update.message.caption?.takeIf { caption ->
-        val lowerCaseCaption = caption.lowercase()
+class MemeUpdate(update: Update) {
+    val messageId: Int = update.message.messageId
+    val caption: String? = update.message.caption?.takeIf { caption ->
+        val lowerCaseCaption = caption.toLowerCase()
         !trashCaptionParts.any { lowerCaseCaption.contains(it) }
     }
-    override val fileId: String = update.message.photo.maxByOrNull { it.fileSize }!!.fileId
-    override val user: User = update.message.from
-    override val senderName: String = update.message.from.mention()
-    override val status: MemeStatus =
+    val fileId: String = update.message.photo.maxByOrNull { it.fileSize }!!.fileId
+    val user: User = update.message.from
+    val senderName: String = update.message.from.mention()
+    val status: MemeStatus =
         if (caption?.contains("#local") == true) MemeStatus.LOCAL
         else MemeStatus.MODERATION
 
-    override lateinit var file: File
-    override var isFreshman: Boolean = false
+    lateinit var file: File
+    var isFreshman: Boolean = false
 
     override fun toString(): String {
-        return "UserMemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='${user.id})"
-    }
-}
-
-class AutoSuggestedMemeUpdate(update: AutosuggestionVoteUpdate) : MemeUpdate {
-    override val messageId: Int = update.messageId
-    override val caption: String? = null
-    override val fileId: String = update.fileId
-    override val user: User = update.whoSuggests
-    override val senderName: String = update.whoSuggests.mention()
-    override val status: MemeStatus = MemeStatus.MODERATION
-
-    override lateinit var file: File
-    override var isFreshman: Boolean = false
-
-    override fun toString(): String {
-        return "AutoSuggestedMemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='${user.id})"
+        return "MemeUpdate(chatMessageId=$messageId, caption=$caption, fileId='$fileId', user='${user.id})"
     }
 }
 
@@ -121,17 +89,5 @@ class PrivateVoteUpdate(update: Update) {
     val voteValue: PrivateVoteValue = PrivateVoteValue.valueOf(update.callbackQuery.data)
     override fun toString(): String {
         return "PrivateVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
-    }
-}
-
-class AutosuggestionVoteUpdate(update: Update) {
-    val approver: User = update.callbackQuery.from
-    val whoSuggests: User = update.callbackQuery.message.from
-    val fileId: String = update.callbackQuery.message.photo.maxByOrNull { it.fileSize }!!.fileId
-    val groupId: Long = update.callbackQuery.message.chatId
-    val messageId: Int = update.callbackQuery.message.messageId
-    val voteValue: AutosuggestionVoteValue = AutosuggestionVoteValue.valueOf(update.callbackQuery.data)
-    override fun toString(): String {
-        return "AutosuggestionVoteUpdate(approver=$approver, messageId=$messageId, voteValue=$voteValue)"
     }
 }

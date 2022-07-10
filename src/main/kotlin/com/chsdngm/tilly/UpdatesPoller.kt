@@ -21,8 +21,7 @@ class UpdatesPoller(
     val voteHandler: VoteHandler,
     val commandHandler: CommandHandler,
     val inlineCommandHandler: InlineCommandHandler,
-    val privateModerationVoteHandler: PrivateModerationVoteHandler,
-    val autosuggestionVoteHandler: AutosuggestionVoteHandler
+    val privateModerationVoteHandler: PrivateModerationVoteHandler
 ) : TelegramLongPollingBot() {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -35,10 +34,9 @@ class UpdatesPoller(
         runCatching {
             when {
                 update.hasVote() -> voteHandler.handle(VoteUpdate(update))
-                update.hasMeme() -> memeHandler.handle(UserMemeUpdate(update))
+                update.hasMeme() -> memeHandler.handle(MemeUpdate(update))
                 update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
                 update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
-                update.hasAutosuggestionVote() -> autosuggestionVoteHandler.handle(AutosuggestionVoteUpdate(update))
                 update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
                 else -> CompletableFuture.completedFuture {
                     log.error("can't handle handle $update because of", update)
@@ -64,7 +62,7 @@ fun Throwable.format(update: Update?): String {
     val updateInfo = when {
         update == null -> "no update"
         update.hasVote() -> VoteUpdate(update).toString()
-        update.hasMeme() -> UserMemeUpdate(update).toString()
+        update.hasMeme() -> MemeUpdate(update).toString()
         update.hasCommand() -> CommandUpdate(update).toString()
         update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
         else -> "unknown update=$update"

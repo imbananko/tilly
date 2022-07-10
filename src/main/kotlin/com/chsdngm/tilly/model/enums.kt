@@ -10,11 +10,6 @@ enum class PrivateVoteValue(val emoji: String) {
     DECLINE("\uD83D\uDCA9")
 }
 
-enum class AutosuggestionVoteValue(val emoji: String) {
-    APPROVE_SUGGESTION("\uD83D\uDC8E"),
-    DECLINE_SUGGESTION("\uD83D\uDCA9")
-}
-
 enum class MemeStatus(val description: String) {
     MODERATION("мем на модерации."),
     LOCAL("так как мем локальный, на канал он отправлен не будет."),
