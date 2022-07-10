@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="INFO" packages="com.chsdngm.tilly.utility">
+<Configuration status="INFO">
     <Appenders>
         <Console name="LogToConsole" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{10} - %msg%n"/>
+            <PatternLayout pattern="[%-5p] %d{HH:mm:ss.SSS} [%t] %c - %msg%n"/>
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="com.chsdngm" level="info" additivity="false">
+        <Logger name="com.chsdngm.tilly" level="info" additivity="false">
             <AppenderRef ref="LogToConsole"/>
         </Logger>
         <Logger name="org.springframework.boot" level="error" additivity="false">
             <AppenderRef ref="LogToConsole"/>
         </Logger>
+
         <Root level="error">
             <AppenderRef ref="LogToConsole"/>
         </Root>

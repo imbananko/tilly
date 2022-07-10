@@ -9,6 +9,7 @@ import org.ktorm.database.Database
 import org.ktorm.dsl.*
 import org.ktorm.schema.Table
 import org.ktorm.schema.blob
+import org.ktorm.schema.text
 import org.ktorm.schema.varchar
 import org.ktorm.support.postgresql.textArray
 import java.io.ByteArrayInputStream
@@ -28,35 +29,47 @@ object Images : Table<Nothing>("image") {
   val fileId = varchar("file_id").primaryKey()
   val file = blob("file")
   val words = textArray("words")
+  val labels = textArray("labels")
+  val rawText = text("raw_text")
 }
 
 println("осталось: ${database.from(Images).select().where { Images.words.isNull() }.totalRecords}")
 
-database.from(Images)
-  .select()
-  .where { Images.words.isNull() }
-  .limit(1000)
-  .forEach { row ->
-    val bytes = row[Images.file]!!
+var x = 0;
+for (i in 0..16) {
+  database.from(Images)
+    .select()
+    .where { Images.rawText.isNull() }
+    .limit(1000)
+    .offset(1000 * i)
+    .forEach { row ->
+      println("i=$i x=${x++}")
+      val bytes = row[Images.file]!!
 
-    val text = detectText(bytes).toTypedArray()
+      val textToLabels = detectText(bytes)
 
-    database.update(Images) {
-      set(it.words, text)
-      where {
-        it.fileId eq row[Images.fileId]!!
+      database.update(Images) {
+        set(it.rawText, textToLabels.first)
+        set(it.labels, textToLabels.second?.toTypedArray())
+        where {
+          it.fileId eq row[Images.fileId]!!
+        }
       }
     }
-  }
+}
 
 @Throws(Exception::class, IOException::class)
-fun detectText(imageByteArray: ByteArray): List<String> {
+fun detectText(imageByteArray: ByteArray): Pair<String?, List<String>?> {
   val requests: MutableList<AnnotateImageRequest> = ArrayList<AnnotateImageRequest>()
   val imgBytes: ByteString = ByteString.copyFrom(imageByteArray)
 
   val img: Image = Image.newBuilder().setContent(imgBytes).build()
-  val feat = Feature.newBuilder().setType(Feature.Type.TEXT_DETECTION).build()
-  val request: AnnotateImageRequest = AnnotateImageRequest.newBuilder().addFeatures(feat).setImage(img).build()
+  val textFeature = Feature.newBuilder().setType(Feature.Type.TEXT_DETECTION).build()
+  val labelsFeature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build()
+  val request: AnnotateImageRequest = AnnotateImageRequest.newBuilder()
+    .addFeatures(textFeature)
+    .addFeatures(labelsFeature)
+    .setImage(img).build()
 
   val provider = FixedCredentialsProvider.create(
     GoogleCredentials.fromStream(
@@ -73,14 +86,14 @@ fun detectText(imageByteArray: ByteArray): List<String> {
     val responses: List<AnnotateImageResponse> = response.responsesList
     for (res in responses) {
       if (res.hasError()) {
-        return listOf()
+        return null to null
       }
 
-      if (res.textAnnotationsList.isEmpty()) return listOf()
-      println(res.textAnnotationsList[0].description)
-      return res.textAnnotationsList.drop(1).map { word -> word.description }
+      val text = res.textAnnotationsList.firstOrNull()?.description
+      val labels = if (res.labelAnnotationsList.isNotEmpty()) res.labelAnnotationsList.map { it.description } else null
+      return text to labels
     }
   }
 
-  return listOf()
+  return null to null
 }

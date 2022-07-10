@@ -1,11 +1,11 @@
 package com.chsdngm.tilly
 
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.publish.MemePublisher
 import com.chsdngm.tilly.repository.MemeRepository
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.mention
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -29,7 +29,7 @@ final class Schedulers(
     @Scheduled(cron = "0 0 5-22/1 * * *")
     private fun publishMeme() =
         runCatching {
-            if (TillyConfig.publishEnabled) {
+            if (TelegramConfig.publishEnabled) {
                 memePublisher.publishMemeIfSomethingExists()
             } else {
                 log.info("meme publishing is disabled")

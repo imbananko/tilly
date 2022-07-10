@@ -1,14 +1,14 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.repository.VoteRepository
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.minusDays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -38,7 +38,7 @@ class CommandHandler(
             sendStats(update)
         } else if (update.value == Command.HELP || update.value == Command.START) {
             sendInfoMessage(update)
-        } else if (update.value == Command.CONFIG && update.chatId == TillyConfig.BETA_CHAT_ID) {
+        } else if (update.value == Command.CONFIG && update.chatId == TelegramConfig.BETA_CHAT_ID) {
             changeConfig(update)
         } else {
             log.warn("unknown command from update=$update")
@@ -124,11 +124,11 @@ class CommandHandler(
     fun changeConfig(update: CommandUpdate) {
         val message = when {
             update.text.contains("enable publishing") -> {
-                TillyConfig.publishEnabled = true
+                TelegramConfig.publishEnabled = true
                 "Публикация мемов включена"
             }
             update.text.contains("disable publishing") -> {
-                TillyConfig.publishEnabled = false
+                TelegramConfig.publishEnabled = false
                 "Публикация мемов выключена"
             }
             else ->
@@ -140,7 +140,7 @@ class CommandHandler(
         }
 
         SendMessage().apply {
-            chatId = TillyConfig.BETA_CHAT_ID
+            chatId = TelegramConfig.BETA_CHAT_ID
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = message

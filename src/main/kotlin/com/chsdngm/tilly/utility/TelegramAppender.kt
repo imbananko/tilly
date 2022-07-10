@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.utility
 
+import com.chsdngm.tilly.config.TelegramConfig
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.core.LogEvent
 import org.apache.logging.log4j.core.LoggerContext
@@ -17,7 +18,7 @@ import javax.annotation.PostConstruct
 
 
 @Component
-class TelegramAppender(val tillyConfig: TillyConfig) :
+class TelegramAppender(val tillyConfig: TelegramConfig) :
     AbstractAppender("TelegramAppender", null, PatternLayout.createDefaultLayout(), false, arrayOf()) {
 
     val formatter = SimpleDateFormat("HH:mm:ss.SSS").apply { this.timeZone = TimeZone.getTimeZone("UTC") }
@@ -42,18 +43,18 @@ class TelegramAppender(val tillyConfig: TillyConfig) :
                 }
 
                 SendMessage().apply {
-                    chatId = TillyConfig.LOGS_CHAT_ID
+                    chatId = TelegramConfig.LOGS_CHAT_ID
                     parseMode = ParseMode.MARKDOWN
                     text = sb.toString()
                 }.let {
-                    TillyConfig.api.executeAsync(it)
+                    TelegramConfig.api.executeAsync(it)
                 }
             }
         }
     }
 
     override fun append(event: LogEvent) {
-        val formattedMessage = "${formatter.format(Date(event.instant.epochMillisecond))} [${event.threadName}] ${event.loggerName} - ${event.message.formattedMessage}"
+        val formattedMessage = "[${event.level.name()}] ${formatter.format(Date(event.instant.epochMillisecond))} [${event.threadName}] ${event.loggerName} - ${event.message.formattedMessage}"
         logs.add(formattedMessage)
     }
 
@@ -65,7 +66,8 @@ class TelegramAppender(val tillyConfig: TillyConfig) :
 
         ctx.configuration.getLoggerConfig("Exposed").addAppender(this, Level.DEBUG, null)
         ctx.configuration.getLoggerConfig("org.springframework.boot").addAppender(this, Level.ERROR, null)
-        ctx.configuration.getLoggerConfig("com.chsdngm").addAppender(this, Level.INFO, null)
+        ctx.configuration.getLoggerConfig("root").addAppender(this, Level.ERROR, null)
+        ctx.configuration.getLoggerConfig("com.chsdngm.tilly").addAppender(this, Level.INFO, null)
         ctx.updateLoggers()
     }
 }

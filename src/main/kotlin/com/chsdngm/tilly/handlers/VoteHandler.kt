@@ -1,38 +1,38 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.exposed.Meme
 import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.exposed.Vote
 import com.chsdngm.tilly.exposed.VoteDao
+import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.MemeStatus.MODERATION
 import com.chsdngm.tilly.model.MemeStatus.SCHEDULED
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.MODERATION_THRESHOLD
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Service
-class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<VoteUpdate> {
+class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao, val metricsUtils: MetricsUtils) : AbstractHandler<VoteUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handle(update: VoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         if (update.isOld) {
             sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-            return@supplyAsync
+            return@supplyAsync null
         }
 
         val meme = when (update.isFrom) {
@@ -41,14 +41,14 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<
                 CHAT_ID.toLong(),
                 update.messageId
             )
-            else -> return@supplyAsync
-        } ?: return@supplyAsync
+            else -> return@supplyAsync null
+        } ?: return@supplyAsync null
 
-        val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue)
+        val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue, created = Instant.ofEpochMilli(update.timestampMs))
 
         if (meme.senderId == vote.voterId) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return@supplyAsync
+            return@supplyAsync null
         }
 
         lateinit var voteUpdate: Runnable
@@ -76,12 +76,14 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao) : AbstractHandler<
 
         updateMarkup(meme)
         checkShipment(meme)
-        if (meme.senderId.toLong() == TillyConfig.BOT_ID) updateStatsInSenderChat(meme)
+        updateStatsInSenderChat(meme)
 
         voteUpdate.run()
-    },
-        executor
-    ).thenAccept { log.info("processed vote update=$update") }
+        return@supplyAsync vote
+    }, executor).thenAccept { vote ->
+        vote?.let { metricsUtils.measureVoteProcessing(it) }
+        log.info("processed vote update=$update")
+    }
 
     fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
         AnswerCallbackQuery().apply {

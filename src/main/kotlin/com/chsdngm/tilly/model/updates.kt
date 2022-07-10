@@ -1,8 +1,8 @@
 package com.chsdngm.tilly.model
 
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.minusDays
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -24,6 +24,7 @@ class VoteUpdate(update: Update) {
     val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusDays(7)
     val voteValue: VoteValue = VoteValue.valueOf(update.callbackQuery.data)
     val callbackQueryId: String = update.callbackQuery.id
+    val timestampMs = System.currentTimeMillis()
 
     override fun toString(): String {
         return "VoteUpdate(fromId=$voterId, messageId=$messageId, isFrom=$isFrom, voteValue=$voteValue)"
@@ -42,7 +43,7 @@ interface MemeUpdate {
     var isFreshman: Boolean
 
     val isByTillyBot: Boolean
-        get() = user.id == TillyConfig.BOT_ID
+        get() = user.id == TelegramConfig.BOT_ID
 }
 
 class UserMemeUpdate(update: Update) : MemeUpdate {

@@ -1,4 +1,4 @@
-package com.chsdngm.tilly.utility
+package com.chsdngm.tilly.config
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -6,7 +6,7 @@ import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Component
-class TillyConfig {
+class TelegramConfig {
     companion object {
 
         @JvmField
@@ -22,25 +22,10 @@ class TillyConfig {
         var BOT_TOKEN = ""
 
         @JvmField
-        var MODERATION_THRESHOLD = 0L
-
-        @JvmField
         var BOT_USERNAME = ""
 
         @JvmField
         var BOT_ID = 0L
-
-        @JvmField
-        var ELASTICSEARCH_URL = ""
-
-        @JvmField
-        var ELASTICSEARCH_INDEX_NAME = ""
-
-        @JvmField
-        var ELASTICSEARCH_REQUEST_TIMEOUT = ""
-
-        @JvmField
-        var COMMIT_SHA = ""
 
         @JvmField
         var LOGS_CHAT_ID = ""
@@ -80,31 +65,6 @@ class TillyConfig {
     @Value("\${target.chat.id}")
     fun setChatId(chatId: String) {
         CHAT_ID = chatId
-    }
-
-    @Value("\${moderation.threshold}")
-    fun setModerationThreshold(moderationThreshold: Long) {
-        MODERATION_THRESHOLD = moderationThreshold
-    }
-
-    @Value("\${elasticsearch.url}")
-    fun setElasticsearchUrl(elasticsearchUrl: String) {
-        ELASTICSEARCH_URL = elasticsearchUrl
-    }
-
-    @Value("\${elasticsearch.index}")
-    fun setElasticsearchIndexName(elasticsearchIndexName: String) {
-        ELASTICSEARCH_INDEX_NAME = elasticsearchIndexName
-    }
-
-    @Value("\${elasticsearch.timeout}")
-    fun setElasticsearchRequestTimeout(timeout: String) {
-        ELASTICSEARCH_REQUEST_TIMEOUT = timeout
-    }
-
-    @Value("\${commit.sha}")
-    fun setCommitSha(commitSha: String) {
-        COMMIT_SHA = commitSha
     }
 
     @Value("\${logs.chat.id}")

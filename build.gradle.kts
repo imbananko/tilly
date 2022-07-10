@@ -12,6 +12,7 @@ repositories {
     mavenCentral()
     maven(url = "https://repo.spring.io/milestone")
     maven(url = "https://jcenter.bintray.com")
+    maven { url = uri("https://google.oss.sonatype.org/content/repositories/snapshots") }
 }
 
 plugins {
@@ -30,7 +31,15 @@ configurations {
     }
 }
 
+dependencyManagement {
+    imports {
+        mavenBom("com.google.cloud:spring-cloud-gcp-dependencies:3.4.0-SNAPSHOT")
+    }
+}
+
 dependencies {
+    implementation("com.google.cloud:spring-cloud-gcp-starter-vision")
+    implementation("com.google.cloud:google-cloud-monitoring")
 
     // exposed
     implementation("org.jetbrains.exposed", "exposed-core", "0.38.1")
@@ -41,24 +50,24 @@ dependencies {
     // kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinVersion")
-    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
+//    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
+//    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
+//    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
 
     // spring
-    implementation("org.telegram:telegrambots-spring-boot-starter:5.2.0") 
+    implementation("org.telegram:telegrambots-spring-boot-starter:5.2.0")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework:spring-web")
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.data:spring-data-elasticsearch:3.2.13.RELEASE")
-    implementation("org.springframework.cloud:spring-cloud-gcp-starter-vision:1.2.6.RELEASE")
 
     implementation("org.postgresql:postgresql:42.2.6")
     implementation("com.github.kilianB:JImageHash:3.0.0")
     implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
 
-    compileOnly("org.ktorm:ktorm-core:3.3.0")
-    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
+//    compileOnly("org.ktorm:ktorm-core:3.3.0")
+//    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")

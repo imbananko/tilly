@@ -1,8 +1,8 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.model.InlineCommandUpdate
 import com.chsdngm.tilly.similarity.ElasticsearchService
-import com.chsdngm.tilly.utility.TillyConfig
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -36,7 +36,7 @@ class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : Abs
             inlineQueryId = update.id
             nextOffset = "${offset + 1}"
             results = cachedPhotos
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
 
     },
         executor
