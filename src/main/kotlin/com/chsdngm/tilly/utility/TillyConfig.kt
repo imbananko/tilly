@@ -28,6 +28,9 @@ class TillyConfig {
         var BOT_USERNAME = ""
 
         @JvmField
+        var BOT_ID = 0L
+
+        @JvmField
         var ELASTICSEARCH_URL = ""
 
         @JvmField
@@ -57,6 +60,11 @@ class TillyConfig {
     @Value("\${bot.username}")
     fun setUsername(username: String) {
         BOT_USERNAME = username
+    }
+
+    @Value("\${bot.id}")
+    fun setBotId(id: Long) {
+        BOT_ID = id
     }
 
     @Value("\${beta.chat.id}")

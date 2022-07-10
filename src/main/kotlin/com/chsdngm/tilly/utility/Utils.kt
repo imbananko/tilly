@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.format
+import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import com.chsdngm.tilly.model.Meme
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
@@ -31,8 +32,15 @@ fun Update.hasPrivateVote() = this.hasCallbackQuery()
     setOf(*PrivateVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
 
+fun Update.hasAutosuggestionVote() = this.hasCallbackQuery()
+        && this.callbackQuery.message.chatId.toString() == TillyConfig.BETA_CHAT_ID
+        && runCatching {
+    setOf(*AutosuggestionVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
+}.getOrDefault(false)
+
 fun User.mention(): String =
-    """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""
+    if (this.id == TillyConfig.BOT_ID) "montorn"
+    else """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""
 
 fun ChatMember.isFromChat(): Boolean = chatUserStatuses.contains(this.status)
 
