@@ -1,5 +1,7 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.exposed.Meme
 import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.exposed.Vote
@@ -8,8 +10,6 @@ import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory
@@ -46,7 +46,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
             chatId = update.user.id.toString()
             messageId = update.messageId
             caption = "мем одобрен и будет отправлен на канал"
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
 
         meme.status = MemeStatus.SCHEDULED
         memeDao.update(meme)
@@ -63,7 +63,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
             chatId = update.user.id.toString()
             messageId = update.messageId
             caption = "мем предан забвению"
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
 
         meme.status = MemeStatus.DECLINED
         memeDao.update(meme)
@@ -86,6 +86,6 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
             caption = memeCaption
             parseMode = ParseMode.HTML
             disableNotification = true
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
     }
 }

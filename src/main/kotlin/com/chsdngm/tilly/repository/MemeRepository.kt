@@ -1,9 +1,7 @@
 package com.chsdngm.tilly.repository
 
+import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.model.Meme
-import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.utility.TillyConfig
-import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -62,8 +60,8 @@ interface MemeRepository : CrudRepository<Meme, Int> {
   """, nativeQuery = true
     )
     fun findForgottenMemes(
-        @Param("moderationChatId") moderationChatId: Long = TillyConfig.CHAT_ID.toLong(),
-        @Param("moderationThreshold") moderationThreshold: Long = TillyConfig.MODERATION_THRESHOLD,
+        @Param("moderationChatId") moderationChatId: Long = TelegramConfig.CHAT_ID.toLong(),
+        @Param("moderationThreshold") moderationThreshold: Long = 5,
     ): List<Meme>
 }
 

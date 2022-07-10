@@ -1,10 +1,10 @@
 package com.chsdngm.tilly.publish
 
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.exposed.Meme
 import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory

@@ -1,11 +1,12 @@
 package com.chsdngm.tilly
 
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.handlers.*
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.utility.*
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_USERNAME
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -48,7 +49,7 @@ class UpdatesPoller(
             log.error("can't handle handle $update because of", it)
 
             SendMessage().apply {
-                chatId = TillyConfig.BETA_CHAT_ID
+                chatId = TelegramConfig.BETA_CHAT_ID
                 text = it.format(update)
                 parseMode = ParseMode.HTML
             }.let { method -> api.execute(method) }

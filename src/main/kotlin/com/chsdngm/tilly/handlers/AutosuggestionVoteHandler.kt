@@ -1,9 +1,9 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
-import com.chsdngm.tilly.utility.TillyConfig
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
@@ -34,7 +34,7 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
             chatId = update.groupId.toString()
             messageId = update.messageId
             caption = "мем отправлен в общую предложку, если он не дубликат"
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
         log.info("autosuggested meme was approved by approver=${update.approver}")
     }
 
@@ -43,7 +43,7 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
             chatId = update.groupId.toString()
             messageId = update.messageId
             caption = "мем предан забвению"
-        }.let { TillyConfig.api.execute(it) }
+        }.let { TelegramConfig.api.execute(it) }
 
         log.info("autosuggested meme was declined by approver=${update.approver}")
     }

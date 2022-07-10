@@ -1,30 +1,25 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_TOKEN
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.repository.ImageRepository
-import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
-import com.chsdngm.tilly.similarity.AnalyzingResults
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
-import com.chsdngm.tilly.utility.TillyConfig
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BETA_CHAT_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.BOT_TOKEN
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.utility.TillyConfig.Companion.api
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.isFromChat
 import com.chsdngm.tilly.utility.logExceptionInBetaChat
 import org.apache.commons.io.IOUtils
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.RequestOptions
-import org.elasticsearch.client.RestHighLevelClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
@@ -57,14 +52,11 @@ class MemeHandler(
     private val imageRepository: ImageRepository,
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
-    private val elasticsearchClient: RestHighLevelClient,
 ) : AbstractHandler<MemeUpdate> {
 
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val textFieldName = "text"
-    private val indexDocumentType = "_doc"
 
     private val moderationPool = TreeMap<Int, WeightedModerationType>()
     private val moderationType = Random()
@@ -119,9 +111,7 @@ class MemeHandler(
             }
         }
 
-        val analyzingResults: AnalyzingResults? =
-            runCatching { imageTextRecognizer.analyze(update.file) }.onFailure { logExceptionInBetaChat(it) }
-                .getOrNull()
+        val analyzingResults = imageTextRecognizer.analyzeAndIndex(update.file, update.fileId)
 
         val image = Image(
             update.fileId,
@@ -134,13 +124,6 @@ class MemeHandler(
         imageMatcher.add(image)
         imageRepository.save(image)
 
-        if (analyzingResults?.words?.isNotEmpty() == true) {
-            val text = analyzingResults.words.joinToString(separator = " ")
-            val indexRequest =
-                IndexRequest(TillyConfig.ELASTICSEARCH_INDEX_NAME).id(image.fileId).type(indexDocumentType)
-                    .source(textFieldName, text).timeout(TillyConfig.ELASTICSEARCH_REQUEST_TIMEOUT)
-            elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
-        }
     }, executor
     ).thenAccept { log.info("processed meme update=$update") }
 
@@ -151,7 +134,7 @@ class MemeHandler(
             return false
         }
 
-        val moderator = userRepository.findTopSenders(sender.id, TillyConfig.BOT_ID)
+        val moderator = userRepository.findTopSenders(sender.id, TelegramConfig.BOT_ID)
             .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
 
         return runCatching {

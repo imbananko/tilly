@@ -16,11 +16,15 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-
-elasticsearch:
-  url: elasticsearch:9200
-  index: memes
-  timeout: 5s
+  cloud:
+    gcp:
+      metrics:
+        enabled: false
+  elasticsearch:
+    rest:
+      uris: elasticsearch:9200
+      connection-timeout: 5s
+      read-timeout: 1s
 
 bot:
   token: token
@@ -30,4 +34,6 @@ target.chat.id: 0
 target.channel.id: 0
 beta.chat.id: -1001401091410
 
-moderation.threshold: 5
+metadata:
+  commit.sha: local
+  moderation.threshold: 5
