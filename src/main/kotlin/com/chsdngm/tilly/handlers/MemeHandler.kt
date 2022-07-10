@@ -104,11 +104,11 @@ class MemeHandler(
 
         val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
         if (duplicateFileId != null) {
-            handleDuplicate(update, duplicateFileId)
+            if (!update.isByTillyBot) handleDuplicate(update, duplicateFileId)
             return@supplyAsync
         }
 
-        if (update.isFreshman || update.status == LOCAL) {
+        if (update.isFreshman || update.isByTillyBot || update.status == LOCAL) {
             moderateWithGroup(update)
         } else {
             // Balancing with weight
@@ -151,7 +151,7 @@ class MemeHandler(
             return false
         }
 
-        val moderator = userRepository.findTopSenders(sender.id)
+        val moderator = userRepository.findTopSenders(sender.id, TillyConfig.BOT_ID)
             .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
 
         return runCatching {
@@ -189,7 +189,7 @@ class MemeHandler(
         }.let {
             val sent = api.execute(it)
 
-            val senderMessageId = replyToSender(update).messageId
+            val senderMessageId = if (update.isByTillyBot) null else replyToSender(update).messageId
             val meme = memeDao.insert(
                 com.chsdngm.tilly.exposed.Meme(
                     CHAT_ID.toLong(),
@@ -234,7 +234,7 @@ class MemeHandler(
             userId = update.user.id
         }.let {
             api.execute(it)
-        }.isFromChat()) ""
+        }.isFromChat() && update.user.id != TillyConfig.BOT_ID) ""
     else "\n\nSender: ${update.senderName}" + if (update.isFreshman) "\n\n#freshman" else "")
 
     private fun forwardMemeFromChannelToUser(meme: com.chsdngm.tilly.exposed.Meme, user: User) =
