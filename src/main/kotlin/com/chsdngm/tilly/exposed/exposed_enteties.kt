@@ -109,6 +109,34 @@ fun Iterable<ResultRow>.toMeme(): Meme? {
     return meme
 }
 
+fun Iterable<ResultRow>.toMemes(): List<Meme> {
+    val iterator = this.iterator()
+
+    if (!iterator.hasNext()) {
+        return listOf()
+    }
+
+    val memes = mutableListOf<Meme>()
+    var currentMeme: Meme? = null
+
+    while (iterator.hasNext()) {
+        val current = iterator.next()
+
+        val meme = current.toMeme() ?: return memes
+        if (meme.id != currentMeme?.id) {
+            currentMeme = meme
+            memes.add(currentMeme)
+        }
+
+        val vote = current.toVote()
+        if (vote != null) {
+            currentMeme.votes.add(vote)
+        }
+    }
+
+    return memes
+}
+
 fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
     it[Memes.status] = this.status
     it[Memes.channelMessageId] = this.channelMessageId

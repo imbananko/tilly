@@ -34,9 +34,9 @@ class MemeDao(val database: Database) {
         Memes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
     }
 
-    fun findFirstByStatusOrderByCreated(memeStatus: MemeStatus): Meme? = transaction {
+    fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): List<Meme> = transaction {
         (Memes leftJoin Votes)
-            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toList().toMeme()
+            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemes()
     }
 
     fun findByFileId(fileId: String): Meme? = transaction {
