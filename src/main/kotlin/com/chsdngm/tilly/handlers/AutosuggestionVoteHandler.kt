@@ -23,7 +23,7 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
             AutosuggestionVoteValue.DECLINE_SUGGESTION -> decline(update)
         }
     },
-        executor
+            executor
     ).thenAccept { log.info("processed autosuggestion vote update=$update") }
 
     private fun approve(update: AutosuggestionVoteUpdate) {
@@ -31,20 +31,20 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
         memeHandler.handle(memeUpdate)
 
         EditMessageCaption().apply {
-            chatId = update.chatId.toString()
+            chatId = update.groupId.toString()
             messageId = update.messageId
             caption = "мем отправлен в общую предложку, если он не дубликат"
         }.let { TelegramConfig.api.execute(it) }
-        log.info("auto suggested meme was approved. update=$update")
+        log.info("autosuggested meme was approved by approver=${update.approver}")
     }
 
     private fun decline(update: AutosuggestionVoteUpdate) {
         EditMessageCaption().apply {
-            chatId = update.chatId.toString()
+            chatId = update.groupId.toString()
             messageId = update.messageId
             caption = "мем предан забвению"
         }.let { TelegramConfig.api.execute(it) }
 
-        log.info("auto-suggested meme was declined. update=$update")
+        log.info("autosuggested meme was declined by approver=${update.approver}")
     }
 }

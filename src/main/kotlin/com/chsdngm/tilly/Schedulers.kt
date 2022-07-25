@@ -6,9 +6,10 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.exposed.Meme
+import com.chsdngm.tilly.exposed.MemeDao
 import com.chsdngm.tilly.model.MemeStatus
-import com.chsdngm.tilly.model.dto.Meme
-import com.chsdngm.tilly.repository.MemeDao
+import com.chsdngm.tilly.repository.MemeRepository
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
@@ -26,7 +27,10 @@ import org.telegram.telegrambots.meta.api.objects.InputFile
 
 @Service
 @EnableScheduling
-final class Schedulers(private val memeDao: MemeDao) {
+final class Schedulers(
+    private val memeRepository: MemeRepository,
+    private val memeDao: MemeDao,
+) {
     companion object {
         const val TILLY_LOG = "tilly.log"
     }
@@ -81,40 +85,37 @@ final class Schedulers(private val memeDao: MemeDao) {
     }.let(api::execute).also { log.info("sent meme to channel. meme=$meme") }
 
     @Scheduled(cron = "0 0 19 * * WED")
-    private fun sendMemeOfTheWeek() = runCatching {
-        val meme = memeDao.findTopRatedMemeForLastWeek()
-        if (meme == null) {
-            log.info("can't find meme of the week")
-            return@runCatching
+    private fun sendMemeOfTheWeek() =
+        runCatching {
+            memeRepository.findMemeOfTheWeek()?.let { meme ->
+                val winner = api.execute(
+                    GetChatMember(CHANNEL_ID, meme.senderId.toLong())
+                ).user.mention()
+
+                SendMessage().apply {
+                    chatId = CHANNEL_ID
+                    parseMode = ParseMode.HTML
+                    replyToMessageId = meme.channelMessageId
+                    text = "Поздравляем $winner с мемом недели!"
+                }.let {
+                    api.execute(it)
+                }.also {
+                    api.execute(PinChatMessage(it.chatId.toString(), it.messageId))
+                }
+
+                memeRepository.saveMemeOfWeek(meme.id)
+            } ?: log.info("can't find meme of the week")
         }
+            .onSuccess { log.info("successful send meme of the week") }
+            .onFailure {
+                log.error("can't send meme of the week because of", it)
 
-        val winner = GetChatMember().apply {
-            chatId = CHANNEL_ID
-            userId = meme.senderId.toLong()
-        }.let { api.execute(it) }.user.mention()
-
-        SendMessage().apply {
-            chatId = CHANNEL_ID
-            parseMode = ParseMode.HTML
-            replyToMessageId = meme.channelMessageId
-            text = "Поздравляем $winner с мемом недели!"
-        }.let {
-            val message = api.execute(it)
-            api.execute(PinChatMessage(message.chatId.toString(), message.messageId))
-        }
-
-        memeDao.saveMemeOfTheWeek(meme.id)
-    }
-        .onSuccess { log.info("successful send meme of the week") }
-        .onFailure { ex ->
-            log.error("Failed to process meme of the week, exception=", ex)
-
-            SendMessage().apply {
-                chatId = BETA_CHAT_ID
-                text = ex.format(update = null)
-                parseMode = ParseMode.HTML
-            }.let { api.execute(it) }
-        }
+                SendMessage().apply {
+                    chatId = BETA_CHAT_ID
+                    text = it.format(update = null)
+                    parseMode = ParseMode.HTML
+                }.let { method -> api.execute(method) }
+            }
 }
 
 

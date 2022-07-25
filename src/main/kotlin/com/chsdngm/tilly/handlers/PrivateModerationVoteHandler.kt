@@ -2,14 +2,14 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.exposed.Meme
+import com.chsdngm.tilly.exposed.MemeDao
+import com.chsdngm.tilly.exposed.Vote
+import com.chsdngm.tilly.exposed.VoteDao
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.model.dto.Meme
-import com.chsdngm.tilly.model.dto.Vote
-import com.chsdngm.tilly.repository.MemeDao
-import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import org.slf4j.LoggerFactory

@@ -35,7 +35,7 @@ object Images : Table<Nothing>("image") {
 
 println("осталось: ${database.from(Images).select().where { Images.words.isNull() }.totalRecords}")
 
-var x = 0
+var x = 0;
 for (i in 0..16) {
   database.from(Images)
     .select()

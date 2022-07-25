@@ -1,12 +1,11 @@
-package com.chsdngm.tilly.repository
+package com.chsdngm.tilly.exposed
 
-import com.chsdngm.tilly.model.dto.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 
 @Repository
-class VoteDao {
+class VoteDao(val database: Database) {
     fun insert(vote: Vote) = transaction {
         Votes.insert { vote.toInsertStatement(it) }.resultedValues?.first()?.toVote()
             ?: throw NoSuchElementException("Error saving vote")
@@ -18,9 +17,5 @@ class VoteDao {
 
     fun update(vote: Vote) = transaction {
         Votes.update({ (Votes.memeId eq vote.memeId) and (Votes.voterId eq vote.voterId) }) { vote.toUpdateStatement(it) }
-    }
-
-    fun findAllByVoterId(voterId: Int): List<Vote> = transaction {
-        Votes.select { Votes.voterId eq voterId }.mapNotNull { it.toVote() }
     }
 }
