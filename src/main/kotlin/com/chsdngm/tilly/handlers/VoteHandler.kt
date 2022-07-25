@@ -4,17 +4,18 @@ import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
-import com.chsdngm.tilly.exposed.Meme
-import com.chsdngm.tilly.exposed.MemeDao
-import com.chsdngm.tilly.exposed.Vote
-import com.chsdngm.tilly.exposed.VoteDao
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.MemeStatus.MODERATION
 import com.chsdngm.tilly.model.MemeStatus.SCHEDULED
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.dto.Meme
+import com.chsdngm.tilly.model.dto.Vote
+import com.chsdngm.tilly.repository.MemeDao
+import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
+import javassist.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
@@ -25,14 +26,19 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Service
-class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao, val metricsUtils: MetricsUtils) : AbstractHandler<VoteUpdate> {
+class VoteHandler(
+    val memeDao: MemeDao,
+    val voteDao: VoteDao,
+    val metricsUtils: MetricsUtils
+) : AbstractHandler<VoteUpdate> {
+
     private val log = LoggerFactory.getLogger(javaClass)
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handle(update: VoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         if (update.isOld) {
             sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-            return@supplyAsync null
+            return@supplyAsync
         }
 
         val meme = when (update.isFrom) {
@@ -41,15 +47,21 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao, val metricsUtils: 
                 CHAT_ID.toLong(),
                 update.messageId
             )
-            else -> return@supplyAsync null
-        } ?: return@supplyAsync null
+            else -> null
+        } ?: throw NotFoundException("Meme wasn't found. update=$update")
 
-        val vote = Vote(meme.id, update.voterId.toInt(), update.isFrom.toLong(), update.voteValue, created = Instant.ofEpochMilli(update.timestampMs))
-
-        if (meme.senderId == vote.voterId) {
+        if (meme.senderId == update.voterId.toInt()) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return@supplyAsync null
+            return@supplyAsync
         }
+
+        val vote = Vote(
+            meme.id,
+            update.voterId.toInt(),
+            update.isFrom.toLong(),
+            update.voteValue,
+            created = Instant.ofEpochMilli(update.timestampMs)
+        )
 
         lateinit var voteUpdate: Runnable
         meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
@@ -74,16 +86,18 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao, val metricsUtils: 
             voteUpdate = Runnable { voteDao.insert(vote) }
         }
 
-        updateMarkup(meme)
+        val markupUpdate = updateMarkup(meme)
         checkShipment(meme)
         updateStatsInSenderChat(meme)
 
         voteUpdate.run()
-        return@supplyAsync vote
-    }, executor).thenAccept { vote ->
-        vote?.let { metricsUtils.measureVoteProcessing(it) }
-        log.info("processed vote update=$update")
-    }
+
+        metricsUtils.measureVoteProcessing(vote)
+        markupUpdate.join()
+    }, executor)
+        .thenAccept {
+            log.info("processed vote update=$update")
+        }
 
     fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
         AnswerCallbackQuery().apply {
@@ -92,22 +106,28 @@ class VoteHandler(val memeDao: MemeDao, val voteDao: VoteDao, val metricsUtils: 
             text = popupText
         }.let { api.execute(it) }
 
-    private fun updateMarkup(meme: Meme) {
-        meme.channelMessageId?.let {
+    private fun updateMarkup(meme: Meme): CompletableFuture<Void> {
+        val channelUpdate = if (meme.channelMessageId != null) {
             EditMessageReplyMarkup().apply {
                 chatId = CHANNEL_ID
                 messageId = meme.channelMessageId
                 replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
-            }.let { api.execute(it) }
+            }.let { api.executeAsync(it) }
+        } else {
+            CompletableFuture.completedFuture(null)
         }
 
-        if (meme.moderationChatId.toString() == CHAT_ID) {
+        val groupUpdate = if (meme.moderationChatId.toString() == CHAT_ID) {
             EditMessageReplyMarkup().apply {
                 chatId = CHAT_ID
                 messageId = meme.moderationChatMessageId
                 replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
-            }.let { api.execute(it) }
+            }.let { api.executeAsync(it) }
+        } else {
+            CompletableFuture.completedFuture(null)
         }
+
+        return CompletableFuture.allOf(channelUpdate, groupUpdate)
     }
 
     private fun checkShipment(meme: Meme) {

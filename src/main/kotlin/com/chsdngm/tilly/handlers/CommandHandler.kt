@@ -6,9 +6,9 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.repository.MemeRepository
+import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.UserRepository
-import com.chsdngm.tilly.repository.VoteRepository
+import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.minusDays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -25,8 +25,8 @@ import java.util.concurrent.Executors
 @Service
 class CommandHandler(
     private val userRepository: UserRepository,
-    private val memeRepository: MemeRepository,
-    private val voteRepository: VoteRepository,
+    private val memeDao: MemeDao,
+    private val voteDao: VoteDao
 ) :
     AbstractHandler<CommandUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -49,8 +49,8 @@ class CommandHandler(
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
 
-        val memesByUserAll = withContext(Dispatchers.IO) { memeRepository.findBySenderId(update.senderId.toInt()) }
-        val votesByUserAll = withContext(Dispatchers.IO) { voteRepository.findAllByVoterId(update.senderId.toInt()) }
+        val memesByUserAll = withContext(Dispatchers.IO) { memeDao.findAllBySenderId(update.senderId.toInt()) }
+        val votesByUserAll = withContext(Dispatchers.IO) { voteDao.findAllByVoterId(update.senderId.toInt()) }
 
         if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
             "Статистика недоступна. Отправляй и оценивай мемы!"

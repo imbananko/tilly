@@ -33,19 +33,16 @@ class UpdatesPoller(
     override fun getBotToken(): String = BOT_TOKEN
 
     final override fun onUpdateReceived(update: Update) {
-        runCatching {
-            when {
-                update.hasVote() -> voteHandler.handle(VoteUpdate(update))
-                update.hasMeme() -> memeHandler.handle(UserMemeUpdate(update))
-                update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
-                update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
-                update.hasAutosuggestionVote() -> autosuggestionVoteHandler.handle(AutosuggestionVoteUpdate(update))
-                update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
-                else -> CompletableFuture.completedFuture {
-                    log.error("can't handle handle $update because of", update)
-                }
-            }
-        }.onFailure {
+        when {
+            update.hasVote() -> voteHandler.handle(VoteUpdate(update))
+            update.hasMeme() -> memeHandler.handle(UserMemeUpdate(update))
+            update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
+            update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
+            update.hasAutosuggestionVote() -> autosuggestionVoteHandler.handle(AutosuggestionVoteUpdate(update))
+            update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
+            else -> CompletableFuture.completedFuture(null)
+
+        }.exceptionally {
             log.error("can't handle handle $update because of", it)
 
             SendMessage().apply {
@@ -53,6 +50,8 @@ class UpdatesPoller(
                 text = it.format(update)
                 parseMode = ParseMode.HTML
             }.let { method -> api.execute(method) }
+
+            null
         }
     }
 

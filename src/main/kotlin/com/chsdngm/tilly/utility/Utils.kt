@@ -1,6 +1,6 @@
 package com.chsdngm.tilly.utility
 
-import com.chsdngm.tilly.config.TelegramConfig
+
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
@@ -8,18 +8,21 @@ import com.chsdngm.tilly.format
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.dto.Meme
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.*
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.io.Serializable
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
 
 fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
 fun Update.hasCommand() = this.hasMessage() &&
-        (this.message.chat.isUserChat || this.message.chatId.toString() == TelegramConfig.BETA_CHAT_ID) &&
+        (this.message.chat.isUserChat || this.message.chatId.toString() == BETA_CHAT_ID) &&
         this.message.isCommand
 
 fun Update.hasVote() = this.hasCallbackQuery()
@@ -42,7 +45,9 @@ fun Update.hasAutosuggestionVote() = this.hasCallbackQuery()
 
 fun User.mention(): String =
     if (this.id == BOT_ID) "montorn"
-    else """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName ?: "мутный тип"}</a>"""
+    else """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName}</a>"""
+
+fun ChatMember.isMemeManager() = this.user.isBot && this.user.id == BOT_ID
 
 fun ChatMember.isFromChat(): Boolean = chatUserStatuses.contains(this.status)
 
@@ -57,10 +62,13 @@ fun createMarkup(stats: Map<VoteValue, Int>) = InlineKeyboardMarkup().apply {
     )
 }
 
-fun updateStatsInSenderChat(meme: com.chsdngm.tilly.exposed.Meme) {
+fun updateStatsInSenderChat(meme: Meme): CompletableFuture<Serializable?> =
     if (meme.privateReplyMessageId != null && meme.senderId.toLong() != BOT_ID) {
         val caption = meme.status.description +
-                meme.votes.groupingBy { it.value }.eachCount().entries.sortedBy { it.key }
+                meme.votes
+                    .groupingBy { it.value }
+                    .eachCount().entries
+                    .sortedBy { it.key }
                     .joinToString(
                         prefix = " статистика: \n\n",
                         transform = { (value, sum) -> "${value.emoji}: $sum" })
@@ -69,13 +77,16 @@ fun updateStatsInSenderChat(meme: com.chsdngm.tilly.exposed.Meme) {
             chatId = meme.senderId.toString()
             messageId = meme.privateReplyMessageId
             text = caption
-        }.let { api.execute(it) }
+        }.let { api.executeAsync(it) }
+
+    } else {
+        CompletableFuture.completedFuture(null)
     }
-}
+
 
 fun logExceptionInBetaChat(ex: Throwable): Message =
     SendMessage().apply {
-        chatId = TelegramConfig.BETA_CHAT_ID
+        chatId = BETA_CHAT_ID
         text = ex.format(update = null)
         parseMode = ParseMode.HTML
     }.let { method -> api.execute(method) }

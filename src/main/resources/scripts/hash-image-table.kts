@@ -22,7 +22,7 @@ object Image : Table() {
 Database.connect(dbUrl, driver = "org.postgresql.Driver", user = user, password = password)
 
 transaction {
-  var i = 0;
+  var i = 0
   Image.selectAll().map { it[Image.fileId] to it[Image.file] }.also { println("fetched urls from db. size=${it.size}") }.forEach { pair ->
     Image.update({ Image.fileId eq pair.first }) {
       it[hash] = ImageMatcher.calculateHash(pair.second)
