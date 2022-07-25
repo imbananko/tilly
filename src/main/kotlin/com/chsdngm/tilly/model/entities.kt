@@ -3,8 +3,6 @@ package com.chsdngm.tilly.model
 import com.vladmihalcea.hibernate.type.array.ListArrayType
 import org.hibernate.annotations.Type
 import org.hibernate.annotations.TypeDef
-import java.io.Serializable
-import java.time.Instant
 import java.util.*
 import javax.persistence.*
 
@@ -13,32 +11,6 @@ data class PrivateModerator(
     @Id val userId: Int,
     val assigned: Date
 )
-
-@Entity
-data class Meme(
-    val moderationChatId: Long,
-    val moderationChatMessageId: Int,
-    val senderId: Int,
-    @Enumerated(EnumType.STRING)
-    var status: MemeStatus,
-    val privateReplyMessageId: Int?,
-    val fileId: String,
-    val caption: String?,
-    var channelMessageId: Int? = null,
-    var created: Instant = Instant.now(),
-
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, mappedBy = "memeId", orphanRemoval = true)
-    val votes: MutableSet<Vote> = mutableSetOf()
-) {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Int = 0
-
-    override fun toString(): String {
-        return "Meme(moderationChatId=$moderationChatId, moderationChatMessageId=$moderationChatMessageId, senderId=$senderId, senderMessageId=$privateReplyMessageId, caption=$caption, channelMessageId=$channelMessageId, id=$id, status=$status)"
-    }
-}
 
 @Entity
 data class TelegramUser(
@@ -50,24 +22,6 @@ data class TelegramUser(
     val status: UserStatus
 ) {
     fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
-}
-
-@Entity
-@IdClass(Vote.VoteKey::class)
-data class Vote(
-    @Id val memeId: Int,
-    @Id val voterId: Int,
-    var sourceChatId: Long,
-    @Enumerated(EnumType.STRING)
-    var value: VoteValue,
-    var created: Instant = Instant.now(),
-) {
-
-    @Embeddable
-    class VoteKey(
-        val memeId: Int,
-        val voterId: Int,
-    ) : Serializable
 }
 
 @Entity
