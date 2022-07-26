@@ -16,7 +16,7 @@ import java.util.*
 @RestController
 class MemeController {
     @PostMapping(value = ["/memes/suggest"])
-    fun index(@RequestParam file: MultipartFile, params: Params) {
+    fun suggest(@RequestParam file: MultipartFile, params: Params) {
         val markup = InlineKeyboardMarkup(
             listOf(
                 listOf(InlineKeyboardButton("Отправить в предложку ${AutosuggestionVoteValue.APPROVE_SUGGESTION.emoji}").also {

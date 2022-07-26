@@ -2,12 +2,11 @@ package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.dto.*
+import com.chsdngm.tilly.utility.execAndMap
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
-import java.sql.ResultSet
 
 @Repository
 class MemeDao {
@@ -74,16 +73,6 @@ class MemeDao {
                 "values ($memeId);"
 
         sql.execAndMap { }
-    }
-
-    fun <T : Any> String.execAndMap(transform: (ResultSet) -> T): List<T> {
-        val result = arrayListOf<T>()
-        TransactionManager.current().exec(this) { rs ->
-            while (rs.next()) {
-                result += transform(rs)
-            }
-        }
-        return result
     }
 }
 

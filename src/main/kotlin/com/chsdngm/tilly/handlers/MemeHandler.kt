@@ -10,8 +10,9 @@ import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
-import com.chsdngm.tilly.repository.ImageRepository
+import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
@@ -48,7 +49,7 @@ class MemeHandler(
     private val userRepository: UserRepository,
     private val imageMatcher: ImageMatcher,
     private val imageTextRecognizer: ImageTextRecognizer,
-    private val imageRepository: ImageRepository,
+    private val imageDao: ImageDao,
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
 ) : AbstractHandler<MemeUpdate> {
@@ -77,7 +78,27 @@ class MemeHandler(
             return@supplyAsync
         }
 
-        moderateWithGroup(update)
+        val message = SendPhoto().apply {
+            chatId = CHAT_ID
+            photo = InputFile(update.fileId)
+            caption = runCatching { resolveCaption(update) }.getOrNull()
+            parseMode = ParseMode.HTML
+            replyMarkup = createMarkup(emptyMap())
+        }.let(api::execute)
+
+        val meme = memeDao.insert(
+            Meme(
+                CHAT_ID.toLong(),
+                message.messageId,
+                update.user.id.toInt(),
+                update.status,
+                null,
+                update.fileId,
+                update.caption
+            )
+        )
+
+        log.info("sent for moderation to group chat. meme=$meme")
         handleImage(update)
 
     }, executor
@@ -137,12 +158,12 @@ class MemeHandler(
             update.fileId,
             update.file.readBytes(),
             hash = imageMatcher.calculateHash(update.file),
-            words = analyzingResults?.words,
-            labels = analyzingResults?.labels
+            rawText = analyzingResults?.words,
+            rawLabels = analyzingResults?.labels
         )
 
+        imageDao.insert(image)
         imageMatcher.add(image)
-        imageRepository.save(image)
     }
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {

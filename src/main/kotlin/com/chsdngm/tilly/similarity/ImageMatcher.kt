@@ -1,7 +1,6 @@
 package com.chsdngm.tilly.similarity
 
-import com.chsdngm.tilly.model.Image
-import com.chsdngm.tilly.repository.ImageRepository
+import com.chsdngm.tilly.repository.ImageDao
 import com.github.kilianB.hash.Hash
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
 import com.github.kilianB.matcher.persistent.ConsecutiveMatcher
@@ -15,7 +14,7 @@ import javax.imageio.ImageIO
 
 @Service
 class ImageMatcher(
-    private val imageRepository: ImageRepository
+    private val imageDao: ImageDao
 ) : ConsecutiveMatcher(true) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -26,8 +25,8 @@ class ImageMatcher(
         addHashingAlgorithm(mainHashingAlgorithm, normalizedHammingDistance, true)
         addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))
 
-        imageRepository.findAllHashes().forEach {
-            addImageInternal(it.fileId, BigInteger(it.hash))
+        imageDao.findAllHashes().forEach {
+            addImageInternal(it.key, it.value)
         }
     }
 
@@ -46,7 +45,7 @@ class ImageMatcher(
     fun calculateHash(file: File): ByteArray =
         mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
 
-    fun add(image: Image) {
+    fun add(image: com.chsdngm.tilly.model.dto.Image) {
         addImageInternal(image.fileId, BigInteger(image.hash))
     }
 
