@@ -9,13 +9,19 @@ import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
-import org.telegram.telegrambots.meta.api.objects.*
+import org.telegram.telegrambots.meta.api.objects.MemberStatus
+import org.telegram.telegrambots.meta.api.objects.Message
+import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.User
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.io.Serializable
+import java.sql.ResultSet
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -98,3 +104,13 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
     }
 
 fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)
+
+fun <T : Any> String.execAndMap(transform: (ResultSet) -> T): List<T> {
+    val result = arrayListOf<T>()
+    TransactionManager.current().exec(this) { rs ->
+        while (rs.next()) {
+            result += transform(rs)
+        }
+    }
+    return result
+}

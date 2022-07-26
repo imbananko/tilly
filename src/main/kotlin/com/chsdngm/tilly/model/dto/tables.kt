@@ -5,8 +5,6 @@ import com.chsdngm.tilly.model.VoteValue
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
-import org.jetbrains.exposed.sql.statements.InsertStatement
-import org.jetbrains.exposed.sql.statements.UpdateStatement
 
 object Memes : IntIdTable("meme", "id") {
     val moderationChatId = long("moderation_chat_id")
@@ -28,19 +26,10 @@ object Votes : Table("vote") {
     val created = timestamp("created")
 }
 
-fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
-    it[Memes.status] = this.status
-    it[Memes.channelMessageId] = this.channelMessageId
-    it[Memes.caption] = this.caption
-    it[Memes.fileId] = this.fileId
-    it[Memes.moderationChatId] = this.moderationChatId
-    it[Memes.privateReplyMessageId] = this.privateReplyMessageId
-    it[Memes.senderId] = this.senderId
-    it[Memes.moderationChatMessageId] = this.moderationChatMessageId
-    it[Memes.created] = this.created
-}
-
-fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statement.also {
-    it[Memes.status] = this.status
-    it[Memes.channelMessageId] = this.channelMessageId
+object Images : Table("image") {
+    val fileId = text("file_id")
+    val file = binary("file")
+    val hash = binary("hash")
+    val rawText = text("raw_text").nullable()
+    val rawLabels = text("raw_labels").nullable()
 }

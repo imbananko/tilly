@@ -55,7 +55,7 @@ dependencies {
 //    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
 
     // spring
-    implementation("org.telegram:telegrambots-spring-boot-starter:5.2.0")
+    implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
@@ -64,7 +64,6 @@ dependencies {
 
     implementation("org.postgresql:postgresql:42.2.6")
     implementation("com.github.kilianB:JImageHash:3.0.0")
-    implementation("com.vladmihalcea:hibernate-types-52:2.10.0")
 
 //    compileOnly("org.ktorm:ktorm-core:3.3.0")
 //    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")

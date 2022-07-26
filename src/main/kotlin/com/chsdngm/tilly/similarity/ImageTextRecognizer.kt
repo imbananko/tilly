@@ -19,8 +19,8 @@ class ImageTextRecognizer(
     private val log = LoggerFactory.getLogger(javaClass)
 
     data class AnalyzingResults(
-        val words: List<String>,
-        val labels: List<String>,
+        val words: String?,
+        val labels: String?,
         val fileId: String,
     )
 
@@ -38,8 +38,8 @@ class ImageTextRecognizer(
                 Type.LABEL_DETECTION
             )
 
-            val words = response.textAnnotationsList.drop(1).map { word -> word.description }
-            val labels = response.labelAnnotationsList.map { word -> word.description }
+            val words = response.textAnnotationsList.firstOrNull()?.description
+            val labels = response.labelAnnotationsList.joinToString(separator = ",") { it.description }
             AnalyzingResults(words, labels, fileId)
 
         }.onSuccess {
@@ -49,12 +49,11 @@ class ImageTextRecognizer(
         }.getOrNull()
 
         if (results?.words?.isNotEmpty() == true) {
-            val text = results.words.joinToString(separator = " ")
             val indexRequest =
                 IndexRequest(INDEX_NAME)
                     .id(results.fileId)
                     .type(INDEX_DOCUMENT_TYPE)
-                    .source(TEXT_FIELD_NAME, text)
+                    .source(TEXT_FIELD_NAME, results.words)
 
             runCatching {
                 elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)

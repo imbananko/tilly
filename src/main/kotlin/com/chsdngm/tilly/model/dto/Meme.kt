@@ -2,6 +2,8 @@ package com.chsdngm.tilly.model.dto
 
 import com.chsdngm.tilly.model.MemeStatus
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.statements.InsertStatement
+import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.time.Instant
 
 data class Meme(
@@ -19,6 +21,22 @@ data class Meme(
     val votes: MutableList<Vote> = mutableListOf()
 }
 
+fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
+    it[Memes.status] = this.status
+    it[Memes.channelMessageId] = this.channelMessageId
+    it[Memes.caption] = this.caption
+    it[Memes.fileId] = this.fileId
+    it[Memes.moderationChatId] = this.moderationChatId
+    it[Memes.privateReplyMessageId] = this.privateReplyMessageId
+    it[Memes.senderId] = this.senderId
+    it[Memes.moderationChatMessageId] = this.moderationChatMessageId
+    it[Memes.created] = this.created
+}
+
+fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statement.also {
+    it[Memes.status] = this.status
+    it[Memes.channelMessageId] = this.channelMessageId
+}
 
 fun ResultRow.toMeme(): Meme? {
     if (this.getOrNull(Memes.id) == null) {

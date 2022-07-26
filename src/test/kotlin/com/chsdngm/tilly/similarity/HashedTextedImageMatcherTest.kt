@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.similarity
 
-import com.chsdngm.tilly.model.Image
-import com.chsdngm.tilly.repository.ImageRepository
+import com.chsdngm.tilly.model.dto.Image
+import com.chsdngm.tilly.repository.ImageDao
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
@@ -19,8 +19,17 @@ class HashedTextedImageMatcherTest {
   @Suppress("unused")
   companion object {
     @JvmStatic
-    val memes = listOf("original_meme.jpg", "meme_changed_more.jpg", "doctor1.jpg", "doctor2.jpg", "doctor3.jpg", "meme1.jpg", "meme2.jpg", "duplicate1.jpg", "duplicate2.jpg")
-        .map { it to loadMeme(it) }.toMap()
+    val memes = listOf(
+      "original_meme.jpg",
+      "meme_changed_more.jpg",
+      "doctor1.jpg",
+      "doctor2.jpg",
+      "doctor3.jpg",
+      "meme1.jpg",
+      "meme2.jpg",
+      "duplicate1.jpg",
+      "duplicate2.jpg"
+    ).associateWith { loadMeme(it) }
 
     @JvmStatic
     fun imageProvider() = memes.values.stream()
@@ -33,7 +42,7 @@ class HashedTextedImageMatcherTest {
 
   @BeforeEach
   fun init() {
-    imageMatcher = ImageMatcher(mock(ImageRepository::class.java))
+    imageMatcher = ImageMatcher(mock(ImageDao::class.java))
     imageMatcher.init()
   }
 
