@@ -176,6 +176,13 @@ class MemeHandler(
         val moderator = userRepository.findTopSenders(sender.id, TelegramConfig.BOT_ID)
             .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
 
+        SendMessage().apply {
+            chatId = BETA_CHAT_ID
+            text = "Picked moderator=$moderator"
+            parseMode = ParseMode.HTML
+            disableNotification = true
+        }.let { api.execute(it) }
+
         log.info("Picked moderator=$moderator")
 
         return runCatching {
