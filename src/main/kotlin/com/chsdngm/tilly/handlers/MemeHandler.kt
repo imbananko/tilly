@@ -176,6 +176,8 @@ class MemeHandler(
         val moderator = userRepository.findTopSenders(sender.id, TelegramConfig.BOT_ID)
             .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
 
+        log.info("Picked moderator=$moderator")
+
         return runCatching {
             moderateWithUser(update, moderator.id.toLong()).also { meme ->
                 log.info("sent for moderation to user=$moderator. meme=$meme")
