@@ -3,6 +3,8 @@ package com.chsdngm.tilly.model.dto
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.VoteValue
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.BasicBinaryColumnType
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
@@ -28,8 +30,16 @@ object Votes : Table("vote") {
 
 object Images : Table("image") {
     val fileId = text("file_id")
-    val file = binary("file")
-    val hash = binary("hash")
+    val file = binaryCustomLogging("file")
+    val hash = binaryCustomLogging("hash")
     val rawText = text("raw_text").nullable()
     val rawLabels = text("raw_labels").nullable()
+
+    private fun binaryCustomLogging(name: String): Column<ByteArray> = registerColumn(name, BasicBinaryColumnTypeCustomLogging)
+}
+
+object BasicBinaryColumnTypeCustomLogging : BasicBinaryColumnType() {
+    override fun valueToString(value: Any?): String {
+        return "bytes:${(value as ByteArray).size}"
+    }
 }
