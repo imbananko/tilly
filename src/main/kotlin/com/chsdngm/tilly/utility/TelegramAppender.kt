@@ -1,6 +1,8 @@
 package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.core.LogEvent
 import org.apache.logging.log4j.core.LoggerContext
@@ -31,6 +33,8 @@ class TelegramAppender(val tillyConfig: TelegramConfig) :
     }
 
     class SendToChat(private val logs: LinkedBlockingQueue<String>) : Runnable {
+        private val messageLimit = 4096
+
         override fun run() {
             val lines = mutableListOf<String>()
             logs.drainTo(lines)
@@ -39,15 +43,25 @@ class TelegramAppender(val tillyConfig: TelegramConfig) :
 
                 val sb = StringBuilder()
                 for (row in lines) {
-                    sb.appendLine("`$row`").append("\n")
+                    if (sb.length + row.length < messageLimit) {
+                        sb.appendLine("`$row`").append("\n")
+                    } else {
+                        SendMessage().apply {
+                            chatId = LOGS_CHAT_ID
+                            parseMode = ParseMode.MARKDOWN
+                            text = sb.toString()
+                        }.let { api.executeAsync(it) }
+
+                        sb.clear()
+                    }
                 }
 
-                SendMessage().apply {
-                    chatId = TelegramConfig.LOGS_CHAT_ID
-                    parseMode = ParseMode.MARKDOWN
-                    text = sb.toString()
-                }.let {
-                    TelegramConfig.api.executeAsync(it)
+                if (sb.isNotEmpty()) {
+                    SendMessage().apply {
+                        chatId = LOGS_CHAT_ID
+                        parseMode = ParseMode.MARKDOWN
+                        text = sb.toString()
+                    }.let { api.executeAsync(it) }
                 }
             }
         }

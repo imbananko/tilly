@@ -173,19 +173,16 @@ class MemeHandler(
             return false
         }
 
-        val moderator = userRepository.findTopSenders(sender.id, TelegramConfig.BOT_ID)
-            .firstOrNull { potentialModerator -> !currentModerators.contains(potentialModerator.id) } ?: return false
+        val moderationCandidates = userRepository.findTopSenders(sender.id, TelegramConfig.BOT_ID)
+            .filter { potentialModerator -> !currentModerators.contains(potentialModerator.id) }
 
-        SendMessage().apply {
-            chatId = BETA_CHAT_ID
-            text = "Picked moderator=$moderator"
-            parseMode = ParseMode.HTML
-            disableNotification = true
-        }.let { api.execute(it) }
+        if (moderationCandidates.isEmpty()) {
+            return false
+        }
 
-        log.info("Picked moderator=$moderator")
+        fun successfullyModerated(moderator: TelegramUser) = runCatching {
+            log.info("Picked moderator=$moderator")
 
-        return runCatching {
             moderateWithUser(update, moderator.id.toLong()).also { meme ->
                 log.info("sent for moderation to user=$moderator. meme=$meme")
                 privateModeratorRepository.addPrivateModerator(moderator.id)
@@ -194,6 +191,14 @@ class MemeHandler(
         }.onFailure {
             logExceptionInBetaChat(it)
         }.isSuccess
+
+        for (moderator in moderationCandidates) {
+            if (successfullyModerated(moderator)) {
+                return true
+            }
+        }
+
+        return false
     }
 
     private fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
