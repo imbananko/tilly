@@ -46,7 +46,7 @@ class MemeDao {
 
     fun findAllBySenderId(senderId: Int): List<Meme> = transaction {
         (Memes leftJoin Votes)
-            .select { Memes.senderId eq senderId }.toMemes()
+            .select { Memes.senderId eq senderId }.orderBy(Memes.created).toMemes()
     }
 
     fun findByFileId(fileId: String): Meme? = transaction {
