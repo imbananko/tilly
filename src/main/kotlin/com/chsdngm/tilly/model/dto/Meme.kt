@@ -7,8 +7,8 @@ import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.time.Instant
 
 data class Meme(
-    val moderationChatId: Long,
-    val moderationChatMessageId: Int,
+    val moderationChatId: Long?,
+    val moderationChatMessageId: Int?,
     val senderId: Int,
     var status: MemeStatus,
     val privateReplyMessageId: Int?,

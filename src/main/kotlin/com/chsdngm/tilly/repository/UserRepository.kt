@@ -63,4 +63,6 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
     """
     )
     fun findUserWeekRank(@Param("userId") userId: Long): Int?
+
+    fun findByDistributedModerationGroupId(distributedModerationGroupId: Int): List<TelegramUser>
 }

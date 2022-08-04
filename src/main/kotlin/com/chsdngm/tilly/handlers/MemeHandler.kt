@@ -8,8 +8,8 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
-import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
-import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.PrivateVoteValue.*
+import com.chsdngm.tilly.model.DistributedVoteValue.*
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.repository.ImageDao
@@ -57,6 +57,10 @@ class MemeHandler(
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     private val log = LoggerFactory.getLogger(javaClass)
+
+    private val distributedModerationMessage = """
+        Ты в числе тех, кому доверено теперь оценивать мемы. Цени это и оценивай с душой.
+    """.trimIndent()
 
     private val moderationPool = TreeMap<Int, WeightedModerationType>()
     private val moderationType = Random()
@@ -142,6 +146,7 @@ class MemeHandler(
             // Balancing with weight
             when (moderationPool.ceilingEntry(moderationType.nextInt(totalWeight)).value) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update)
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
                 else -> moderateWithGroup(update)
             }
@@ -164,6 +169,38 @@ class MemeHandler(
 
         imageDao.insert(image)
         imageMatcher.add(image)
+    }
+
+    private fun performDistributedModeration(update: MemeUpdate): Boolean {
+        fun getDistributedModerationGroupId(): Int = 1
+
+        val distributedModerationGroupId = getDistributedModerationGroupId()
+
+        val senderMessageId = replyToSender(update).messageId
+        val meme = memeDao.insert(
+                Meme(
+                        null,
+                        null,
+                        update.user.id.toInt(),
+                        update.status,
+                        senderMessageId,
+                        update.fileId,
+                        update.caption
+                )
+        )
+        val distributedGroupMembers = userRepository.findByDistributedModerationGroupId(distributedModerationGroupId)
+
+        for (member in distributedGroupMembers) {
+            SendPhoto().apply {
+                chatId = member.id.toString()
+                photo = InputFile(update.fileId)
+                caption = (update.caption?.let { it + "\n\n" } ?: "") + distributedModerationMessage
+                parseMode = ParseMode.HTML
+                replyMarkup = createDistributedModerationMarkup()
+            }.let { api.execute(it) }.let { sent ->
+
+            }
+        }
     }
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
@@ -246,7 +283,7 @@ class MemeHandler(
         SendPhoto().apply {
             chatId = moderatorId.toString()
             photo = InputFile(update.fileId)
-            caption = update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")
+            caption = (update.caption?.let { it + "\n\n" } ?: "") + "Теперь ты модератор!"
             parseMode = ParseMode.HTML
             replyMarkup = createPrivateModerationMarkup()
         }.let { api.execute(it) }.let { sent ->
@@ -367,6 +404,13 @@ class MemeHandler(
             listOf(InlineKeyboardButton("Отправить на канал ${APPROVE.emoji}").also { it.callbackData = APPROVE.name }),
             listOf(InlineKeyboardButton("Предать забвению ${DECLINE.emoji}").also { it.callbackData = DECLINE.name })
         )
+    )
+
+    fun createDistributedModerationMarkup() = InlineKeyboardMarkup(
+            listOf(
+                    listOf(InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name }),
+                    listOf(InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
+            )
     )
 
     private fun replyToBannedUser(update: MemeUpdate): Message = SendMessage().apply {

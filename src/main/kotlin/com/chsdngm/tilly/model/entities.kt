@@ -19,7 +19,8 @@ data class TelegramUser(
     val firstName: String?,
     val lastName: String?,
     @Enumerated(EnumType.STRING)
-    val status: UserStatus
+    val status: UserStatus,
+    val distributedModerationGroupId: Int?
 ) {
     fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
 }
