@@ -32,7 +32,9 @@ bot:
 
 target.chat.id: 0
 target.channel.id: 0
+
 beta.chat.id: -1001401091410
+montorn.chat.id: -1001662205170
 
 metadata:
   commit.sha: local

@@ -19,6 +19,9 @@ class TelegramConfig {
         var BETA_CHAT_ID = ""
 
         @JvmField
+        var MONTORN_CHAT_ID = ""
+
+        @JvmField
         var BOT_TOKEN = ""
 
         @JvmField
@@ -70,5 +73,10 @@ class TelegramConfig {
     @Value("\${logs.chat.id}")
     fun setLogsChatId(logsChatId: String) {
         LOGS_CHAT_ID = logsChatId
+    }
+
+    @Value("\${montorn.chat.id}")
+    fun setMontornChatId(montornChatId: String) {
+        MONTORN_CHAT_ID = montornChatId
     }
 }
