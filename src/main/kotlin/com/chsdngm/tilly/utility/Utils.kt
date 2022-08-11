@@ -3,6 +3,7 @@ package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.MONTORN_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.format
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
@@ -44,7 +45,7 @@ fun Update.hasPrivateVote() = this.hasCallbackQuery()
 }.getOrDefault(false)
 
 fun Update.hasAutosuggestionVote() = this.hasCallbackQuery()
-        && this.callbackQuery.message.chatId.toString() == BETA_CHAT_ID
+        && this.callbackQuery.message.chatId.toString() == MONTORN_CHAT_ID
         && runCatching {
     setOf(*AutosuggestionVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
