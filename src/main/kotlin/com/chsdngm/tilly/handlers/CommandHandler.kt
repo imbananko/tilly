@@ -3,7 +3,6 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
-import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -26,15 +26,14 @@ import java.util.concurrent.Executors
 class CommandHandler(
     private val userRepository: UserRepository,
     private val memeDao: MemeDao,
-    private val voteDao: VoteDao,
-    private val metricsUtils: MetricsUtils
+    private val voteDao: VoteDao
 ) :
     AbstractHandler<CommandUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    var commandHandlerExecutor: ExecutorService = Executors.newFixedThreadPool(10)
+    var executor: ExecutorService = Executors.newFixedThreadPool(10)
 
-    override fun handleSync(update: CommandUpdate) {
+    override fun handle(update: CommandUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         if (update.value == Command.STATS) {
             sendStats(update)
         } else if (update.value == Command.HELP || update.value == Command.START) {
@@ -44,16 +43,8 @@ class CommandHandler(
         } else {
             log.warn("unknown command from update=$update")
         }
-
+    }, executor).thenAccept {
         log.info("processed command update=$update")
-    }
-
-    override fun getExecutor(): ExecutorService {
-        return commandHandlerExecutor
-    }
-
-    override fun measureTime(update: CommandUpdate) {
-        metricsUtils.measure(update)
     }
 
     private fun sendStats(update: CommandUpdate) = runBlocking {

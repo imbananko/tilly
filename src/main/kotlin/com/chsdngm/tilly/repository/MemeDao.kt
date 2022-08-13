@@ -54,24 +54,23 @@ class MemeDao {
     }
 
     fun findTopRatedMemeForLastWeek(): Meme? = transaction {
-        val sql = """
-                select ${Memes.allFields} 
-                from meme    
-                    left join vote v on id = v.meme_id where channel_message_id is not null    
-                    and meme.created > current_timestamp - interval '7 days' 
-                group by id 
-                order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc 
-                limit 1;
-                """.trimIndent()
+        val sql = "" +
+                "select ${Memes.allFields} " +
+                "from meme " +
+                "   left join vote v on id = v.meme_id " +
+                "where channel_message_id is not null " +
+                "   and meme.created > current_timestamp - interval '7 days' " +
+                "group by id " +
+                "order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc " +
+                "limit 1;"
 
         sql.execAndMap { rs -> ResultRow.create(rs, indexedFields) }.toMeme()
     }
 
     fun saveMemeOfTheWeek(memeId: Int) = transaction {
-        val sql = """
-            insert into meme_of_week (meme_id) 
-            values ($memeId);
-            """.trimIndent()
+        val sql = "" +
+                "insert into meme_of_week (meme_id) " +
+                "values ($memeId);"
 
         sql.execAndMap { }
     }

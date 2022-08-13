@@ -1,10 +1,7 @@
 package com.chsdngm.tilly.metrics
 
 import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
-import com.chsdngm.tilly.model.CommandUpdate
-import com.chsdngm.tilly.model.MemeUpdate
-import com.chsdngm.tilly.model.Timestampable
-import com.chsdngm.tilly.model.VoteUpdate
+import com.chsdngm.tilly.model.dto.Vote
 import com.google.api.Metric
 import com.google.api.MetricDescriptor
 import com.google.api.MonitoredResource
@@ -19,6 +16,7 @@ import org.springframework.stereotype.Component
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
+
 @Component
 class MetricsUtils(credentialsProvider: CredentialsProvider) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -26,11 +24,14 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
     companion object {
         private const val CUSTOM_GOOGLEAPIS = "custom.googleapis.com"
 
+        private const val CHAT_ID_LABEL = "chat_id"
+        private const val VOTER_ID_LABEL = "voter_id"
+        private const val MEME_ID_LABEL = "meme_id"
         private const val PROJECT_ID = "project_id"
         private const val THRESHOLD = 5
     }
 
-    private val durationSeries = mutableMapOf<Timestampable, TimeSeries>()
+    private val timeSeries = mutableMapOf<Vote, TimeSeries>()
     private val metricServiceClient: MetricServiceClient
     private val resource: MonitoredResource
     private val projectId: String
@@ -51,46 +52,13 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         metricServiceClient = MetricServiceClient.create(metricServiceSettings)
     }
 
-    fun measure(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
-        //TODO refactor
+    fun measureVoteProcessing(vote: Vote): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
         if (COMMIT_SHA == "local") {
             return@supplyAsync
         }
 
         val endTimeMs = System.currentTimeMillis()
-        val startTimeMs = update.createdAt
 
-        val durationPoint = buildDurationPoint(startTimeMs, endTimeMs)
-        val metric = buildMetric(update)
-
-        durationSeries[update] = TimeSeries.newBuilder()
-            .setMetric(metric)
-            .setMetricKind(MetricDescriptor.MetricKind.GAUGE)
-            .setResource(resource)
-            .addPoints(durationPoint)
-            .build()
-
-        checkMetricShipment()
-    }
-
-    private fun buildMetric(update: Timestampable): Metric? {
-        val metric = when (update) {
-            is VoteUpdate -> Metric.newBuilder()
-                .setType("$CUSTOM_GOOGLEAPIS/votes/processing_duration")
-                .putAllLabels(update.toLabels())
-            is MemeUpdate -> Metric.newBuilder()
-                .setType("$CUSTOM_GOOGLEAPIS/memes/processing_duration")
-                .putAllLabels(update.toLabels())
-            is CommandUpdate -> Metric.newBuilder()
-                .setType("$CUSTOM_GOOGLEAPIS/commands/processing_duration")
-                .putAllLabels(update.toLabels())
-            else -> null
-        }
-
-        return metric?.build()
-    }
-
-    private fun buildDurationPoint(startTimeMs: Long, endTimeMs: Long): Point {
         val interval: TimeInterval = TimeInterval.newBuilder()
             .setEndTime(
                 Timestamp.newBuilder()
@@ -98,21 +66,41 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
                     .setNanos((TimeUnit.MILLISECONDS.toNanos(endTimeMs) % (1000 * 1000 * 1000)).toInt())
             ).build()
 
-        val value = TypedValue.newBuilder()
-            .setDoubleValue(endTimeMs.toDouble() - startTimeMs.toDouble())
+        val value =
+            TypedValue.newBuilder()
+                .setDoubleValue(endTimeMs.toDouble() - vote.created.toEpochMilli().toDouble())
+                .build()
+
+        val point = Point.newBuilder().setValue(value).setInterval(interval).build()
+
+        val labels = mutableMapOf(
+            CHAT_ID_LABEL to "${vote.sourceChatId}",
+            VOTER_ID_LABEL to "${vote.voterId}",
+            MEME_ID_LABEL to "${vote.memeId}",
+        )
+
+        val metric = Metric.newBuilder()
+            .setType("$CUSTOM_GOOGLEAPIS/votes/processing_duration")
+            .putAllLabels(labels)
             .build()
 
-        return Point.newBuilder().setValue(value).setInterval(interval).build()
+        timeSeries[vote] = TimeSeries.newBuilder()
+            .setMetric(metric)
+            .setMetricKind(MetricDescriptor.MetricKind.GAUGE)
+            .setResource(resource)
+            .addPoints(point)
+            .build()
+
+        checkMetricShipment()
     }
 
     private fun checkMetricShipment() {
-        if (durationSeries.size >= THRESHOLD) {
+        if (timeSeries.size >= THRESHOLD) {
             runCatching {
                 val request = CreateTimeSeriesRequest.newBuilder().setName(ProjectName.of(projectId).toString())
-                    .addAllTimeSeries(durationSeries.values)
-                    .build()
+                    .addAllTimeSeries(timeSeries.values).build()
 
-                durationSeries.clear()
+                timeSeries.clear()
 
                 metricServiceClient.createTimeSeries(request)
             }.onFailure {
@@ -120,24 +108,4 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
             }
         }
     }
-
-    private fun VoteUpdate.toLabels() = mutableMapOf(
-        "chat_id" to this.sourceChatId,
-        "voter_id" to "${this.voterId}",
-        "message_id" to "${this.messageId}",
-        "value" to "${this.voteValue}"
-    )
-
-    private fun MemeUpdate.toLabels() = mutableMapOf(
-        "user_id" to "${this.user.id}",
-        "message_id" to "${this.messageId}",
-        "file_id" to this.fileId,
-    )
-
-    private fun CommandUpdate.toLabels() = mutableMapOf(
-        "sender_id" to this.senderId,
-        "message_id" to "${this.messageId}",
-        "chat_id" to this.chatId,
-        "text" to this.text,
-    )
 }

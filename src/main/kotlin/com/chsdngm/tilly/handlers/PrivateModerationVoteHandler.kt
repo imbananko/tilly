@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -26,9 +27,9 @@ import java.util.concurrent.Executors
 class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val voteDao: VoteDao) :
     AbstractHandler<PrivateVoteUpdate> {
     private val log = LoggerFactory.getLogger(javaClass)
-    var privateModerationVoteHandlerExecutor: ExecutorService = Executors.newFixedThreadPool(10)
+    var executor: ExecutorService = Executors.newFixedThreadPool(10)
 
-    override fun handleSync(update: PrivateVoteUpdate) {
+    override fun handle(update: PrivateVoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         memeDao.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
             ?.let {
                 when (update.voteValue) {
@@ -36,13 +37,9 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
                     PrivateVoteValue.DECLINE -> decline(update, it)
                 }
             } ?: log.error("unknown voteValue=${update.voteValue}")
-
-        log.info("processed private vote update=$update")
-    }
-
-    override fun getExecutor(): ExecutorService {
-        return privateModerationVoteHandlerExecutor
-    }
+    },
+        executor
+    ).thenAccept { log.info("processed private vote update=$update") }
 
     private fun approve(update: PrivateVoteUpdate, meme: Meme) {
         EditMessageCaption().apply {

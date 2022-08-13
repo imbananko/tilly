@@ -1,4 +1,4 @@
-package com.chsdngm.tilly.metrics
+package com.chsdngm.tilly.utility
 
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
@@ -20,8 +20,8 @@ import javax.annotation.PostConstruct
 
 
 @Component
-class TelegramLogAppender(val tillyConfig: TelegramConfig) :
-    AbstractAppender("TelegramLogAppender", null, PatternLayout.createDefaultLayout(), false, arrayOf()) {
+class TelegramAppender(val tillyConfig: TelegramConfig) :
+    AbstractAppender("TelegramAppender", null, PatternLayout.createDefaultLayout(), false, arrayOf()) {
 
     val formatter = SimpleDateFormat("HH:mm:ss.SSS").apply { this.timeZone = TimeZone.getTimeZone("UTC") }
 

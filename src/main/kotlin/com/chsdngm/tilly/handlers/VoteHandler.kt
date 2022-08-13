@@ -22,6 +22,8 @@ import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @Service
 class VoteHandler(
@@ -31,14 +33,15 @@ class VoteHandler(
 ) : AbstractHandler<VoteUpdate> {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
-    override fun handleSync(update: VoteUpdate) {
+    override fun handle(update: VoteUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         if (update.isOld) {
             sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-            return
+            return@supplyAsync
         }
 
-        val meme = when (update.sourceChatId) {
+        val meme = when (update.isFrom) {
             CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
             CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
                 CHAT_ID.toLong(),
@@ -49,15 +52,15 @@ class VoteHandler(
 
         if (meme.senderId == update.voterId.toInt()) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return
+            return@supplyAsync
         }
 
         val vote = Vote(
             meme.id,
             update.voterId.toInt(),
-            update.sourceChatId.toLong(),
+            update.isFrom.toLong(),
             update.voteValue,
-            created = Instant.ofEpochMilli(update.createdAt)
+            created = Instant.ofEpochMilli(update.timestampMs)
         )
 
         lateinit var voteUpdate: Runnable
@@ -89,9 +92,12 @@ class VoteHandler(
 
         voteUpdate.run()
 
+        metricsUtils.measureVoteProcessing(vote)
         markupUpdate.join()
-        log.info("processed vote update=$update")
-    }
+    }, executor)
+        .thenAccept {
+            log.info("processed vote update=$update")
+        }
 
     fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
         AnswerCallbackQuery().apply {
@@ -133,9 +139,5 @@ class VoteHandler(
             meme.status = SCHEDULED
             memeDao.update(meme)
         }
-    }
-
-    override fun measureTime(update: VoteUpdate) {
-        metricsUtils.measure(update)
     }
 }

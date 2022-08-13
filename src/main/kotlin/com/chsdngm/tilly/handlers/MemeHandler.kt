@@ -39,6 +39,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 
 @Service
@@ -50,6 +53,8 @@ class MemeHandler(
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
 ) : AbstractHandler<MemeUpdate> {
+
+    var executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -64,17 +69,13 @@ class MemeHandler(
         }
     }
 
-    fun handle(update: AutoSuggestedMemeUpdate) {
+    fun handle(update: AutoSuggestedMemeUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         update.file = download(update.fileId)
 
         val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
         if (duplicateFileId != null) {
-            sendDuplicateToBeta(
-                update.user.mention(),
-                duplicateFileId = update.fileId,
-                originalFileId = duplicateFileId
-            )
-            return
+            sendDuplicateToBeta(update.user.mention(), duplicateFileId = update.fileId, originalFileId = duplicateFileId)
+            return@supplyAsync
         }
 
         val message = SendPhoto().apply {
@@ -100,10 +101,10 @@ class MemeHandler(
         log.info("sent for moderation to group chat. meme=$meme")
         handleImage(update)
 
-        log.info("processed meme update=$update")
-    }
+    }, executor
+    ).thenAccept { log.info("processed meme update=$update") }
 
-    override fun handleSync(update: MemeUpdate) {
+    override fun handle(update: MemeUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         update.file = download(update.fileId)
 
         val memeSender = userRepository.findById(update.user.id.toInt()).let {
@@ -126,13 +127,13 @@ class MemeHandler(
         if (memeSender.status == UserStatus.BANNED) {
             replyToBannedUser(update)
             sendBannedEventToBeta(update, memeSender)
-            return
+            return@supplyAsync
         }
 
         val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
         if (duplicateFileId != null) {
             handleDuplicate(update, duplicateFileId)
-            return
+            return@supplyAsync
         }
 
         if (update.isFreshman || update.status == LOCAL) {
@@ -147,7 +148,9 @@ class MemeHandler(
         }
 
         handleImage(update)
-    }
+
+        }, executor
+    ).thenAccept { log.info("processed meme update=$update") }
 
     private fun handleImage(update: MemeUpdate) {
         val analyzingResults = imageTextRecognizer.analyzeAndIndex(update.file, update.fileId)
