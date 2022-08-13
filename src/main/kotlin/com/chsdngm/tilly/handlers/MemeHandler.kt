@@ -6,6 +6,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
@@ -49,6 +50,7 @@ class MemeHandler(
     private val imageDao: ImageDao,
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
+    private val metricsUtils: MetricsUtils,
 ) : AbstractHandler<MemeUpdate> {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -101,6 +103,10 @@ class MemeHandler(
         handleImage(update)
 
         log.info("processed meme update=$update")
+    }
+
+    override fun measureTime(update: MemeUpdate) {
+        metricsUtils.measure(update)
     }
 
     override fun handleSync(update: MemeUpdate) {
