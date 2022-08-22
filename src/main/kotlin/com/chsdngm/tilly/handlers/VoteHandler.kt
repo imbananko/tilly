@@ -134,8 +134,4 @@ class VoteHandler(
             memeDao.update(meme)
         }
     }
-
-    override fun measureTime(update: VoteUpdate) {
-        metricsUtils.measure(update)
-    }
 }
