@@ -8,18 +8,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
-class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : AbstractHandler<InlineCommandUpdate> {
+class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : AbstractHandler<InlineCommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
     val chunkSize = 16
-    var inlineCommandHandlerExecutor: ExecutorService = Executors.newFixedThreadPool(10)
-
-    override fun getExecutor(): ExecutorService {
-        return inlineCommandHandlerExecutor
-    }
 
     override fun handleSync(update: InlineCommandUpdate) {
         if (update.value.isBlank() || update.value.length < 2) {

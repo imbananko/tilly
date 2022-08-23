@@ -19,8 +19,6 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
 class CommandHandler(
@@ -29,10 +27,8 @@ class CommandHandler(
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils
 ) :
-    AbstractHandler<CommandUpdate> {
+    AbstractHandler<CommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
-
-    var commandHandlerExecutor: ExecutorService = Executors.newFixedThreadPool(10)
 
     override fun handleSync(update: CommandUpdate) {
         if (update.value == Command.STATS) {
@@ -46,10 +42,6 @@ class CommandHandler(
         }
 
         log.info("processed command update=$update")
-    }
-
-    override fun getExecutor(): ExecutorService {
-        return commandHandlerExecutor
     }
 
     override fun measureTime(update: CommandUpdate) {
