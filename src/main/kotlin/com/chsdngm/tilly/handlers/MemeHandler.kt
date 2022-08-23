@@ -40,6 +40,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import java.util.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 
 @Service
@@ -51,9 +53,10 @@ class MemeHandler(
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
     private val metricsUtils: MetricsUtils,
-) : AbstractHandler<MemeUpdate> {
+) : AbstractHandler<MemeUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val memeExecutorService = Executors.newSingleThreadExecutor()
 
     private val moderationPool = TreeMap<Int, WeightedModerationType>()
     private val moderationType = Random()
@@ -386,4 +389,6 @@ class MemeHandler(
         disableNotification = true
 
     }.let { api.execute(it) }
+
+    override fun getExecutor(): ExecutorService = memeExecutorService
 }

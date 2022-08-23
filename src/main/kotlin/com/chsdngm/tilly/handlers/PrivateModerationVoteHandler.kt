@@ -19,14 +19,11 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
 class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val voteDao: VoteDao) :
-    AbstractHandler<PrivateVoteUpdate> {
+    AbstractHandler<PrivateVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
-    var privateModerationVoteHandlerExecutor: ExecutorService = Executors.newFixedThreadPool(10)
 
     override fun handleSync(update: PrivateVoteUpdate) {
         memeDao.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
@@ -38,10 +35,6 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
             } ?: log.error("unknown voteValue=${update.voteValue}")
 
         log.info("processed private vote update=$update")
-    }
-
-    override fun getExecutor(): ExecutorService {
-        return privateModerationVoteHandlerExecutor
     }
 
     private fun approve(update: PrivateVoteUpdate, meme: Meme) {

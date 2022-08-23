@@ -16,7 +16,6 @@ import com.google.monitoring.v3.*
 import com.google.protobuf.Timestamp
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 @Component
@@ -51,10 +50,10 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         metricServiceClient = MetricServiceClient.create(metricServiceSettings)
     }
 
-    fun measure(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
+    fun measure(update: Timestampable) {
         //TODO refactor
         if (COMMIT_SHA == "local") {
-            return@supplyAsync
+            return
         }
 
         val endTimeMs = System.currentTimeMillis()

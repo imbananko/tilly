@@ -22,15 +22,18 @@ import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @Service
 class VoteHandler(
     val memeDao: MemeDao,
     val voteDao: VoteDao,
     val metricsUtils: MetricsUtils
-) : AbstractHandler<VoteUpdate> {
+) : AbstractHandler<VoteUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val voteExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handleSync(update: VoteUpdate) {
         if (update.isOld) {
@@ -134,4 +137,10 @@ class VoteHandler(
             memeDao.update(meme)
         }
     }
+
+    override fun measureTime(update: VoteUpdate) {
+        metricsUtils.measure(update)
+    }
+
+    override fun getExecutor(): ExecutorService = voteExecutorService
 }
