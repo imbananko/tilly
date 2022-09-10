@@ -8,7 +8,7 @@ import java.time.Instant
 
 data class Vote(
     val memeId: Int,
-    val voterId: Int,
+    val voterId: Long,
     var sourceChatId: Long,
     var value: VoteValue,
     val created: Instant = Instant.now(),
@@ -27,7 +27,7 @@ data class Vote(
 
     override fun hashCode(): Int {
         var result = memeId
-        result = 31 * result + voterId
+        result = 31 * result + voterId.hashCode()
         return result
     }
 }

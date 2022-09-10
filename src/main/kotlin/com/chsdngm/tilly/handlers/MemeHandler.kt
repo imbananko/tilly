@@ -94,7 +94,7 @@ class MemeHandler(
             Meme(
                 CHAT_ID.toLong(),
                 message.messageId,
-                update.user.id.toInt(),
+                update.user.id,
                 update.status,
                 null,
                 update.fileId,
@@ -235,7 +235,7 @@ class MemeHandler(
                 Meme(
                     CHAT_ID.toLong(),
                     it.messageId,
-                    update.user.id.toInt(),
+                    update.user.id,
                     update.status,
                     senderMessageId,
                     update.fileId,
@@ -261,7 +261,7 @@ class MemeHandler(
                 Meme(
                     moderatorId,
                     sent.messageId,
-                    update.user.id.toInt(),
+                    update.user.id,
                     update.status,
                     senderMessageId,
                     update.fileId,

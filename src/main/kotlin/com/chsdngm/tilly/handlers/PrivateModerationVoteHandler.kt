@@ -46,7 +46,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
 
         meme.status = MemeStatus.SCHEDULED
         memeDao.update(meme)
-        voteDao.insert(Vote(meme.id, update.user.id.toInt(), update.user.id, VoteValue.UP))
+        voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.UP))
 
         updateStatsInSenderChat(meme)
 
@@ -63,7 +63,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
 
         meme.status = MemeStatus.DECLINED
         memeDao.update(meme)
-        voteDao.insert(Vote(meme.id, update.user.id.toInt(), update.user.id, VoteValue.DOWN))
+        voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.DOWN))
 
         updateStatsInSenderChat(meme)
 

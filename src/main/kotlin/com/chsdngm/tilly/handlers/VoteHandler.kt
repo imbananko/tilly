@@ -50,14 +50,14 @@ class VoteHandler(
             else -> null
         } ?: throw NotFoundException("Meme wasn't found. update=$update")
 
-        if (meme.senderId == update.voterId.toInt()) {
+        if (meme.senderId == update.voterId) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
             return
         }
 
         val vote = Vote(
             meme.id,
-            update.voterId.toInt(),
+            update.voterId,
             update.sourceChatId.toLong(),
             update.voteValue,
             created = Instant.ofEpochMilli(update.createdAt)
