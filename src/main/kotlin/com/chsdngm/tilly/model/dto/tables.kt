@@ -11,7 +11,7 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 object Memes : IntIdTable("meme", "id") {
     val moderationChatId = long("moderation_chat_id")
     val moderationChatMessageId = integer("moderation_chat_message_id")
-    val senderId = integer("sender_id")
+    val senderId = long("sender_id")
     val status = enumerationByName("status", 10, MemeStatus::class)
     val privateReplyMessageId = integer("private_reply_message_id").nullable()
     val fileId = text("file_id")
@@ -22,7 +22,7 @@ object Memes : IntIdTable("meme", "id") {
 
 object Votes : Table("vote") {
     val memeId = integer("meme_id").references(Memes.id)
-    val voterId = integer("voter_id")
+    val voterId = long("voter_id")
     val sourceChatId = long("source_chat_id")
     val value = enumerationByName("value", 10, VoteValue::class)
     val created = timestamp("created")

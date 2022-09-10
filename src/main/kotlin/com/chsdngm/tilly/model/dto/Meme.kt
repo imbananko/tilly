@@ -9,7 +9,7 @@ import java.time.Instant
 data class Meme(
     val moderationChatId: Long,
     val moderationChatMessageId: Int,
-    val senderId: Int,
+    val senderId: Long,
     var status: MemeStatus,
     val privateReplyMessageId: Int?,
     val fileId: String,

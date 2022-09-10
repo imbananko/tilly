@@ -20,7 +20,7 @@ class VoteDao {
         Votes.update({ (Votes.memeId eq vote.memeId) and (Votes.voterId eq vote.voterId) }) { vote.toUpdateStatement(it) }
     }
 
-    fun findAllByVoterId(voterId: Int): List<Vote> = transaction {
+    fun findAllByVoterId(voterId: Long): List<Vote> = transaction {
         Votes.select { Votes.voterId eq voterId }.mapNotNull { it.toVote() }
     }
 }

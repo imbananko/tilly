@@ -50,8 +50,8 @@ class CommandHandler(
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
 
-        val memesByUserAll = withContext(Dispatchers.IO) { memeDao.findAllBySenderId(update.senderId.toInt()) }
-        val votesByUserAll = withContext(Dispatchers.IO) { voteDao.findAllByVoterId(update.senderId.toInt()) }
+        val memesByUserAll = withContext(Dispatchers.IO) { memeDao.findAllBySenderId(update.senderId.toLong()) }
+        val votesByUserAll = withContext(Dispatchers.IO) { voteDao.findAllByVoterId(update.senderId.toLong()) }
 
         if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
             "Статистика недоступна. Отправляй и оценивай мемы!"
