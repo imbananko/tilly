@@ -8,13 +8,13 @@ import javax.persistence.Id
 
 @Entity
 data class PrivateModerator(
-    @Id val userId: Int,
+    @Id val userId: Long,
     val assigned: Date
 )
 
 @Entity
 data class TelegramUser(
-    @Id val id: Int,
+    @Id val id: Long,
     val username: String?,
     val firstName: String?,
     val lastName: String?,

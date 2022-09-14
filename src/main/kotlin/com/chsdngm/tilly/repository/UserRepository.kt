@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UserRepository : CrudRepository<TelegramUser, Int> {
+interface UserRepository : CrudRepository<TelegramUser, Long> {
     @Query(
         nativeQuery = true, value = """
     select u.*
@@ -29,7 +29,7 @@ interface UserRepository : CrudRepository<TelegramUser, Int> {
     limit 5
     """
     )
-    fun findTopSenders(@Param("idToExclude") idToExclude: Int, @Param("botId") botId: Long): List<TelegramUser>
+    fun findTopSenders(@Param("idToExclude") idToExclude: Long, @Param("botId") botId: Long): List<TelegramUser>
 
     @Query(
         nativeQuery = true, value = """

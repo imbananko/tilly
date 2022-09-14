@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
 @Repository
-interface PrivateModeratorRepository : CrudRepository<PrivateModerator, Int> {
+interface PrivateModeratorRepository : CrudRepository<PrivateModerator, Long> {
     @Query(
         value = """
     select user_id
@@ -16,7 +16,7 @@ interface PrivateModeratorRepository : CrudRepository<PrivateModerator, Int> {
     where assigned > (NOW() - interval '1 DAY');
   """, nativeQuery = true
     )
-    fun findCurrentModeratorsIds(): List<Int>
+    fun findCurrentModeratorsIds(): List<Long>
 
     @Transactional
     @Modifying
@@ -27,5 +27,5 @@ interface PrivateModeratorRepository : CrudRepository<PrivateModerator, Int> {
     on conflict on constraint private_moderator_pkey do update set assigned = now()
   """, nativeQuery = true
     )
-    fun addPrivateModerator(id: Int)
+    fun addPrivateModerator(id: Long)
 }
