@@ -6,6 +6,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.format
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
+import com.chsdngm.tilly.model.DistributedModerationVoteValue
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
@@ -41,6 +42,12 @@ fun Update.hasPrivateVote() = this.hasCallbackQuery()
         && this.callbackQuery.message.chat.isUserChat
         && runCatching {
     setOf(*PrivateVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
+}.getOrDefault(false)
+
+fun Update.hasDistributedModerationVote() = this.hasCallbackQuery()
+        && this.callbackQuery.message.chat.isUserChat
+        && runCatching {
+    setOf(*DistributedModerationVoteValue.values()).map { it.name }.contains(this.callbackQuery.data)
 }.getOrDefault(false)
 
 fun Update.hasAutosuggestionVote() = this.hasCallbackQuery()

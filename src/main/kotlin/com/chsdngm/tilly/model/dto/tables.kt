@@ -9,8 +9,8 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 object Memes : IntIdTable("meme", "id") {
-    val moderationChatId = long("moderation_chat_id")
-    val moderationChatMessageId = integer("moderation_chat_message_id")
+    val moderationChatId = long("moderation_chat_id").nullable()
+    val moderationChatMessageId = integer("moderation_chat_message_id").nullable()
     val senderId = integer("sender_id")
     val status = enumerationByName("status", 10, MemeStatus::class)
     val privateReplyMessageId = integer("private_reply_message_id").nullable()
@@ -36,6 +36,13 @@ object Images : Table("image") {
     val rawLabels = text("raw_labels").nullable()
 
     private fun binaryCustomLogging(name: String): Column<ByteArray> = registerColumn(name, BasicBinaryColumnTypeCustomLogging)
+}
+
+object DistributedModerationEvent : Table("distributed_moderation_event") {
+    val memeId = integer("meme_id")
+    val moderatorId = long("moderator_id")
+    val chatMessageId = integer("chat_message_id")
+    val moderationGroupId = integer("moderation_group_id")
 }
 
 object BasicBinaryColumnTypeCustomLogging : BasicBinaryColumnType() {

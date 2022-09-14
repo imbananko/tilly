@@ -9,11 +9,12 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.*
-import com.chsdngm.tilly.model.DistributedVoteValue.*
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.*
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
+import com.chsdngm.tilly.repository.DistributedModerationDao
 import com.chsdngm.tilly.repository.PrivateModeratorRepository
 import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.similarity.ImageMatcher
@@ -52,6 +53,7 @@ class MemeHandler(
     private val imageDao: ImageDao,
     private val privateModeratorRepository: PrivateModeratorRepository,
     private val memeDao: MemeDao,
+    private val distributedModerationDao: DistributedModerationDao
 ) : AbstractHandler<MemeUpdate> {
 
     var executor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -59,7 +61,7 @@ class MemeHandler(
     private val log = LoggerFactory.getLogger(javaClass)
 
     private val distributedModerationMessage = """
-        Ты в числе тех, кому доверено теперь оценивать мемы. Цени это и оценивай с душой.
+        Ты теперь в числе тех, кому доверено оценивать мемы. Дорожи этим и оценивай с душой.
     """.trimIndent()
 
     private val moderationPool = TreeMap<Int, WeightedModerationType>()
@@ -111,8 +113,8 @@ class MemeHandler(
     override fun handle(update: MemeUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
         update.file = download(update.fileId)
 
-        val memeSender = userRepository.findById(update.user.id.toInt()).let {
-            if (it.isEmpty) {
+        val memeSender = userRepository.findById(update.user.id.toInt()).let { sender ->
+            if (sender.isEmpty) {
                 update.isFreshman = true
             }
 
@@ -123,7 +125,8 @@ class MemeHandler(
                     update.user.firstName,
                     update.user.lastName,
                     //TODO refactor to upsert
-                    if (it.isEmpty) UserStatus.DEFAULT else it.get().status
+                    if (sender.isEmpty) UserStatus.DEFAULT else sender.get().status,
+                    distributedModerationGroupId=sender.map { it.distributedModerationGroupId }.orElseGet { null }
                 )
             )
         }
@@ -188,7 +191,7 @@ class MemeHandler(
                         update.caption
                 )
         )
-        val distributedGroupMembers = userRepository.findByDistributedModerationGroupId(distributedModerationGroupId)
+        val distributedGroupMembers = userRepository.findAllByDistributedModerationGroupId(distributedModerationGroupId)
 
         for (member in distributedGroupMembers) {
             SendPhoto().apply {
@@ -198,9 +201,11 @@ class MemeHandler(
                 parseMode = ParseMode.HTML
                 replyMarkup = createDistributedModerationMarkup()
             }.let { api.execute(it) }.let { sent ->
-
+                distributedModerationDao.createEvent(meme.id, member.id.toLong(), sent.messageId, distributedModerationGroupId)
             }
         }
+
+        return true
     }
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
@@ -337,7 +342,7 @@ class MemeHandler(
     private fun forwardMemeFromChatToUser(meme: Meme, user: User) = ForwardMessage().apply {
         chatId = user.id.toString()
         fromChatId = meme.moderationChatId.toString()
-        messageId = meme.moderationChatMessageId
+        messageId = meme.moderationChatMessageId!!
         disableNotification = true
     }.let { api.execute(it) }
 

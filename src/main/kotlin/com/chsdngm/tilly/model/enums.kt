@@ -15,7 +15,7 @@ enum class AutosuggestionVoteValue(val emoji: String) {
     DECLINE_SUGGESTION("\uD83D\uDCA9")
 }
 
-enum class DistributedVoteValue(val emoji: String) {
+enum class DistributedModerationVoteValue(val emoji: String) {
     APPROVE_DISTRIBUTED("\uD83D\uDC8E"),
     DECLINE_DISTRIBUTED("\uD83D\uDCA9")
 }
@@ -29,9 +29,9 @@ enum class MemeStatus(val description: String) {
 }
 
 enum class WeightedModerationType(val weight: Int) {
-    PRIVATE(20),
-    DISTRIBUTED(21),
-    DEFAULT(59)
+    PRIVATE(1),
+    DISTRIBUTED(97),
+    DEFAULT(2)
 }
 
 enum class UserStatus {

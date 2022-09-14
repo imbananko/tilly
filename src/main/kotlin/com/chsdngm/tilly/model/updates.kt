@@ -125,6 +125,15 @@ class PrivateVoteUpdate(update: Update) {
     }
 }
 
+class DistributedModerationVoteUpdate(update: Update) {
+    val user: User = update.callbackQuery.from
+    val messageId: Int = update.callbackQuery.message.messageId
+    val voteValue: DistributedModerationVoteValue = DistributedModerationVoteValue.valueOf(update.callbackQuery.data)
+    override fun toString(): String {
+        return "DistributedModerationVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
+    }
+}
+
 class AutosuggestionVoteUpdate(update: Update) {
     private val approverName: String = update.callbackQuery.from.mention()
 
