@@ -115,14 +115,14 @@ class MemeHandler(
     override fun handleSync(update: MemeUpdate) {
         update.file = download(update.fileId)
 
-        val memeSender = userRepository.findById(update.user.id.toInt()).let {
+        val memeSender = userRepository.findById(update.user.id).let {
             if (it.isEmpty) {
                 update.isFreshman = true
             }
 
             userRepository.save(
                 TelegramUser(
-                    update.user.id.toInt(),
+                    update.user.id,
                     update.user.userName,
                     update.user.firstName,
                     update.user.lastName,
@@ -189,7 +189,7 @@ class MemeHandler(
         fun successfullyModerated(moderator: TelegramUser) = runCatching {
             log.info("Picked moderator=$moderator")
 
-            moderateWithUser(update, moderator.id.toLong()).also { meme ->
+            moderateWithUser(update, moderator.id).also { meme ->
                 log.info("sent for moderation to user=$moderator. meme=$meme")
                 privateModeratorRepository.addPrivateModerator(moderator.id)
                 sendPrivateModerationEventToBeta(meme, sender, moderator)
