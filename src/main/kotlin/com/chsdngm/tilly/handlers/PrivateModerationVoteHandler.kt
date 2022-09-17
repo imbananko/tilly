@@ -41,7 +41,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         EditMessageCaption().apply {
             chatId = update.user.id.toString()
             messageId = update.messageId
-            caption = "мем одобрен и будет отправлен на канал"
+            caption = "мем будет отправлен на канал"
         }.let { TelegramConfig.api.execute(it) }
 
         meme.status = MemeStatus.SCHEDULED
