@@ -20,13 +20,6 @@ object Memes : IntIdTable("meme", "id") {
     val created = timestamp("created")
 }
 
-object MemesLogs : Table("meme_log") {
-    val memeId = integer("meme_id")
-    val chatId = long("chat_id")
-    val messageId = integer("message_id")
-    val created = timestamp("created")
-}
-
 object Votes : Table("vote") {
     val memeId = integer("meme_id").references(Memes.id)
     val voterId = long("voter_id")

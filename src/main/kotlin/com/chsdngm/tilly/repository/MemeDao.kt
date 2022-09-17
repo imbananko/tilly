@@ -7,7 +7,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
-import java.time.LocalDate
 
 @Repository
 class MemeDao {
@@ -75,29 +74,6 @@ class MemeDao {
             """.trimIndent()
 
         sql.execAndMap { }
-    }
-
-    fun findDeadMemes(): List<Meme> = transaction {
-        val ascOrDesc = if (LocalDate.now().dayOfYear % 2 == 0) "asc" else "desc"
-
-        val sql = """
-            select ${Memes.allFields} 
-            from (select meme.*,
-                         count(vote) filter ( where vote.value = 'UP' )  as ups,
-                         count(vote) filter ( where vote.value = 'DOWN') as downs
-                  from meme
-                           left join vote on meme.id = vote.meme_id
-                  where meme.status = 'MODERATION'
-                    and meme.created <= now() - interval '14 days'
-                    and meme.caption is null
-                  group by meme.id) as meme
-            where (ups = 4 and downs = 0)
-               OR (ups = 5 and downs = 1)
-            order by meme.created $ascOrDesc
-            limit 5;
-        """.trimIndent()
-
-        sql.execAndMap { rs -> ResultRow.create(rs, indexedFields) }.toMemes()
     }
 }
 

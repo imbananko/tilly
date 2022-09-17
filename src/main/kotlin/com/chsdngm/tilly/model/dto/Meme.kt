@@ -36,8 +36,6 @@ fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<
 fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statement.also {
     it[Memes.status] = this.status
     it[Memes.channelMessageId] = this.channelMessageId
-    it[Memes.moderationChatId] = this.moderationChatId
-    it[Memes.moderationChatMessageId] = this.moderationChatMessageId
 }
 
 fun ResultRow.toMeme(): Meme? {
