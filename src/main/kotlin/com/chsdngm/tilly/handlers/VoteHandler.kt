@@ -41,7 +41,7 @@ class VoteHandler(
             return
         }
 
-        val meme = when (update.sourceChatId) {
+        val memeWithVotes = when (update.sourceChatId) {
             CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
             CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
                 CHAT_ID.toLong(),
@@ -49,6 +49,9 @@ class VoteHandler(
             )
             else -> null
         } ?: throw NotFoundException("Meme wasn't found. update=$update")
+
+        val meme = memeWithVotes.first
+        val votes = memeWithVotes.second.toMutableList()
 
         if (meme.senderId == update.voterId) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
@@ -64,8 +67,8 @@ class VoteHandler(
         )
 
         lateinit var voteUpdate: Runnable
-        meme.votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-            if (meme.votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
+        votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
+            if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
                 sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
                 voteUpdate = Runnable { voteDao.delete(found) }
             } else {
@@ -78,7 +81,7 @@ class VoteHandler(
                     VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
                 }.let { sendPopupNotification(update.callbackQueryId, it) }
             }
-        } ?: meme.votes.add(vote).also {
+        } ?: votes.add(vote).also {
             when (vote.value) {
                 VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                 VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
@@ -86,9 +89,9 @@ class VoteHandler(
             voteUpdate = Runnable { voteDao.insert(vote) }
         }
 
-        val markupUpdate = updateMarkup(meme)
-        checkShipment(meme)
-        updateStatsInSenderChat(meme)
+        val markupUpdate = updateMarkup(meme, votes)
+        checkShipment(meme, votes)
+        updateStatsInSenderChat(meme, votes)
 
         voteUpdate.run()
 
@@ -103,12 +106,12 @@ class VoteHandler(
             text = popupText
         }.let { api.execute(it) }
 
-    private fun updateMarkup(meme: Meme): CompletableFuture<Void> {
+    private fun updateMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Void> {
         val channelUpdate = if (meme.channelMessageId != null) {
             EditMessageReplyMarkup().apply {
                 chatId = CHANNEL_ID
                 messageId = meme.channelMessageId
-                replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+                replyMarkup = createMarkup(votes)
             }.let { api.executeAsync(it) }
         } else {
             CompletableFuture.completedFuture(null)
@@ -118,7 +121,7 @@ class VoteHandler(
             EditMessageReplyMarkup().apply {
                 chatId = CHAT_ID
                 messageId = meme.moderationChatMessageId
-                replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
+                replyMarkup = createMarkup(votes)
             }.let { api.executeAsync(it) }
         } else {
             CompletableFuture.completedFuture(null)
@@ -127,8 +130,8 @@ class VoteHandler(
         return CompletableFuture.allOf(channelUpdate, groupUpdate)
     }
 
-    private fun checkShipment(meme: Meme) {
-        val values = meme.votes.map { it.value }
+    private fun checkShipment(meme: Meme, votes: MutableList<Vote>) {
+        val values = votes.map { it.value }
         val isEnough =
             values.filter { it == VoteValue.UP }.size - values.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD
 

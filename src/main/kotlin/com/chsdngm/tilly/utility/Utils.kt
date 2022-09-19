@@ -10,6 +10,7 @@ import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
+import com.chsdngm.tilly.model.dto.Vote
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -60,19 +61,23 @@ fun ChatMember.isFromChat(): Boolean = chatUserStatuses.contains(this.status)
 
 private val chatUserStatuses = setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER)
 
-fun createMarkup(stats: Map<VoteValue, Int>) = InlineKeyboardMarkup().apply {
-    keyboard = listOf(
-        listOf(
-            createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
-            createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
+fun createMarkup(votes: List<Vote>): InlineKeyboardMarkup {
+    val stats = votes.groupingBy { it.value }.eachCount()
+
+    return InlineKeyboardMarkup().apply {
+        keyboard = listOf(
+            listOf(
+                createVoteInlineKeyboardButton(VoteValue.UP, stats.getOrDefault(VoteValue.UP, 0)),
+                createVoteInlineKeyboardButton(VoteValue.DOWN, stats.getOrDefault(VoteValue.DOWN, 0))
+            )
         )
-    )
+    }
 }
 
-fun updateStatsInSenderChat(meme: Meme): CompletableFuture<Serializable?> =
-    if (meme.privateReplyMessageId != null && meme.senderId.toLong() != BOT_ID) {
+fun updateStatsInSenderChat(meme: Meme, votes: List<Vote>): CompletableFuture<Serializable?> =
+    if (meme.privateReplyMessageId != null && meme.senderId != BOT_ID) {
         val caption = meme.status.description +
-                meme.votes
+                votes
                     .groupingBy { it.value }
                     .eachCount().entries
                     .sortedBy { it.key }

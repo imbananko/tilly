@@ -56,20 +56,20 @@ class CommandHandler(
         if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
             "Статистика недоступна. Отправляй и оценивай мемы!"
         } else {
-            val memesByUserWeek = memesByUserAll.filter { it.created > Instant.now().minusDays(7) }
+            val memesByUserWeek = memesByUserAll.filter { it.key.created > Instant.now().minusDays(7) }
             val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
 
             val likeDislikeByUserWeek = votesByUserWeek.groupingBy { it.value }.eachCount()
-            val userMemesVotesWeek = memesByUserWeek.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+            val userMemesVotesWeek = memesByUserWeek.flatMap { it.value }.groupingBy { it.value }.eachCount()
 
             val likeDislikeByUserAll = votesByUserAll.groupingBy { it.value }.eachCount()
-            val userMemesVotesAll = memesByUserAll.flatMap { it.votes }.groupingBy { it.value }.eachCount()
+            val userMemesVotesAll = memesByUserAll.flatMap { it.value }.groupingBy { vote -> vote.value }.eachCount()
 
             """
           <u><b>Статистика за неделю:</b></u>
           
           Мемов отправлено: <b>${memesByUserWeek.size}</b>
-          Прошло модерацию: <b>${memesByUserWeek.filter { it.channelMessageId != null }.size}</b>
+          Прошло модерацию: <b>${memesByUserWeek.filter { it.key.channelMessageId != null }.size}</b>
           Получено: <b>${VoteValue.UP.emoji} ${userMemesVotesWeek[VoteValue.UP] ?: 0} · ${userMemesVotesWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
           Мемов оценено: <b>${votesByUserWeek.size}</b>
@@ -80,7 +80,7 @@ class CommandHandler(
           <u><b>Статистика за все время:</b></u>
           
           Мемов отправлено: <b>${memesByUserAll.size}</b>
-          Прошло модерацию: <b>${memesByUserAll.filter { it.channelMessageId != null }.size}</b>
+          Прошло модерацию: <b>${memesByUserAll.filter { it.key.channelMessageId != null }.size}</b>
           Получено: <b>${VoteValue.UP.emoji} ${userMemesVotesAll[VoteValue.UP] ?: 0} · ${userMemesVotesAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
           Мемов оценено: <b>${votesByUserAll.size}</b>

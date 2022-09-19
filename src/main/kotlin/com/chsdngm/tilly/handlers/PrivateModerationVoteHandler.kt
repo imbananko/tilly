@@ -29,15 +29,15 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         memeDao.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
             ?.let {
                 when (update.voteValue) {
-                    PrivateVoteValue.APPROVE -> approve(update, it)
-                    PrivateVoteValue.DECLINE -> decline(update, it)
+                    PrivateVoteValue.APPROVE -> approve(update, it.first, it.second)
+                    PrivateVoteValue.DECLINE -> decline(update, it.first, it.second)
                 }
             } ?: log.error("unknown voteValue=${update.voteValue}")
 
         log.info("processed private vote update=$update")
     }
 
-    private fun approve(update: PrivateVoteUpdate, meme: Meme) {
+    private fun approve(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) {
         EditMessageCaption().apply {
             chatId = update.user.id.toString()
             messageId = update.messageId
@@ -48,13 +48,13 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         memeDao.update(meme)
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.UP))
 
-        updateStatsInSenderChat(meme)
+        updateStatsInSenderChat(meme, votes)
 
         log.info("ranked moderator with id=${update.user.id} approved meme=$meme")
         sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.APPROVE)
     }
 
-    private fun decline(update: PrivateVoteUpdate, meme: Meme) {
+    private fun decline(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) {
         EditMessageCaption().apply {
             chatId = update.user.id.toString()
             messageId = update.messageId
@@ -65,7 +65,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         memeDao.update(meme)
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.DOWN))
 
-        updateStatsInSenderChat(meme)
+        updateStatsInSenderChat(meme, votes)
 
         log.info("ranked moderator with id=${update.user.id} declined meme=$meme")
         sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.DECLINE)

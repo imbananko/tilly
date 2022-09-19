@@ -29,7 +29,7 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         private const val THRESHOLD = 5
     }
 
-    private val durationSeries = mutableMapOf<Timestampable, TimeSeries>()
+    private val durationSeries = hashMapOf<Timestampable, TimeSeries>()
     private val metricServiceClient: MetricServiceClient
     private val resource: MonitoredResource
     private val projectId: String
@@ -120,20 +120,20 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         }
     }
 
-    private fun VoteUpdate.toLabels() = mutableMapOf(
+    private fun VoteUpdate.toLabels() = hashMapOf(
         "chat_id" to this.sourceChatId,
         "voter_id" to "${this.voterId}",
         "message_id" to "${this.messageId}",
         "value" to "${this.voteValue}"
     )
 
-    private fun MemeUpdate.toLabels() = mutableMapOf(
+    private fun MemeUpdate.toLabels() = hashMapOf(
         "user_id" to "${this.user.id}",
         "message_id" to "${this.messageId}",
         "file_id" to this.fileId,
     )
 
-    private fun CommandUpdate.toLabels() = mutableMapOf(
+    private fun CommandUpdate.toLabels() = hashMapOf(
         "sender_id" to this.senderId,
         "message_id" to "${this.messageId}",
         "chat_id" to this.chatId,

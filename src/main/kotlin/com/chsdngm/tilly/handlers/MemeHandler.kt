@@ -87,7 +87,7 @@ class MemeHandler(
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
-            replyMarkup = createMarkup(emptyMap())
+            replyMarkup = createMarkup(listOf())
         }.let(api::execute)
 
         val meme = memeDao.insert(
@@ -227,7 +227,7 @@ class MemeHandler(
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
-            replyMarkup = createMarkup(emptyMap())
+            replyMarkup = createMarkup(listOf())
         }.let(api::execute).let {
 
             val senderMessageId = replyToSender(update).messageId

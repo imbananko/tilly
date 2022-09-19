@@ -14,21 +14,21 @@ class MemeDao {
     val Memes.allFields get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
     val indexedFields = Memes.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
 
-    fun findMemeByChannelMessageId(channelMessageId: Int): Meme? = transaction {
+    fun findMemeByChannelMessageId(channelMessageId: Int): Pair<Meme, List<Vote>>? = transaction {
         (Memes leftJoin Votes)
             .select(Memes.channelMessageId eq channelMessageId)
             .toList()
-            .toMeme()
+            .toMemeWithVotes()
     }
 
     fun findMemeByModerationChatIdAndModerationChatMessageId(
         moderationChatId: Long,
         moderationChatMessageId: Int,
-    ): Meme? = transaction {
+    ): Pair<Meme, List<Vote>>? = transaction {
         Memes.leftJoin(Votes)
             .select((Memes.moderationChatId eq moderationChatId) and (Memes.moderationChatMessageId eq moderationChatMessageId))
             .toList()
-            .toMeme()
+            .toMemeWithVotes()
     }
 
     fun insert(meme: Meme) = transaction {
@@ -40,14 +40,14 @@ class MemeDao {
         Memes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
     }
 
-    fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): List<Meme> = transaction {
+    fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): Map<Meme, List<Vote>> = transaction {
         (Memes leftJoin Votes)
-            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemes()
+            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemesWithVotes()
     }
 
-    fun findAllBySenderId(senderId: Long): List<Meme> = transaction {
+    fun findAllBySenderId(senderId: Long): Map<Meme, List<Vote>> = transaction {
         (Memes leftJoin Votes)
-            .select { Memes.senderId eq senderId }.orderBy(Memes.created).toMemes()
+            .select { Memes.senderId eq senderId }.orderBy(Memes.created).toMemesWithVotes()
     }
 
     fun findByFileId(fileId: String): Meme? = transaction {
