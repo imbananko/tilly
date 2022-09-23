@@ -8,7 +8,7 @@ import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeDao
-import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.minusDays
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,7 @@ import java.time.Instant
 
 @Service
 class CommandHandler(
-    private val userRepository: UserRepository,
+    private val telegramUserDao: TelegramUserDao,
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils
@@ -75,7 +75,7 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserWeek.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { userRepository.findUserWeekRank(update.senderId.toLong()) } ?: "NaN"}</b>
+          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId, 7) } ?: "NaN"}</b>
           
           <u><b>Статистика за все время:</b></u>
           
@@ -86,7 +86,7 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserAll.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк: <b>#${withContext(Dispatchers.IO) { userRepository.findUserRank(update.senderId.toLong()) } ?: "NaN"}</b>
+          Ранк: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId) } ?: "NaN"}</b>
           
           """.trimIndent()
         }

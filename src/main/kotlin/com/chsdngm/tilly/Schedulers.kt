@@ -13,7 +13,7 @@ import com.chsdngm.tilly.model.dto.MemeLog
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
-import com.chsdngm.tilly.repository.UserRepository
+import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
@@ -39,8 +39,8 @@ import java.util.concurrent.CompletableFuture
 @EnableScheduling
 final class Schedulers(
     private val memeDao: MemeDao,
+    private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
-    private val userRepository: UserRepository,
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -145,8 +145,7 @@ final class Schedulers(
             )
         )
 
-        //TODO refactor findTopSenders
-        val moderators = userRepository.findTopSenders(TelegramConfig.BOT_ID, TelegramConfig.BOT_ID).iterator()
+        val moderators = telegramUserDao.findTopFiveSendersForLastWeek(TelegramConfig.BOT_ID).iterator()
         val deadMemes = memeDao.findDeadMemes().iterator()
 
         while (deadMemes.hasNext() && moderators.hasNext()) {

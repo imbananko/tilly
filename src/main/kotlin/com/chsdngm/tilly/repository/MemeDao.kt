@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDate
 
 @Repository
-class MemeDao {
+class MemeDao(val database: Database) {
     val Memes.allFields get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
     val indexedFields = Memes.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
 
@@ -47,11 +47,11 @@ class MemeDao {
 
     fun findAllBySenderId(senderId: Long): Map<Meme, List<Vote>> = transaction {
         (Memes leftJoin Votes)
-            .select { Memes.senderId eq senderId }.orderBy(Memes.created).toMemesWithVotes()
+            .select { Memes.senderId eq senderId }.toMemesWithVotes()
     }
 
     fun findByFileId(fileId: String): Meme? = transaction {
-        Memes.select { Memes.fileId eq fileId }.orderBy(Memes.created).singleOrNull()?.toMeme()
+        Memes.select { Memes.fileId eq fileId }.singleOrNull()?.toMeme()
     }
 
     fun findTopRatedMemeForLastWeek(): Meme? = transaction {

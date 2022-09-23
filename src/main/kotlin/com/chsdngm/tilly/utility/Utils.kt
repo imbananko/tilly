@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.utility
 
 
+import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.MONTORN_CHAT_ID
@@ -11,7 +12,9 @@ import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
+import org.apache.commons.io.IOUtils
 import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
@@ -22,7 +25,10 @@ import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.io.File
+import java.io.FileOutputStream
 import java.io.Serializable
+import java.net.URL
 import java.sql.ResultSet
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -119,4 +125,18 @@ fun <T : Any> String.execAndMap(transform: (ResultSet) -> T): List<T> {
         }
     }
     return result
+}
+
+fun LongArray.toSql() = this.joinToString(prefix = "(", postfix = ")")
+
+fun download(fileId: String): File {
+    val file = File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis())
+    file.deleteOnExit()
+
+    FileOutputStream(file).use { out ->
+        URL(api.execute(GetFile(fileId)).getFileUrl(TelegramConfig.BOT_TOKEN)).openStream()
+            .use { stream -> IOUtils.copy(stream, out) }
+    }
+
+    return file
 }
