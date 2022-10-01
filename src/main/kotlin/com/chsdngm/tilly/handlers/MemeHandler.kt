@@ -46,6 +46,7 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.abs
 
 
 @Service
@@ -149,7 +150,11 @@ class MemeHandler(
             moderateWithGroup(update)
         } else {
             // Balancing with weight
-            val index = moderationRages.binarySearch(random.nextInt(totalWeight))
+            var index = moderationRages.binarySearch(random.nextInt(totalWeight))
+
+            if (index < 0) {
+                index = abs(index + 1)
+            }
 
             when (WeightedModerationType.values()[index]) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
