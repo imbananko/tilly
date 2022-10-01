@@ -6,7 +6,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 
 @Repository
-class VoteDao(val database: Database) {
+class VoteDao {
     fun insert(vote: Vote) = transaction {
         Votes.insert { vote.toInsertStatement(it) }.resultedValues?.first()?.toVote()
             ?: throw NoSuchElementException("Error saving vote")

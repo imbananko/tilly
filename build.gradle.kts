@@ -1,9 +1,12 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = "com.chsdngm"
-version = "1.1"
+version = "1.0"
+java.sourceCompatibility = JavaVersion.VERSION_1_8
 
-val jupiterVersion = "5.9.0"
+val kotlinVersion = "1.6.0"
+val springVersion = "2.3.0.RELEASE"
+val jupiterVersion = "5.5.2"
 
 repositories {
     mavenCentral()
@@ -13,12 +16,12 @@ repositories {
 }
 
 plugins {
-    id("org.springframework.boot") version "2.7.4"
-    // https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/htmlsingle/#reacting-to-other-plugins.dependency-management
-    id("io.spring.dependency-management") version "1.0.14.RELEASE"
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
-    // makes all classes open https://kotlinlang.org/docs/all-open-plugin.html#spring-support
-    id("org.jetbrains.kotlin.plugin.spring") version "1.7.10"
+    id("com.google.cloud.tools.jib") version "0.10.0"
+    id("org.springframework.boot") version "2.2.0.RELEASE"
+    id("io.spring.dependency-management") version "1.0.8.RELEASE"
+    kotlin("jvm") version "1.6.0"
+    kotlin("plugin.spring") version "1.6.0"
+    kotlin("plugin.jpa") version "1.6.0"
 }
 
 configurations {
@@ -45,23 +48,21 @@ dependencies {
     implementation("org.jetbrains.exposed", "exposed-java-time", "0.38.1")
 
     // kotlin
-    // https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-bom/1.7.10/kotlin-bom-1.7.10.pom
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
 
     // spring
-    compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.data:spring-data-elasticsearch")
+    implementation("org.springframework.data:spring-data-elasticsearch:3.2.13.RELEASE")
 
-    implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("org.postgresql:postgresql:42.5.0")
+    implementation("org.postgresql:postgresql:42.2.6")
     implementation("com.github.kilianB:JImageHash:3.0.0")
 
 //    compileOnly("org.ktorm:ktorm-core:3.3.0")
@@ -69,7 +70,7 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-test:2.4.5")
 }
 
 tasks.bootJar {
@@ -82,7 +83,7 @@ tasks.withType<Test> {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        // K2 does not support plugins yet, so please remove -Xuse-k2 flag
-        //freeCompilerArgs = listOf("-Xuse-k2")
+        jvmTarget = "11"
+        freeCompilerArgs = listOf("-Xallow-result-return-type")
     }
 }

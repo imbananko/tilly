@@ -2,7 +2,6 @@ package com.chsdngm.tilly.model
 
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.utility.download
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.minusDays
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -59,8 +58,7 @@ abstract class MemeUpdate(
     open val messageId: Int,
     open val fileId: String,
     open val user: User,
-    caption: String?,
-    val file: File = download(fileId)
+    caption: String?
 ) : Timestampable() {
 
     val caption: String? = caption?.takeIf { caption ->
@@ -72,6 +70,8 @@ abstract class MemeUpdate(
     else MemeStatus.MODERATION
 
     var isFreshman: Boolean = false
+
+    lateinit var file: File
 
     override fun toString(): String {
         return "MemeUpdate(messageId=$messageId, user='${user.mention()}, caption=$caption, status=$status, isFreshman=$isFreshman)"

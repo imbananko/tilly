@@ -17,7 +17,9 @@ data class Meme(
     var channelMessageId: Int? = null,
     val created: Instant = Instant.now(),
     val id: Int = 0,
-)
+) {
+    val votes: MutableList<Vote> = mutableListOf()
+}
 
 fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
     it[Memes.status] = this.status
@@ -57,30 +59,6 @@ fun ResultRow.toMeme(): Meme? {
     )
 }
 
-fun Iterable<ResultRow>.toMemeWithVotes(): Pair<Meme, List<Vote>>? {
-    val iterator = this.iterator()
-
-    if (!iterator.hasNext()) {
-        return null
-    }
-
-    val first = iterator.next()
-    val meme = first.toMeme() ?: return null
-    val votes = mutableListOf<Vote>()
-    first.toVote()?.let { votes.add(it) }
-
-    while (iterator.hasNext()) {
-        val vote = iterator.next().toVote()
-        if (vote == null || vote.memeId != meme.id) {
-            continue
-        }
-
-        votes.add(vote)
-    }
-
-    return meme to votes
-}
-
 fun Iterable<ResultRow>.toMeme(): Meme? {
     val iterator = this.iterator()
 
@@ -88,48 +66,46 @@ fun Iterable<ResultRow>.toMeme(): Meme? {
         return null
     }
 
-    return iterator.next().toMeme()
-}
-
-fun Iterable<ResultRow>.toMemesWithVotes(): Map<Meme, List<Vote>> {
-    val iterator = this.iterator()
-
-    if (!iterator.hasNext()) {
-        return mapOf()
-    }
-
-    val memes = linkedMapOf<Meme, List<Vote>>()
+    var current = iterator.next()
+    val meme = current.toMeme() ?: return null
+    current.toVote()?.let { meme.votes.add(it) }
 
     while (iterator.hasNext()) {
-        val current = iterator.next()
-        val meme = current.toMeme() ?: continue
+        current = iterator.next()
         val vote = current.toVote()
-
-        if (vote == null) {
-            memes[meme] = mutableListOf()
-            continue
+        if (vote == null || vote.memeId != meme.id) {
+            return meme
         }
 
-        val votes = memes[meme]
-
-        if (votes != null) {
-            votes.toMutableList().add(vote)
-        } else {
-            memes[meme] = mutableListOf(vote)
-        }
+        meme.votes.add(vote)
     }
 
-    return memes
+    return meme
 }
 
 fun Iterable<ResultRow>.toMemes(): List<Meme> {
     val iterator = this.iterator()
 
+    if (!iterator.hasNext()) {
+        return listOf()
+    }
+
     val memes = mutableListOf<Meme>()
+    var currentMeme: Meme? = null
 
     while (iterator.hasNext()) {
-        val meme = iterator.next().toMeme() ?: continue
-        memes.add(meme)
+        val current = iterator.next()
+
+        val meme = current.toMeme() ?: return memes
+        if (meme.id != currentMeme?.id) {
+            currentMeme = meme
+            memes.add(currentMeme)
+        }
+
+        val vote = current.toVote()
+        if (vote != null) {
+            currentMeme.votes.add(vote)
+        }
     }
 
     return memes

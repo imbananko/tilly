@@ -10,10 +10,9 @@ import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.MemeLog
-import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
-import com.chsdngm.tilly.repository.TelegramUserDao
+import com.chsdngm.tilly.repository.UserRepository
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
@@ -33,14 +32,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.concurrent.CompletableFuture
 
 @Service
 @EnableScheduling
 final class Schedulers(
     private val memeDao: MemeDao,
-    private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -67,35 +65,32 @@ final class Schedulers(
             log.info("meme publishing is disabled")
         }
 
-        val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
+        val memesToPublish = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
-        if (scheduledMemes.isNotEmpty()) {
-            val meme = scheduledMemes.entries.first().toPair().first
-            val votes = scheduledMemes.entries.first().toPair().second
+        if (memesToPublish.isNotEmpty()) {
+            val memeToPublish = memesToPublish.first()
+            memeToPublish.channelMessageId = sendMemeToChannel(memeToPublish).messageId
+            memeToPublish.status = MemeStatus.PUBLISHED
 
-            meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
-            meme.status = MemeStatus.PUBLISHED
-
-            memeDao.update(meme)
-            updateStatsInSenderChat(meme, votes)
-            updateLogChannelTitle(scheduledMemes.size - 1)
+            memeDao.update(memeToPublish)
+            updateStatsInSenderChat(memeToPublish)
+            updateLogChannelTitle(memesToPublish.size - 1)
         } else {
             log.info("Nothing to post")
         }
     }
 
-    private fun updateLogChannelTitle(queueSize: Int): CompletableFuture<Boolean> =
-        CompletableFuture.supplyAsync {
-            SetChatTitle().apply {
-                chatId = LOGS_CHAT_ID
-                title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
-            }.let { api.execute(it) }
-        }
+    private fun updateLogChannelTitle(queueSize: Int) {
+        SetChatTitle().apply {
+            chatId = LOGS_CHAT_ID
+            title = "$TILLY_LOG [$COMMIT_SHA] | queued: $queueSize"
+        }.let { api.execute(it) }
+    }
 
-    private fun sendMemeToChannel(meme: Meme, votes: List<Vote>) = SendPhoto().apply {
+    private fun sendMemeToChannel(meme: Meme) = SendPhoto().apply {
         chatId = CHANNEL_ID
         photo = InputFile(meme.fileId)
-        replyMarkup = createMarkup(votes)
+        replyMarkup = createMarkup(meme.votes.groupingBy { it.value }.eachCount())
         parseMode = ParseMode.HTML
         caption = meme.caption
     }.let(api::execute).also { log.info("sent meme to channel. meme=$meme") }
@@ -110,7 +105,7 @@ final class Schedulers(
 
         val winner = GetChatMember().apply {
             chatId = CHANNEL_ID
-            userId = meme.senderId
+            userId = meme.senderId.toLong()
         }.let { api.execute(it) }.user.mention()
 
         SendMessage().apply {
@@ -145,7 +140,8 @@ final class Schedulers(
             )
         )
 
-        val moderators = telegramUserDao.findTopFiveSendersForLastWeek(TelegramConfig.BOT_ID).iterator()
+        //TODO refactor findTopSenders
+        val moderators = userRepository.findTopSenders(TelegramConfig.BOT_ID, TelegramConfig.BOT_ID).iterator()
         val deadMemes = memeDao.findDeadMemes().iterator()
 
         while (deadMemes.hasNext() && moderators.hasNext()) {
