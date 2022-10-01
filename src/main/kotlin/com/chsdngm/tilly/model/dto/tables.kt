@@ -1,8 +1,10 @@
 package com.chsdngm.tilly.model.dto
 
 import com.chsdngm.tilly.model.MemeStatus
+import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.VoteValue
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.BasicBinaryColumnType
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
@@ -35,6 +37,16 @@ object Votes : Table("vote") {
     val created = timestamp("created")
 }
 
+object TelegramUsers : LongIdTable("telegram_user") {
+    val username = text("username").nullable()
+    val firstName = text("first_name").nullable()
+    val lastName = text("last_name").nullable()
+    val status = enumerationByName("status", 10, UserStatus::class)
+    val privateModerationLastAssignment = timestamp("private_moderation_last_assignment").nullable()
+
+    val indexedFields = TelegramUsers.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
+}
+
 object Images : Table("image") {
     val fileId = text("file_id")
     val file = binaryCustomLogging("file")
@@ -45,6 +57,9 @@ object Images : Table("image") {
     private fun binaryCustomLogging(name: String): Column<ByteArray> = registerColumn(name, BasicBinaryColumnTypeCustomLogging)
 }
 
+/**
+ * Нужно для корректного логгирования sql-запросов
+ */
 object BasicBinaryColumnTypeCustomLogging : BasicBinaryColumnType() {
     override fun valueToString(value: Any?): String {
         return "bytes:${(value as ByteArray).size}"

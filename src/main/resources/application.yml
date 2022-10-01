@@ -1,14 +1,12 @@
 spring:
-#  jpa:
-#    show-sql: true
-#    properties:
-#      hibernate:
-#        format_sql: true
-#        generate_statistics: true
+#  datasource:
+#    hikari:
+#      driver-class-name: org.postgresql.Driver
+#      password: tilly
+#      jdbc-url: jdbc:postgresql://localhost:5432/tilly
+#      username: tilly
   datasource:
-    continue-on-error: true
     driver-class-name: org.postgresql.Driver
-    initialization-mode: always
     password: tilly
     url: localhost
     username: tilly
