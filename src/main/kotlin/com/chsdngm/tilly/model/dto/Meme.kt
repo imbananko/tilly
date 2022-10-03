@@ -98,7 +98,7 @@ fun Iterable<ResultRow>.toMemesWithVotes(): Map<Meme, List<Vote>> {
         return mapOf()
     }
 
-    val memes = linkedMapOf<Meme, List<Vote>>()
+    val memes = linkedMapOf<Meme, MutableList<Vote>>()
 
     while (iterator.hasNext()) {
         val current = iterator.next()
@@ -113,7 +113,7 @@ fun Iterable<ResultRow>.toMemesWithVotes(): Map<Meme, List<Vote>> {
         val votes = memes[meme]
 
         if (votes != null) {
-            votes.toMutableList().add(vote)
+            votes.add(vote)
         } else {
             memes[meme] = mutableListOf(vote)
         }

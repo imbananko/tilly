@@ -70,8 +70,9 @@ final class Schedulers(
         val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
         if (scheduledMemes.isNotEmpty()) {
-            val meme = scheduledMemes.entries.first().toPair().first
-            val votes = scheduledMemes.entries.first().toPair().second
+            val recordToPublish = scheduledMemes.entries.first().toPair()
+            val meme = recordToPublish.first
+            val votes = recordToPublish.second
 
             meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
             meme.status = MemeStatus.PUBLISHED

@@ -117,6 +117,8 @@ class MemeHandler(
     override fun handleSync(update: MemeUpdate) {
         val foundUser = telegramUserDao.findById(update.user.id)
         val memeSender = if (foundUser == null) {
+            update.isFreshman = true
+
             telegramUserDao.insert(TelegramUser(
                 update.user.id,
                 update.user.userName,
@@ -130,7 +132,10 @@ class MemeHandler(
                 lastName = update.user.lastName
             )
 
-            telegramUserDao.update(updatedUser)
+            if (foundUser != updatedUser) {
+                telegramUserDao.update(updatedUser)
+            }
+
             updatedUser
         }
 
