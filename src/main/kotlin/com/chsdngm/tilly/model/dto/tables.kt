@@ -24,8 +24,8 @@ object Memes : IntIdTable("meme", "id") {
 
 object MemesLogs : Table("meme_log") {
     val memeId = integer("meme_id")
-    val chatId = long("chat_id")
-    val messageId = integer("message_id")
+    val chatId = long("chat_id").nullable()
+    val messageId = integer("message_id").nullable()
     val created = timestamp("created")
 }
 
@@ -43,6 +43,7 @@ object TelegramUsers : LongIdTable("telegram_user") {
     val lastName = text("last_name").nullable()
     val status = enumerationByName("status", 10, UserStatus::class)
     val privateModerationLastAssignment = timestamp("private_moderation_last_assignment").nullable()
+    val distributedModerationGroupId = integer("distributed_moderation_group_id").nullable()
 
     val indexedFields = TelegramUsers.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
 }

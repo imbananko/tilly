@@ -12,11 +12,14 @@ import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.WeightedModerationType
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
+import com.chsdngm.tilly.repository.DistributedModerationDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
@@ -51,17 +54,13 @@ import kotlin.math.abs
 
 @Service
 class MemeHandler(
-    private val telegramUserDao: TelegramUserDao,
-    private val imageMatcher: ImageMatcher,
-    private val imageTextRecognizer: ImageTextRecognizer,
-    private val imageDao: ImageDao,
-    private val memeDao: MemeDao,
-    private val distributedModerationDao: DistributedModerationDao
-) : AbstractHandler<MemeUpdate> {
-
-    var executor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val metricsUtils: MetricsUtils,
-) : AbstractHandler<MemeUpdate>() {
+        private val telegramUserDao: TelegramUserDao,
+        private val imageMatcher: ImageMatcher,
+        private val imageTextRecognizer: ImageTextRecognizer,
+        private val imageDao: ImageDao,
+        private val memeDao: MemeDao,
+        private val distributedModerationDao: DistributedModerationDao,
+        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val memeExecutorService = Executors.newSingleThreadExecutor()
@@ -203,14 +202,14 @@ class MemeHandler(
                 Meme(
                         null,
                         null,
-                        update.user.id.toInt(),
+                        update.user.id,
                         update.status,
                         senderMessageId,
                         update.fileId,
                         update.caption
                 )
         )
-        val distributedGroupMembers = userRepository.findAllByDistributedModerationGroupId(distributedModerationGroupId)
+        val distributedGroupMembers = telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
 
         for (member in distributedGroupMembers) {
             SendPhoto().apply {
