@@ -13,6 +13,7 @@ import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import org.apache.commons.io.IOUtils
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -117,14 +118,19 @@ private fun createVoteInlineKeyboardButton(voteValue: VoteValue, voteCount: Int)
 
 fun Instant.minusDays(days: Int): Instant = this.minusSeconds(days.toLong() * 24 * 60 * 60)
 
-fun <T : Any> String.execAndMap(transform: (ResultSet) -> T): List<T> {
+fun <T : Any> String.execAndMap(transform: (ResultSet) -> T,
+                                explicitStatementType: StatementType?): List<T> {
     val result = arrayListOf<T>()
-    TransactionManager.current().exec(this) { rs ->
+    TransactionManager.current().exec(this, explicitStatementType = explicitStatementType) { rs ->
         while (rs.next()) {
             result += transform(rs)
         }
     }
     return result
+}
+
+fun <T : Any> String.execAndMap(transform: (ResultSet) -> T): List<T> {
+    return this.execAndMap(transform, explicitStatementType = null)
 }
 
 fun LongArray.toSql() = this.joinToString(prefix = "(", postfix = ")")
