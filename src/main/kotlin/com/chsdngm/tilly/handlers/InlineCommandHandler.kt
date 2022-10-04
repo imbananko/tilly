@@ -8,18 +8,16 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
-class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : AbstractHandler<InlineCommandUpdate> {
+class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : AbstractHandler<InlineCommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
     val chunkSize = 16
-    var executor: ExecutorService = Executors.newFixedThreadPool(10)
 
-    override fun handle(update: InlineCommandUpdate): CompletableFuture<Void> = CompletableFuture.supplyAsync({
-        if (update.value.isBlank() || update.value.length < 2) return@supplyAsync
+    override fun handleSync(update: InlineCommandUpdate) {
+        if (update.value.isBlank() || update.value.length < 2) {
+            return
+        }
 
         val offset = if (update.offset.isBlank()) 0 else update.offset.toInt()
 
@@ -38,7 +36,6 @@ class InlineCommandHandler(val elasticsearchService: ElasticsearchService) : Abs
             results = cachedPhotos
         }.let { TelegramConfig.api.execute(it) }
 
-    },
-        executor
-    ).thenAccept { log.info("processed inline command update=$update") }
+        log.info("processed inline command update=$update")
+    }
 }

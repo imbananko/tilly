@@ -29,7 +29,7 @@ class MemeController {
         )
 
         SendPhoto().apply {
-            chatId = TelegramConfig.BETA_CHAT_ID
+            chatId = TelegramConfig.MONTORN_CHAT_ID
             photo = InputFile(file.bytes.inputStream(), file.name)
             caption =
                 "автопредложка:\n\nПаблик: ${params.communityName}\nСсылка на пост: ${params.url}\nВремя публикации: ${
