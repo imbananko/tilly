@@ -1,10 +1,12 @@
 package com.chsdngm.tilly.repository
 
+import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.dto.*
 import com.chsdngm.tilly.utility.execAndMap
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
@@ -98,6 +100,25 @@ class MemeDao(val database: Database) {
         """.trimIndent()
 
         sql.execAndMap { rs -> ResultRow.create(rs, indexedFields) }.toMemes()
+    }
+
+    fun scheduleMemes(): List<Int> = transaction {
+        val sql = """
+                     update meme m set status='SCHEDULED'
+                     where m.id in (
+                           select meme.id
+                           from meme
+                                    left join vote on meme.id = vote.meme_id
+                           where meme.status = 'MODERATION'
+                             and meme.channel_message_id is null
+                             and meme.created > now() - interval '7 days'
+                           group by meme.id
+                           having count(vote) filter ( where vote.value = 'UP' ) -
+                                  count(vote) filter ( where vote.value = 'DOWN') >= $MODERATION_THRESHOLD
+                     ) returning m.id;
+                  """.trimIndent()
+
+        sql.execAndMap({ it.getInt(1) }, explicitStatementType = StatementType.SELECT)
     }
 }
 

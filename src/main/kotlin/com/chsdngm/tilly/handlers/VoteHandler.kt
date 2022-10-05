@@ -1,12 +1,9 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.metrics.MetricsUtils
-import com.chsdngm.tilly.model.MemeStatus.MODERATION
-import com.chsdngm.tilly.model.MemeStatus.SCHEDULED
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
@@ -90,7 +87,6 @@ class VoteHandler(
         }
 
         val markupUpdate = updateMarkup(meme, votes)
-        checkShipment(meme, votes)
         updateStatsInSenderChat(meme, votes)
 
         voteUpdate.run()
@@ -128,17 +124,6 @@ class VoteHandler(
         }
 
         return CompletableFuture.allOf(channelUpdate, groupUpdate)
-    }
-
-    private fun checkShipment(meme: Meme, votes: MutableList<Vote>) {
-        val values = votes.map { it.value }
-        val isEnough =
-            values.filter { it == VoteValue.UP }.size - values.filter { it == VoteValue.DOWN }.size >= MODERATION_THRESHOLD
-
-        if (isEnough && meme.status == MODERATION) {
-            meme.status = SCHEDULED
-            memeDao.update(meme)
-        }
     }
 
     override fun measureTime(update: VoteUpdate) {
