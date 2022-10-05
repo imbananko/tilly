@@ -30,9 +30,9 @@ enum class MemeStatus(val description: String) {
 }
 
 enum class WeightedModerationType(val weight: Int) {
-    PRIVATE(1),
-    DISTRIBUTED(97),
-    DEFAULT(2)
+    PRIVATE(20),
+    DISTRIBUTED(30),
+    DEFAULT(50)
 }
 
 enum class UserStatus {

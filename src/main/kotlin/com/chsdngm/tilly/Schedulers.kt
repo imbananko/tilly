@@ -184,7 +184,7 @@ final class Schedulers(
         log.error("failed to resurrect memes", it)
     }
 
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "0 */9 * * * *")
     private fun checkMemesForScheduling() = runCatching {
         val wereScheduled = memeDao.scheduleMemes()
 

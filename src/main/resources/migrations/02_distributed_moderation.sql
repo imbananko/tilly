@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS distributed_moderation_event
 	moderation_group_id integer,
 	constraint distributed_moderation_event_pk primary key (meme_id, moderator_id)
 );
+
+ALTER TABLE meme_log ALTER COLUMN message_id DROP NOT NULL;
+ALTER TABLE meme_log ALTER COLUMN chat_id DROP NOT NULL;

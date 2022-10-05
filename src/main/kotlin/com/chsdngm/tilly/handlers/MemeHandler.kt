@@ -47,6 +47,7 @@ import java.io.FileOutputStream
 import java.net.URL
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -64,10 +65,7 @@ class MemeHandler(
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val memeExecutorService = Executors.newSingleThreadExecutor()
-
-    private val distributedModerationMessage = """
-        Ты теперь в числе тех, кому доверено оценивать мемы. Дорожи этим и оценивай с душой.
-    """.trimIndent()
+    private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
     private val random = Random()
@@ -196,6 +194,11 @@ class MemeHandler(
         fun getDistributedModerationGroupId(): Int = 1
 
         val distributedModerationGroupId = getDistributedModerationGroupId()
+        val distributedGroupMembers = telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
+
+        if (distributedGroupMembers.any { it.id == update.user.id }) {
+            return false
+        }
 
         val senderMessageId = replyToSender(update).messageId
         val meme = memeDao.insert(
@@ -209,19 +212,20 @@ class MemeHandler(
                         update.caption
                 )
         )
-        val distributedGroupMembers = telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
 
-        for (member in distributedGroupMembers) {
-            SendPhoto().apply {
+        val futures = distributedGroupMembers.map { member ->
+            sendMemeToDistributedModerator(SendPhoto().apply {
                 chatId = member.id.toString()
                 photo = InputFile(update.fileId)
-                caption = (update.caption?.let { it + "\n\n" } ?: "") + distributedModerationMessage
+                caption = update.caption ?: ""
                 parseMode = ParseMode.HTML
                 replyMarkup = createDistributedModerationMarkup()
-            }.let { api.execute(it) }.let { sent ->
-                distributedModerationDao.createEvent(meme.id, member.id.toLong(), sent.messageId, distributedModerationGroupId)
+            }).whenComplete { sent, ex ->
+                if (sent != null) distributedModerationDao.createEvent(meme.id, member.id, sent.messageId, distributedModerationGroupId)
             }
         }
+
+        futures.forEach { it.join() }
 
         return true
     }
@@ -432,9 +436,9 @@ class MemeHandler(
     )
 
     fun createDistributedModerationMarkup() = InlineKeyboardMarkup(
-            listOf(
-                    listOf(InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name }),
-                    listOf(InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
+            listOf(listOf(
+                    InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name },
+                    InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
             )
     )
 
@@ -455,4 +459,16 @@ class MemeHandler(
         }.let { api.execute(it) }
 
     override fun getExecutor(): ExecutorService = memeExecutorService
+
+    private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
+                                               attemptNum: Int = 1): CompletableFuture<Message?> =
+            if (attemptNum > 3) CompletableFuture.completedFuture(null)
+            else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, distributedModerationExecutor)
+                    .handle { m, ex ->
+                        if (ex != null) CompletableFuture.supplyAsync {
+                            logExceptionInBetaChat(ex)
+                            Thread.sleep(1000L * attemptNum)
+                        }.thenCompose { sendMemeToDistributedModerator(memeMessage, attemptNum + 1) }
+                        else CompletableFuture.completedFuture(m)
+                    }.thenCompose { x -> x }
 }
