@@ -171,7 +171,7 @@ final class Schedulers(
             memeDao.update(updatedMeme)
 
             SendPhoto().apply {
-                chatId = BETA_CHAT_ID
+                chatId = LOGS_CHAT_ID
                 photo = InputFile(meme.fileId)
                 caption = "мем отправлен на воскрешение к ${moderator.mention()}"
                 parseMode = ParseMode.HTML

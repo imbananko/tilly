@@ -2,6 +2,7 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue
@@ -51,7 +52,7 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         updateStatsInSenderChat(meme, votes)
 
         log.info("ranked moderator with id=${update.user.id} approved meme=$meme")
-        sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.APPROVE)
+        sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.APPROVE)
     }
 
     private fun decline(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) {
@@ -68,16 +69,16 @@ class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val vot
         updateStatsInSenderChat(meme, votes)
 
         log.info("ranked moderator with id=${update.user.id} declined meme=$meme")
-        sendPrivateModerationEventToBeta(meme, update.user, PrivateVoteValue.DECLINE)
+        sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.DECLINE)
     }
 
-    private fun sendPrivateModerationEventToBeta(meme: Meme, moderator: User, solution: PrivateVoteValue) {
+    private fun sendPrivateModerationEventToLog(meme: Meme, moderator: User, solution: PrivateVoteValue) {
         val memeCaption =
             "${moderator.mention()} " + if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
             else "предал(а) мем забвению"
 
         SendPhoto().apply {
-            chatId = BETA_CHAT_ID
+            chatId = LOGS_CHAT_ID
             photo = InputFile(meme.fileId)
             caption = memeCaption
             parseMode = ParseMode.HTML
