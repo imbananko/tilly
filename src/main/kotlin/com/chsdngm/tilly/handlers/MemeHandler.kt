@@ -5,6 +5,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
@@ -85,7 +86,7 @@ class MemeHandler(
     fun handle(update: AutoSuggestedMemeUpdate) {
         val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
         if (duplicateFileId != null) {
-            sendDuplicateToBeta(
+            sendDuplicateToLog(
                 update.user.mention(),
                 duplicateFileId = update.fileId,
                 originalFileId = duplicateFileId
@@ -150,7 +151,7 @@ class MemeHandler(
 
         if (memeSender.status == UserStatus.BANNED) {
             replyToBannedUser(update)
-            sendBannedEventToBeta(update, memeSender)
+            sendBannedEventToLog(update, memeSender)
             return
         }
 
@@ -172,7 +173,7 @@ class MemeHandler(
 
             when (WeightedModerationType.values()[index]) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
-                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update) || moderateWithGroup(update)
+                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update, memeSender) || moderateWithGroup(update)
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
             }
         }
@@ -194,7 +195,7 @@ class MemeHandler(
         imageMatcher.add(image)
     }
 
-    private fun performDistributedModeration(update: MemeUpdate): Boolean {
+    private fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
         fun getDistributedModerationGroupId(): Int = 1
 
         val distributedModerationGroupId = getDistributedModerationGroupId()
@@ -233,6 +234,7 @@ class MemeHandler(
         CompletableFuture.allOf(*futures.toTypedArray())
 
         log.info("meme $meme was sent to distributed moderation group members: ${distributedGroupMembers.map { it.username }}")
+        sendDistributedModerationEventToLog(meme, sender, distributedGroupMembers)
 
         return true
     }
@@ -259,7 +261,7 @@ class MemeHandler(
             moderateWithUser(update, moderator.id).also { meme ->
                 log.info("sent for moderation to user=$moderator. meme=$meme")
                 telegramUserDao.update(moderator.apply { privateModerationLastAssignment = Instant.now() })
-                sendPrivateModerationEventToBeta(meme, sender, moderator)
+                sendPrivateModerationEventToLog(meme, sender, moderator)
             }
         }.onFailure {
             logExceptionInBetaChat(it)
@@ -284,7 +286,7 @@ class MemeHandler(
                 forwardMemeFromChannelToUser(meme, update.user)
             }
             log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
-            sendDuplicateToBeta(update.user.mention(), duplicateFileId = update.fileId, originalFileId = meme.fileId)
+            sendDuplicateToLog(update.user.mention(), duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
     }
 
@@ -398,9 +400,9 @@ class MemeHandler(
         text = "мем на приватной модерации"
     }.let { api.execute(it) }
 
-    private fun sendDuplicateToBeta(username: String, duplicateFileId: String, originalFileId: String) =
+    private fun sendDuplicateToLog(username: String, duplicateFileId: String, originalFileId: String) =
         SendMediaGroup().apply {
-            chatId = BETA_CHAT_ID
+            chatId = LOGS_CHAT_ID
             medias = listOf(InputMediaPhoto().apply {
                 media = duplicateFileId
                 caption = "дубликат, отправленный $username"
@@ -412,12 +414,12 @@ class MemeHandler(
             disableNotification = true
         }.let { api.execute(it) }
 
-    private fun sendPrivateModerationEventToBeta(
+    private fun sendPrivateModerationEventToLog(
         meme: Meme,
         memeSender: TelegramUser,
         moderator: TelegramUser,
     ) = SendPhoto().apply {
-        chatId = BETA_CHAT_ID
+        chatId = LOGS_CHAT_ID
         photo = InputFile(meme.fileId)
         caption = "мем авторства ${memeSender.mention()} отправлен на личную модерацию к ${moderator.mention()}"
         parseMode = ParseMode.HTML
@@ -455,9 +457,9 @@ class MemeHandler(
         text = "Мем на привитой модерации"
     }.let { api.execute(it) }
 
-    private fun sendBannedEventToBeta(update: MemeUpdate, telegramUser: TelegramUser) =
+    private fun sendBannedEventToLog(update: MemeUpdate, telegramUser: TelegramUser) =
         SendPhoto().apply {
-            chatId = BETA_CHAT_ID
+            chatId = LOGS_CHAT_ID
             photo = InputFile(update.fileId)
             caption = "мем ${telegramUser.mention()} отправлен на личную модерацию в НИКУДА"
             parseMode = ParseMode.HTML
@@ -479,4 +481,14 @@ class MemeHandler(
                         sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
                     }
                     .thenCompose(Function.identity())
+
+    private fun sendDistributedModerationEventToLog(meme: Meme,
+                                                    memeSender: TelegramUser,
+                                                    moderators: List<TelegramUser>) = SendPhoto().apply {
+        chatId = LOGS_CHAT_ID
+        photo = InputFile(meme.fileId)
+        caption = "мем авторства ${memeSender.mention()} отправлен на распределенную модерацию к ${moderators.map { it.mention() }}"
+        parseMode = ParseMode.HTML
+        disableNotification = true
+    }.let { api.execute(it) }
 }
