@@ -475,7 +475,7 @@ class MemeHandler(
                     .thenApply { CompletableFuture.completedFuture(it) }
                     .exceptionally { ex ->
                         logExceptionInBetaChat(ex)
-                        val delayedExecutor = CompletableFuture.delayedExecutor(attemptNum.toLong(), TimeUnit.SECONDS)
+                        val delayedExecutor = CompletableFuture.delayedExecutor(5L * attemptNum, TimeUnit.SECONDS)
                         sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
                     }
                     .thenCompose(Function.identity())
