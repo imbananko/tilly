@@ -5,24 +5,19 @@ import com.chsdngm.tilly.model.DistributedModerationVoteUpdate
 import com.chsdngm.tilly.model.DistributedModerationVoteValue
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Vote
-import com.chsdngm.tilly.repository.DistributedModerationDao
+import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.VoteDao
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 @Service
-class DistributedModerationVoteHandler(private val distributedModerationDao: DistributedModerationDao,
+class DistributedModerationVoteHandler(private val distributedModerationEventDao: DistributedModerationEventDao,
                                        private val voteDao: VoteDao) : AbstractHandler<DistributedModerationVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
-
-    override fun getExecutor(): ExecutorService = executorService
 
     override fun handleSync(update: DistributedModerationVoteUpdate) {
-        distributedModerationDao.findMemeId(update.user.id, update.messageId)?.let {
+        distributedModerationEventDao.findMemeId(update.user.id, update.messageId)?.let {
             when (update.voteValue) {
                 DistributedModerationVoteValue.APPROVE_DISTRIBUTED -> approve(update, it)
                 DistributedModerationVoteValue.DECLINE_DISTRIBUTED -> decline(update, it)

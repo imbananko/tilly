@@ -58,7 +58,7 @@ object Images : Table("image") {
     private fun binaryCustomLogging(name: String): Column<ByteArray> = registerColumn(name, BasicBinaryColumnTypeCustomLogging)
 }
 
-object DistributedModerationEvent : Table("distributed_moderation_event") {
+object DistributedModerationEvents : Table("distributed_moderation_event") {
     val memeId = integer("meme_id")
     val moderatorId = long("moderator_id")
     val chatMessageId = integer("chat_message_id")

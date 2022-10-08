@@ -16,10 +16,11 @@ import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTE
 import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.WeightedModerationType
+import com.chsdngm.tilly.model.dto.DistributedModerationEvent
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
-import com.chsdngm.tilly.repository.DistributedModerationDao
+import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
@@ -49,7 +50,10 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.function.Function
 import kotlin.math.abs
 
 
@@ -60,7 +64,7 @@ class MemeHandler(
         private val imageTextRecognizer: ImageTextRecognizer,
         private val imageDao: ImageDao,
         private val memeDao: MemeDao,
-        private val distributedModerationDao: DistributedModerationDao,
+        private val distributedModerationEventDao: DistributedModerationEventDao,
         private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -168,7 +172,7 @@ class MemeHandler(
 
             when (WeightedModerationType.values()[index]) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
-                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update)
+                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update) || moderateWithGroup(update)
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
             }
         }
@@ -218,14 +222,17 @@ class MemeHandler(
                 chatId = member.id.toString()
                 photo = InputFile(update.fileId)
                 caption = update.caption ?: ""
-                parseMode = ParseMode.HTML
                 replyMarkup = createDistributedModerationMarkup()
-            }).whenComplete { sent, ex ->
-                if (sent != null) distributedModerationDao.createEvent(meme.id, member.id, sent.messageId, distributedModerationGroupId)
+            }).thenAccept { sent ->
+                if (sent != null) distributedModerationEventDao.insert(
+                    DistributedModerationEvent(meme.id, member.id, sent.messageId, distributedModerationGroupId)
+                )
             }
         }
 
-        futures.forEach { it.join() }
+        CompletableFuture.allOf(*futures.toTypedArray())
+
+        log.info("meme $meme was sent to distributed moderation group members: ${distributedGroupMembers.map { it.username }}")
 
         return true
     }
@@ -461,14 +468,15 @@ class MemeHandler(
     override fun getExecutor(): ExecutorService = memeExecutorService
 
     private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
-                                               attemptNum: Int = 1): CompletableFuture<Message?> =
+                                               attemptNum: Int = 1,
+                                               executor: Executor = distributedModerationExecutor): CompletableFuture<Message?> =
             if (attemptNum > 3) CompletableFuture.completedFuture(null)
-            else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, distributedModerationExecutor)
-                    .handle { m, ex ->
-                        if (ex != null) CompletableFuture.supplyAsync {
-                            logExceptionInBetaChat(ex)
-                            Thread.sleep(1000L * attemptNum)
-                        }.thenCompose { sendMemeToDistributedModerator(memeMessage, attemptNum + 1) }
-                        else CompletableFuture.completedFuture(m)
-                    }.thenCompose { x -> x }
+            else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
+                    .thenApply { CompletableFuture.completedFuture(it) }
+                    .exceptionally { ex ->
+                        logExceptionInBetaChat(ex)
+                        val delayedExecutor = CompletableFuture.delayedExecutor(attemptNum.toLong(), TimeUnit.SECONDS)
+                        sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
+                    }
+                    .thenCompose(Function.identity())
 }
