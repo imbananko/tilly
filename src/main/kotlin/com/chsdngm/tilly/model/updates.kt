@@ -56,11 +56,11 @@ class VoteUpdate(update: Update) : Timestampable() {
 }
 
 abstract class MemeUpdate(
-    open val messageId: Int,
-    open val fileId: String,
-    open val user: User,
-    caption: String?,
-    val file: File = download(fileId)
+        open val messageId: Int,
+        open val fileId: String,
+        open val user: User,
+        caption: String?,
+        val file: File = download(fileId)
 ) : Timestampable() {
 
     val caption: String? = caption?.takeIf { caption ->
@@ -99,32 +99,32 @@ abstract class MemeUpdate(
 }
 
 class UserMemeUpdate(
-    override val messageId: Int,
-    override val fileId: String,
-    override val user: User,
-    caption: String?
+        override val messageId: Int,
+        override val fileId: String,
+        override val user: User,
+        caption: String?
 ) : MemeUpdate(messageId, fileId, user, caption) {
     constructor(update: Update) : this(
-        update.message.messageId,
-        update.message.photo.maxByOrNull { it.fileSize }!!.fileId,
-        update.message.from,
-        update.message.caption?.takeIf { caption ->
-            val lowerCaseCaption = caption.lowercase()
-            !trashCaptionParts.any { lowerCaseCaption.contains(it) }
-        }
+            update.message.messageId,
+            update.message.photo.maxByOrNull { it.fileSize }!!.fileId,
+            update.message.from,
+            update.message.caption?.takeIf { caption ->
+                val lowerCaseCaption = caption.lowercase()
+                !trashCaptionParts.any { lowerCaseCaption.contains(it) }
+            }
     )
 }
 
 class AutoSuggestedMemeUpdate(
-    override val messageId: Int,
-    override val fileId: String,
-    override val user: User,
-    caption: String?
+        override val messageId: Int,
+        override val fileId: String,
+        override val user: User,
+        caption: String?
 ) : MemeUpdate(
-    messageId,
-    fileId,
-    user,
-    caption
+        messageId,
+        fileId,
+        user,
+        caption
 ) {
     constructor(update: AutosuggestionVoteUpdate) : this(update.messageId, update.fileId, update.whoSuggests, null)
 }
@@ -190,6 +190,15 @@ class PrivateVoteUpdate(update: Update) : Timestampable() {
     val voteValue: PrivateVoteValue = PrivateVoteValue.valueOf(update.callbackQuery.data)
     override fun toString(): String {
         return "PrivateVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
+    }
+}
+
+class DistributedModerationVoteUpdate(update: Update) : Timestampable() {
+    val user: User = update.callbackQuery.from
+    val messageId: Int = update.callbackQuery.message.messageId
+    val voteValue: DistributedModerationVoteValue = DistributedModerationVoteValue.valueOf(update.callbackQuery.data)
+    override fun toString(): String {
+        return "DistributedModerationVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
     }
 }
 

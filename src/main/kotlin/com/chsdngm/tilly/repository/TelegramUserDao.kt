@@ -91,4 +91,10 @@ class TelegramUserDao(val database: Database) {
             .select { TelegramUsers.privateModerationLastAssignment greater Instant.now().minusDays(1) }
             .toTelegramUsers()
     }
+
+    fun findAllByDistributedModerationGroupId(distributedModerationGroupId: Int): List<TelegramUser> = transaction {
+        TelegramUsers
+                .select { TelegramUsers.distributedModerationGroupId eq distributedModerationGroupId}
+                .toTelegramUsers()
+    }
 }

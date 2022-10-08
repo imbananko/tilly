@@ -23,7 +23,8 @@ class UpdatesPoller(
     val commandHandler: CommandHandler,
     val inlineCommandHandler: InlineCommandHandler,
     val privateModerationVoteHandler: PrivateModerationVoteHandler,
-    val autosuggestionVoteHandler: AutosuggestionVoteHandler
+    val autosuggestionVoteHandler: AutosuggestionVoteHandler,
+    val distributedModerationVoteHandler: DistributedModerationVoteHandler
 ) : TelegramLongPollingBot() {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -39,6 +40,7 @@ class UpdatesPoller(
             update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
             update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
             update.hasAutosuggestionVote() -> autosuggestionVoteHandler.handle(AutosuggestionVoteUpdate(update))
+            update.hasDistributedModerationVote() -> distributedModerationVoteHandler.handle(DistributedModerationVoteUpdate(update))
             update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
             else -> CompletableFuture.completedFuture(null)
 

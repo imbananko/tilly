@@ -5,8 +5,8 @@ import java.time.Instant
 
 data class MemeLog(
     val memeId: Int,
-    val chatId: Long,
-    val messageId: Int,
+    val chatId: Long?,
+    val messageId: Int?,
     val created: Instant = Instant.now(),
 ) {
     companion object {

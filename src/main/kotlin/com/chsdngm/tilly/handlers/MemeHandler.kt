@@ -12,11 +12,15 @@ import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.WeightedModerationType
+import com.chsdngm.tilly.model.dto.DistributedModerationEvent
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
+import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
@@ -44,23 +48,28 @@ import java.io.FileOutputStream
 import java.net.URL
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.function.Function
 import kotlin.math.abs
 
 
 @Service
 class MemeHandler(
-    private val telegramUserDao: TelegramUserDao,
-    private val imageMatcher: ImageMatcher,
-    private val imageTextRecognizer: ImageTextRecognizer,
-    private val imageDao: ImageDao,
-    private val memeDao: MemeDao,
-    private val metricsUtils: MetricsUtils,
-) : AbstractHandler<MemeUpdate>() {
+        private val telegramUserDao: TelegramUserDao,
+        private val imageMatcher: ImageMatcher,
+        private val imageTextRecognizer: ImageTextRecognizer,
+        private val imageDao: ImageDao,
+        private val memeDao: MemeDao,
+        private val distributedModerationEventDao: DistributedModerationEventDao,
+        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val memeExecutorService = Executors.newSingleThreadExecutor()
+    private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
     private val random = Random()
@@ -163,6 +172,7 @@ class MemeHandler(
 
             when (WeightedModerationType.values()[index]) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
+                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update) || moderateWithGroup(update)
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
             }
         }
@@ -182,6 +192,49 @@ class MemeHandler(
 
         imageDao.insert(image)
         imageMatcher.add(image)
+    }
+
+    private fun performDistributedModeration(update: MemeUpdate): Boolean {
+        fun getDistributedModerationGroupId(): Int = 1
+
+        val distributedModerationGroupId = getDistributedModerationGroupId()
+        val distributedGroupMembers = telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
+
+        if (distributedGroupMembers.any { it.id == update.user.id }) {
+            return false
+        }
+
+        val senderMessageId = replyToSender(update).messageId
+        val meme = memeDao.insert(
+                Meme(
+                        null,
+                        null,
+                        update.user.id,
+                        update.status,
+                        senderMessageId,
+                        update.fileId,
+                        update.caption
+                )
+        )
+
+        val futures = distributedGroupMembers.map { member ->
+            sendMemeToDistributedModerator(SendPhoto().apply {
+                chatId = member.id.toString()
+                photo = InputFile(update.fileId)
+                caption = update.caption ?: ""
+                replyMarkup = createDistributedModerationMarkup()
+            }).thenAccept { sent ->
+                if (sent != null) distributedModerationEventDao.insert(
+                    DistributedModerationEvent(meme.id, member.id, sent.messageId, distributedModerationGroupId)
+                )
+            }
+        }
+
+        CompletableFuture.allOf(*futures.toTypedArray())
+
+        log.info("meme $meme was sent to distributed moderation group members: ${distributedGroupMembers.map { it.username }}")
+
+        return true
     }
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
@@ -266,7 +319,7 @@ class MemeHandler(
         SendPhoto().apply {
             chatId = moderatorId.toString()
             photo = InputFile(update.fileId)
-            caption = update.caption?.let { it + "\n\n" } ?: ("" + "Теперь ты модератор!")
+            caption = (update.caption?.let { it + "\n\n" } ?: "") + "Теперь ты модератор!"
             parseMode = ParseMode.HTML
             replyMarkup = createPrivateModerationMarkup()
         }.let { api.execute(it) }.let { sent ->
@@ -320,7 +373,7 @@ class MemeHandler(
     private fun forwardMemeFromChatToUser(meme: Meme, user: User) = ForwardMessage().apply {
         chatId = user.id.toString()
         fromChatId = meme.moderationChatId.toString()
-        messageId = meme.moderationChatMessageId
+        messageId = meme.moderationChatMessageId!!
         disableNotification = true
     }.let { api.execute(it) }
 
@@ -389,6 +442,13 @@ class MemeHandler(
         )
     )
 
+    fun createDistributedModerationMarkup() = InlineKeyboardMarkup(
+            listOf(listOf(
+                    InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name },
+                    InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
+            )
+    )
+
     private fun replyToBannedUser(update: MemeUpdate): Message = SendMessage().apply {
         chatId = update.user.id.toString()
         replyToMessageId = update.messageId
@@ -406,4 +466,17 @@ class MemeHandler(
         }.let { api.execute(it) }
 
     override fun getExecutor(): ExecutorService = memeExecutorService
+
+    private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
+                                               attemptNum: Int = 1,
+                                               executor: Executor = distributedModerationExecutor): CompletableFuture<Message?> =
+            if (attemptNum > 3) CompletableFuture.completedFuture(null)
+            else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
+                    .thenApply { CompletableFuture.completedFuture(it) }
+                    .exceptionally { ex ->
+                        logExceptionInBetaChat(ex)
+                        val delayedExecutor = CompletableFuture.delayedExecutor(5L * attemptNum, TimeUnit.SECONDS)
+                        sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
+                    }
+                    .thenCompose(Function.identity())
 }

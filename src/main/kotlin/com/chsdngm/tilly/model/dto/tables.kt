@@ -11,8 +11,8 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 object Memes : IntIdTable("meme", "id") {
-    val moderationChatId = long("moderation_chat_id")
-    val moderationChatMessageId = integer("moderation_chat_message_id")
+    val moderationChatId = long("moderation_chat_id").nullable()
+    val moderationChatMessageId = integer("moderation_chat_message_id").nullable()
     val senderId = long("sender_id")
     val status = enumerationByName("status", 10, MemeStatus::class)
     val privateReplyMessageId = integer("private_reply_message_id").nullable()
@@ -24,8 +24,8 @@ object Memes : IntIdTable("meme", "id") {
 
 object MemesLogs : Table("meme_log") {
     val memeId = integer("meme_id")
-    val chatId = long("chat_id")
-    val messageId = integer("message_id")
+    val chatId = long("chat_id").nullable()
+    val messageId = integer("message_id").nullable()
     val created = timestamp("created")
 }
 
@@ -43,6 +43,7 @@ object TelegramUsers : LongIdTable("telegram_user") {
     val lastName = text("last_name").nullable()
     val status = enumerationByName("status", 10, UserStatus::class)
     val privateModerationLastAssignment = timestamp("private_moderation_last_assignment").nullable()
+    val distributedModerationGroupId = integer("distributed_moderation_group_id").nullable()
 
     val indexedFields = TelegramUsers.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
 }
@@ -55,6 +56,13 @@ object Images : Table("image") {
     val rawLabels = text("raw_labels").nullable()
 
     private fun binaryCustomLogging(name: String): Column<ByteArray> = registerColumn(name, BasicBinaryColumnTypeCustomLogging)
+}
+
+object DistributedModerationEvents : Table("distributed_moderation_event") {
+    val memeId = integer("meme_id")
+    val moderatorId = long("moderator_id")
+    val chatMessageId = integer("chat_message_id")
+    val moderationGroupId = integer("moderation_group_id")
 }
 
 /**
