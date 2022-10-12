@@ -280,12 +280,17 @@ class MemeHandler(
         sendSorryText(update)
 
         memeDao.findByFileId(duplicateFileId)?.also { meme ->
-            if (meme.channelMessageId == null) {
-                forwardMemeFromChatToUser(meme, update.user)
-            } else {
-                forwardMemeFromChannelToUser(meme, update.user)
+            if (meme.moderationChatId != null) {
+                if (meme.channelMessageId == null) {
+                    forwardMemeFromChatToUser(meme, update.user)
+                } else {
+                    forwardMemeFromChannelToUser(meme, update.user)
+                }
+
+                log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
+
             }
-            log.info("successfully forwarded original meme to sender=${update.user.id}. $meme")
+
             sendDuplicateToLog(update.user.mention(), duplicateFileId = update.fileId, originalFileId = meme.fileId)
         }
     }

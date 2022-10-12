@@ -12,6 +12,7 @@ data class TelegramUser(
     val firstName: String?,
     val lastName: String?,
     val status: UserStatus = UserStatus.DEFAULT,
+    val distributedModerationGroupId: Int? = null,
     var privateModerationLastAssignment: Instant? = null,
 ) {
     fun mention() = """<a href="tg://user?id=${this.id}">${this.username ?: this.firstName ?: "мутный тип"}</a>"""
@@ -28,6 +29,7 @@ fun ResultRow.toTelegramUser(): TelegramUser? {
         firstName = this[TelegramUsers.firstName],
         lastName = this[TelegramUsers.lastName],
         status = this[TelegramUsers.status],
+        distributedModerationGroupId = this[TelegramUsers.distributedModerationGroupId],
         privateModerationLastAssignment = this[TelegramUsers.privateModerationLastAssignment]
     )
 }
@@ -50,6 +52,7 @@ fun TelegramUser.toInsertStatement(statement: InsertStatement<Number>): InsertSt
     it[TelegramUsers.username] = this.username
     it[TelegramUsers.lastName] = this.lastName
     it[TelegramUsers.firstName] = this.firstName
+    it[TelegramUsers.distributedModerationGroupId] = this.distributedModerationGroupId
     it[TelegramUsers.privateModerationLastAssignment] = this.privateModerationLastAssignment
 }
 
@@ -58,5 +61,6 @@ fun TelegramUser.toUpdateStatement(statement: UpdateStatement): UpdateStatement 
     it[TelegramUsers.lastName] = this.lastName
     it[TelegramUsers.status] = this.status
     it[TelegramUsers.username] = this.username
+    it[TelegramUsers.distributedModerationGroupId] = this.distributedModerationGroupId
     it[TelegramUsers.privateModerationLastAssignment] = this.privateModerationLastAssignment
 }
