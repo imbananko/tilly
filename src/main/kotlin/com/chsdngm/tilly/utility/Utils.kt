@@ -14,6 +14,8 @@ import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import org.apache.commons.io.IOUtils
+import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.telegram.telegrambots.meta.api.methods.GetFile
@@ -153,3 +155,6 @@ fun download(fileId: String): File {
 
     return file
 }
+
+val Table.allColumns get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
+val Table.indexedColumns get() = realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()

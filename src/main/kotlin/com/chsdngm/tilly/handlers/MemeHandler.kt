@@ -195,7 +195,7 @@ class MemeHandler(
         imageMatcher.add(image)
     }
 
-    private fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
+    private fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean = runCatching {
         fun getDistributedModerationGroupId(): Int = 1
 
         val distributedModerationGroupId = getDistributedModerationGroupId()
@@ -235,9 +235,7 @@ class MemeHandler(
 
         log.info("meme $meme was sent to distributed moderation group members: ${distributedGroupMembers.map { it.username }}")
         sendDistributedModerationEventToLog(meme, sender, distributedGroupMembers)
-
-        return true
-    }
+    }.isSuccess
 
     private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
         val currentModerators = telegramUserDao.findUsersWithRecentlyPrivateModerationAssignment()
@@ -430,17 +428,6 @@ class MemeHandler(
         parseMode = ParseMode.HTML
         disableNotification = true
     }.let { api.execute(it) }
-
-    private fun download(fileId: String) =
-        File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis())
-            .apply { this.deleteOnExit() }.also {
-                FileOutputStream(it).use { out ->
-                    URL(api.execute(GetFile(fileId)).getFileUrl(BOT_TOKEN)).openStream()
-                        .use { stream -> IOUtils.copy(stream, out) }
-                }
-            }.also {
-                log.info("successfully downloaded file=$it")
-            }
 
     fun createPrivateModerationMarkup() = InlineKeyboardMarkup(
         listOf(

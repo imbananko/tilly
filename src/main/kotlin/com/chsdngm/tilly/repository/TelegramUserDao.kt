@@ -1,9 +1,7 @@
 package com.chsdngm.tilly.repository
 
 import com.chsdngm.tilly.model.dto.*
-import com.chsdngm.tilly.utility.execAndMap
-import com.chsdngm.tilly.utility.minusDays
-import com.chsdngm.tilly.utility.toSql
+import com.chsdngm.tilly.utility.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -29,7 +27,7 @@ class TelegramUserDao(val database: Database) {
         val limit = 5
         val days = 7
         val sql = """
-                select u.*
+                select ${TelegramUsers.allColumns} 
                 from meme m
                          inner join (select meme_id,
                                             count(*) filter (where value = 'UP')   up,
@@ -45,10 +43,10 @@ class TelegramUserDao(val database: Database) {
                   and u.id not in ${idsToExclude.toSql()}
                 group by u.id
                 order by sum(up) - sum(down) - 2 * count(1) desc
-                limit $limit
+                limit $limit;
                 """
 
-        sql.execAndMap { rs -> ResultRow.create(rs, TelegramUsers.indexedFields) }.toTelegramUsers()
+        sql.execAndMap { rs -> ResultRow.create(rs, TelegramUsers.indexedColumns) }.toTelegramUsers()
     }
 
     fun findUserRank(userId: String): Long? = transaction {
