@@ -37,11 +37,11 @@ class TelegramUserDao(val database: Database) {
                                      where created >= now() - interval '$days days'
                                      group by meme_id) v
                                     on m.id = v.meme_id
-                         inner join telegram_user u on m.sender_id = u.id
+                         inner join telegram_user on m.sender_id = telegram_user.id
                 where m.channel_message_id is not null
                   and created >= now() - interval '$days days'
-                  and u.id not in ${idsToExclude.toSql()}
-                group by u.id
+                  and telegram_user.id not in ${idsToExclude.toSql()}
+                group by telegram_user.id
                 order by sum(up) - sum(down) - 2 * count(1) desc
                 limit $limit;
                 """
