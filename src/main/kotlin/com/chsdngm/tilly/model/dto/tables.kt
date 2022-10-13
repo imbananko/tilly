@@ -42,10 +42,8 @@ object TelegramUsers : LongIdTable("telegram_user") {
     val firstName = text("first_name").nullable()
     val lastName = text("last_name").nullable()
     val status = enumerationByName("status", 10, UserStatus::class)
-    val privateModerationLastAssignment = timestamp("private_moderation_last_assignment").nullable()
     val distributedModerationGroupId = integer("distributed_moderation_group_id").nullable()
-
-    val indexedFields = TelegramUsers.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
+    val privateModerationLastAssignment = timestamp("private_moderation_last_assignment").nullable()
 }
 
 object Images : Table("image") {

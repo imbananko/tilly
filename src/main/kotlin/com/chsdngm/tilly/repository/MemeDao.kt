@@ -3,7 +3,9 @@ package com.chsdngm.tilly.repository
 import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.dto.*
+import com.chsdngm.tilly.utility.allColumns
 import com.chsdngm.tilly.utility.execAndMap
+import com.chsdngm.tilly.utility.indexedColumns
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.StatementType
@@ -13,8 +15,6 @@ import java.time.LocalDate
 
 @Repository
 class MemeDao(val database: Database) {
-    val Memes.allFields get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
-    val indexedFields = Memes.realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
 
     fun findMemeByChannelMessageId(channelMessageId: Int): Pair<Meme, List<Vote>>? = transaction {
         (Memes leftJoin Votes)
@@ -58,7 +58,7 @@ class MemeDao(val database: Database) {
 
     fun findTopRatedMemeForLastWeek(): Meme? = transaction {
         val sql = """
-                select ${Memes.allFields} 
+                select ${Memes.allColumns} 
                 from meme    
                     left join vote v on id = v.meme_id where channel_message_id is not null    
                     and meme.created > current_timestamp - interval '7 days' 
@@ -67,7 +67,7 @@ class MemeDao(val database: Database) {
                 limit 1;
                 """.trimIndent()
 
-        sql.execAndMap { rs -> ResultRow.create(rs, indexedFields) }.toMeme()
+        sql.execAndMap { rs -> ResultRow.create(rs, Memes.indexedColumns) }.toMeme()
     }
 
     fun saveMemeOfTheWeek(memeId: Int) = transaction {
@@ -83,7 +83,7 @@ class MemeDao(val database: Database) {
         val ascOrDesc = if (LocalDate.now().dayOfYear % 2 == 0) "asc" else "desc"
 
         val sql = """
-            select ${Memes.allFields} 
+            select ${Memes.allColumns} 
             from (select meme.*,
                          count(vote) filter ( where vote.value = 'UP' )  as ups,
                          count(vote) filter ( where vote.value = 'DOWN') as downs
@@ -99,7 +99,7 @@ class MemeDao(val database: Database) {
             limit 5;
         """.trimIndent()
 
-        sql.execAndMap { rs -> ResultRow.create(rs, indexedFields) }.toMemes()
+        sql.execAndMap { rs -> ResultRow.create(rs, Memes.indexedColumns) }.toMemes()
     }
 
     fun scheduleMemes(): List<Int> = transaction {
