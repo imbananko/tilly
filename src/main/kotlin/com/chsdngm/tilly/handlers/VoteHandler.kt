@@ -26,17 +26,18 @@ import java.util.concurrent.Executors
 class VoteHandler(
     val memeDao: MemeDao,
     val voteDao: VoteDao,
-    val metricsUtils: MetricsUtils
+    val metricsUtils: MetricsUtils,
+    val markupUtils: MarkupUtils
 ) : AbstractHandler<VoteUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val voteExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handleSync(update: VoteUpdate) {
-        if (update.isOld) {
-            sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-            return
-        }
+//        if (update.isOld) {
+//            sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
+//            return
+//        }
 
         val memeWithVotes = when (update.sourceChatId) {
             CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
@@ -50,10 +51,10 @@ class VoteHandler(
         val meme = memeWithVotes.first
         val votes = memeWithVotes.second.toMutableList()
 
-        if (meme.senderId == update.voterId) {
-            sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return
-        }
+//        if (meme.senderId == update.voterId) {
+//            sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
+//            return
+//        }
 
         val vote = Vote(
             meme.id,
@@ -62,6 +63,8 @@ class VoteHandler(
             update.voteValue,
             created = Instant.ofEpochMilli(update.createdAt)
         )
+
+        markupUtils.submitVote(meme)
 
         lateinit var voteUpdate: Runnable
         votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
@@ -92,7 +95,7 @@ class VoteHandler(
         voteUpdate.run()
 
         markupUpdate.join()
-        log.info("processed vote update=$update")
+//        log.info("processed vote update=$update")
     }
 
     fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
