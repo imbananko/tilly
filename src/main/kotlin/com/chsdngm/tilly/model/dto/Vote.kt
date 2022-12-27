@@ -21,6 +21,7 @@ data class Vote(
 
         if (memeId != other.memeId) return false
         if (voterId != other.voterId) return false
+        if (value != other.value) return false
 
         return true
     }
@@ -28,6 +29,7 @@ data class Vote(
     override fun hashCode(): Int {
         var result = memeId
         result = 31 * result + voterId.hashCode()
+        result = 31 * result + value.hashCode()
         return result
     }
 }
