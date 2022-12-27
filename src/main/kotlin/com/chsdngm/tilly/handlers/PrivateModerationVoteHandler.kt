@@ -20,14 +20,10 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.User
-import java.util.concurrent.ExecutorService
 
 @Service
-class PrivateModerationVoteHandler(
-        private val memeDao: MemeDao,
-        private val voteDao: VoteDao,
-        forkJoinPool: ExecutorService) :
-    AbstractHandler<PrivateVoteUpdate>(forkJoinPool) {
+class PrivateModerationVoteHandler(private val memeDao: MemeDao, private val voteDao: VoteDao) :
+    AbstractHandler<PrivateVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: PrivateVoteUpdate) {

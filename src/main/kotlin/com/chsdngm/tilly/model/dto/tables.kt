@@ -27,7 +27,6 @@ object MemesLogs : Table("meme_log") {
     val chatId = long("chat_id").nullable()
     val messageId = integer("message_id").nullable()
     val created = timestamp("created")
-    val memeCreated = timestamp("meme_created")
 }
 
 object Votes : Table("vote") {

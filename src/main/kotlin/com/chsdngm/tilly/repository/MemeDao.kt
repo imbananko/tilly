@@ -102,11 +102,10 @@ class MemeDao(val database: Database) {
         sql.execAndMap { rs -> ResultRow.create(rs, Memes.indexedColumns) }.toMemes()
     }
 
-    fun scheduleMemes(): List<Meme> = transaction {
+    fun scheduleMemes(): List<Int> = transaction {
         val sql = """
-                     update meme 
-                     set status='SCHEDULED'
-                     where id in (
+                     update meme m set status='SCHEDULED'
+                     where m.id in (
                            select meme.id
                            from meme
                                     left join vote on meme.id = vote.meme_id
@@ -116,10 +115,10 @@ class MemeDao(val database: Database) {
                            group by meme.id
                            having count(vote) filter ( where vote.value = 'UP' ) -
                                   count(vote) filter ( where vote.value = 'DOWN') >= $MODERATION_THRESHOLD
-                     ) returning ${Memes.allColumns};
+                     ) returning m.id;
                   """.trimIndent()
 
-        sql.execAndMap({ rs -> ResultRow.create(rs, Memes.indexedColumns) }, StatementType.SELECT).toMemes()
+        sql.execAndMap({ it.getInt(1) }, explicitStatementType = StatementType.SELECT)
     }
 }
 

@@ -1,6 +1,8 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
+import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_TOKEN
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
@@ -26,9 +28,11 @@ import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import com.chsdngm.tilly.utility.*
+import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
+import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
@@ -40,9 +44,13 @@ import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -58,9 +66,10 @@ class MemeHandler(
         private val imageDao: ImageDao,
         private val memeDao: MemeDao,
         private val distributedModerationEventDao: DistributedModerationEventDao,
-        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
+        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>() {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val memeExecutorService = Executors.newSingleThreadExecutor()
     private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
@@ -112,7 +121,7 @@ class MemeHandler(
     }
 
     override fun measureTime(update: MemeUpdate) {
-        metricsUtils.measureDuration(update)
+        metricsUtils.measure(update)
     }
 
     override fun handleSync(update: MemeUpdate) {
@@ -449,6 +458,8 @@ class MemeHandler(
             disableNotification = true
 
         }.let { api.execute(it) }
+
+    override fun getExecutor(): ExecutorService = memeExecutorService
 
     private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
                                                attemptNum: Int = 1,

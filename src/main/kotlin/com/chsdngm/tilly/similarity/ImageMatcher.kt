@@ -67,14 +67,8 @@ class ImageMatcher(
             }
         }
 
-        fun calculateHash(file: ByteArray): ByteArray {
-            var image: BufferedImage
-            file.inputStream().use {
-                image = ImageIO.read(it)
-            }
-
-            return mainHashingAlgorithm.hash(image).hashValue.toByteArray()
-        }
+        fun calculateHash(file: ByteArray): ByteArray =
+            mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
     }
 }
 
