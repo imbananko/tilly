@@ -17,9 +17,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
-import java.io.Serializable
 import java.time.Instant
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
 @Service
@@ -110,6 +108,6 @@ class VoteHandler(
             }.let { api.execute(it) }
 
     override fun measureTime(update: VoteUpdate) {
-        metricsUtils.measure(update)
+        metricsUtils.measureDuration(update)
     }
 }

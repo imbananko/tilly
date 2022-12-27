@@ -16,6 +16,7 @@ import com.google.monitoring.v3.*
 import com.google.protobuf.Timestamp
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 @Component
@@ -30,6 +31,7 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
     }
 
     private val durationSeries = hashMapOf<Timestampable, TimeSeries>()
+    private val voteMergedSeries = mutableListOf<TimeSeries>()
     private val metricServiceClient: MetricServiceClient
     private val resource: MonitoredResource
     private val projectId: String
@@ -50,10 +52,10 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         metricServiceClient = MetricServiceClient.create(metricServiceSettings)
     }
 
-    fun measure(update: Timestampable) {
+    fun measureDuration(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
         //TODO refactor
         if (COMMIT_SHA == "local") {
-            return
+            return@supplyAsync
         }
 
         val endTimeMs = System.currentTimeMillis()
@@ -70,6 +72,32 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
             .build()
 
         checkMetricShipment()
+    }.exceptionally {
+        log.error("Failed to send metrics", it)
+    }
+
+    fun measureMergedVotes(mergedVotesCount: Int): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
+        if (COMMIT_SHA == "local") {
+            return@supplyAsync
+        }
+
+        val startTimeMs = System.currentTimeMillis()
+
+        val durationPoint = buildDurationPoint(startTimeMs, startTimeMs, mergedVotesCount)
+        val metric = Metric.newBuilder()
+                .setType("$CUSTOM_GOOGLEAPIS/vote_processing/merged_votes")
+                .build()
+
+        voteMergedSeries.add(TimeSeries.newBuilder()
+                .setMetric(metric)
+                .setMetricKind(MetricDescriptor.MetricKind.GAUGE)
+                .setResource(resource)
+                .addPoints(durationPoint)
+                .build())
+
+        checkMetricShipment()
+    }.exceptionally {
+        log.error("Failed to send metrics", it)
     }
 
     private fun buildMetric(update: Timestampable): Metric? {
@@ -104,6 +132,21 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         return Point.newBuilder().setValue(value).setInterval(interval).build()
     }
 
+    private fun buildDurationPoint(startTimeMs: Long, endTimeMs: Long, votesCount: Int): Point {
+        val interval: TimeInterval = TimeInterval.newBuilder()
+                .setEndTime(
+                        Timestamp.newBuilder()
+                                .setSeconds(TimeUnit.MILLISECONDS.toSeconds(endTimeMs))
+                                .setNanos((TimeUnit.MILLISECONDS.toNanos(endTimeMs) % (1000 * 1000 * 1000)).toInt())
+                ).build()
+
+        val value = TypedValue.newBuilder()
+                .setDoubleValue(votesCount.toDouble())
+                .build()
+
+        return Point.newBuilder().setValue(value).setInterval(interval).build()
+    }
+
     private fun checkMetricShipment() {
         if (durationSeries.size >= THRESHOLD) {
             runCatching {
@@ -116,6 +159,18 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
                 metricServiceClient.createTimeSeries(request)
             }.onFailure {
                 log.error("Failed to send metrics", it)
+            }
+        }
+
+        if (voteMergedSeries.size >= 1) {
+            runCatching {
+                val request = CreateTimeSeriesRequest.newBuilder().setName(ProjectName.of(projectId).toString())
+                        .addAllTimeSeries(voteMergedSeries)
+                        .build()
+
+                voteMergedSeries.clear()
+
+                metricServiceClient.createTimeSeries(request)
             }
         }
     }

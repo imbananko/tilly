@@ -954,7 +954,7 @@ public class ExtendedCopyOnWriteArrayList<E>
     /**
      * @return the last removed element (null if no elements were deleted)
      */
-    public E dropIf(Predicate<? super E> filter) {
+    public E dropIf(Predicate<? super E> filter, Consumer<Integer> deletedCounterConsumer) {
         Objects.requireNonNull(filter);
         synchronized (lock) {
             // assert Thread.holdsLock(lock);
@@ -988,6 +988,7 @@ public class ExtendedCopyOnWriteArrayList<E>
                         newElts[w++] = es[i];
                 System.arraycopy(es, i, newElts, w, es.length - i);
                 setArray(newElts);
+                deletedCounterConsumer.accept(deleted);
                 return retVal;
             } else {
                 if (es != getArray())

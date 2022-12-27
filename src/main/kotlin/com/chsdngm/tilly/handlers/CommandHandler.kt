@@ -20,7 +20,6 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.ForkJoinPool
 
 @Service
 class CommandHandler(
@@ -48,7 +47,7 @@ class CommandHandler(
     }
 
     override fun measureTime(update: CommandUpdate) {
-        metricsUtils.measure(update)
+        metricsUtils.measureDuration(update)
     }
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
