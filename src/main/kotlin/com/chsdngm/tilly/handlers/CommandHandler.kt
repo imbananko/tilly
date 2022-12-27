@@ -19,15 +19,18 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.ForkJoinPool
 
 @Service
 class CommandHandler(
     private val telegramUserDao: TelegramUserDao,
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
-    private val metricsUtils: MetricsUtils
+    private val metricsUtils: MetricsUtils,
+    forkJoinPool: ExecutorService
 ) :
-    AbstractHandler<CommandUpdate>() {
+    AbstractHandler<CommandUpdate>(forkJoinPool) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: CommandUpdate) {

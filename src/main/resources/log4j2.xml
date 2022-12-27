@@ -17,8 +17,8 @@
             <AppenderRef ref="LogToConsole"/>
         </Root>
 
-<!--        <logger name="Exposed" level="debug" additivity="false">-->
-<!--            <AppenderRef ref="LogToConsole"/>-->
-<!--        </logger>-->
+        <logger name="Exposed" level="debug" additivity="false">
+            <AppenderRef ref="LogToConsole"/>
+        </logger>
     </Loggers>
 </Configuration>

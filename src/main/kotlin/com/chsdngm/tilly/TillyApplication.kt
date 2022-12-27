@@ -13,7 +13,7 @@ class TillyApplication
 
 fun main(args: Array<String>) {
     SpringApplication.run(TillyApplication::class.java, *args)
-//    sendStartMessageToBeta()
+    sendStartMessageToBeta()
 }
 
 private fun sendStartMessageToBeta() = SendMessage().apply {

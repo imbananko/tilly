@@ -12,9 +12,8 @@ import java.util.concurrent.Executors
 
 @Service
 class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
-    AbstractHandler<AutosuggestionVoteUpdate>() {
+    AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val autosuggestionVoteExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handleSync(update: AutosuggestionVoteUpdate) {
         when (update.voteValue) {
@@ -46,6 +45,4 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
 
         log.info("auto-suggested meme was declined. update=$update")
     }
-
-    override fun getExecutor(): ExecutorService = autosuggestionVoteExecutorService
 }

@@ -66,10 +66,9 @@ class MemeHandler(
         private val imageDao: ImageDao,
         private val memeDao: MemeDao,
         private val distributedModerationEventDao: DistributedModerationEventDao,
-        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>() {
+        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val memeExecutorService = Executors.newSingleThreadExecutor()
     private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
@@ -458,8 +457,6 @@ class MemeHandler(
             disableNotification = true
 
         }.let { api.execute(it) }
-
-    override fun getExecutor(): ExecutorService = memeExecutorService
 
     private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
                                                attemptNum: Int = 1,

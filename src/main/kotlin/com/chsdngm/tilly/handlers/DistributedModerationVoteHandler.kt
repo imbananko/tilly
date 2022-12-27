@@ -10,10 +10,14 @@ import com.chsdngm.tilly.repository.VoteDao
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import java.util.concurrent.ExecutorService
 
 @Service
-class DistributedModerationVoteHandler(private val distributedModerationEventDao: DistributedModerationEventDao,
-                                       private val voteDao: VoteDao) : AbstractHandler<DistributedModerationVoteUpdate>() {
+class DistributedModerationVoteHandler(
+        private val distributedModerationEventDao: DistributedModerationEventDao,
+        private val voteDao: VoteDao,
+        forkJoinPool: ExecutorService
+) : AbstractHandler<DistributedModerationVoteUpdate>(forkJoinPool) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: DistributedModerationVoteUpdate) {
@@ -32,6 +36,7 @@ class DistributedModerationVoteHandler(private val distributedModerationEventDao
             caption = "вы одобрили этот мем"
         }.let { TelegramConfig.api.execute(it) }
 
+        //TODO fix
         voteDao.insert(Vote(memeId, update.user.id, update.user.id, VoteValue.UP))
 
         log.info("moderator with id=${update.user.id} voted up for meme memeId=$memeId")
@@ -44,6 +49,7 @@ class DistributedModerationVoteHandler(private val distributedModerationEventDao
             caption = "вы засрали этот мем"
         }.let { TelegramConfig.api.execute(it) }
 
+        //TODO fix
         voteDao.insert(Vote(memeId, update.user.id, update.user.id, VoteValue.DOWN))
 
         log.info("moderator with id=${update.user.id} voted down for meme memeId=$memeId")
