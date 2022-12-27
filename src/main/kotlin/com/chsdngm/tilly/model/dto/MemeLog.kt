@@ -8,9 +8,10 @@ data class MemeLog(
     val chatId: Long?,
     val messageId: Int?,
     val created: Instant = Instant.now(),
+    val memeCreated: Instant,
 ) {
     companion object {
-        fun fromMeme(meme: Meme) = MemeLog(meme.id, meme.moderationChatId, meme.moderationChatMessageId)
+        fun fromMeme(meme: Meme) = MemeLog(meme.id, meme.moderationChatId, meme.moderationChatMessageId, memeCreated = meme.created)
     }
 }
 
@@ -19,4 +20,5 @@ fun MemeLog.toInsertStatement(statement: InsertStatement<Number>): InsertStateme
     it[MemesLogs.messageId] = this.messageId
     it[MemesLogs.chatId] = this.chatId
     it[MemesLogs.created] = this.created
+    it[MemesLogs.memeCreated] = this.memeCreated
 }

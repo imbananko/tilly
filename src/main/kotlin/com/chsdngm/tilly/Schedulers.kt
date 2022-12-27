@@ -27,9 +27,11 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatTit
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -158,7 +160,7 @@ final class Schedulers(
             val sentMessage = SendPhoto().apply {
                 chatId = moderator.id.toString()
                 photo = InputFile(meme.fileId)
-                caption = "Время некрофилии.\nДата отправки: ${formatter.format(meme.created)}"
+                caption = "Настало время некромантии \uD83C\uDF83 \nДата отправки: ${formatter.format(meme.created)}"
                 parseMode = ParseMode.HTML
                 replyMarkup = createResurrectionMarkup()
             }.let { api.execute(it) }
@@ -166,7 +168,8 @@ final class Schedulers(
             val updatedMeme = meme.copy(
                 moderationChatId = moderator.id,
                 moderationChatMessageId = sentMessage.messageId,
-                status = MemeStatus.RESURRECTION_ASKED)
+                status = MemeStatus.RESURRECTION_ASKED,
+                created = Instant.now())
 
             memeDao.update(updatedMeme)
 
@@ -186,12 +189,19 @@ final class Schedulers(
 
     @Scheduled(cron = "0 */9 4-22 * * *")
     private fun checkMemesForScheduling() = runCatching {
-        val wereScheduled = memeDao.scheduleMemes()
+        val memes = memeDao.scheduleMemes()
 
-        if (wereScheduled.isNotEmpty()) {
-            log.info("successfully scheduled meme ids: $wereScheduled")
+        if (memes.isNotEmpty()) {
+            log.info("successfully scheduled memes: $memes")
         } else {
             log.info("there is nothing to schedule")
+        }
+
+        memes.forEach {
+            EditMessageReplyMarkup().apply {
+                chatId = it.moderationChatId.toString()
+                messageId = it.moderationChatMessageId
+            }.let { api.executeAsync(it) }
         }
     }.onFailure {
         log.error("failed to schedule memes", it)

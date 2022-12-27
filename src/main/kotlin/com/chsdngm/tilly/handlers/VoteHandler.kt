@@ -18,19 +18,17 @@ import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.time.Instant
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Service
 class VoteHandler(
-    val memeDao: MemeDao,
-    val voteDao: VoteDao,
-    val metricsUtils: MetricsUtils
-) : AbstractHandler<VoteUpdate>() {
+        val memeDao: MemeDao,
+        val voteDao: VoteDao,
+        val metricsUtils: MetricsUtils,
+        val channelMarkupUpdater: ChannelMarkupUpdater
+) : AbstractHandler<VoteUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val voteExecutorService = Executors.newSingleThreadExecutor()
 
     override fun handleSync(update: VoteUpdate) {
         if (update.isOld) {
@@ -40,10 +38,7 @@ class VoteHandler(
 
         val memeWithVotes = when (update.sourceChatId) {
             CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
-            CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
-                CHAT_ID.toLong(),
-                update.messageId
-            )
+            CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID.toLong(), update.messageId)
             else -> null
         } ?: throw NotFoundException("Meme wasn't found. update=$update")
 
@@ -56,11 +51,11 @@ class VoteHandler(
         }
 
         val vote = Vote(
-            meme.id,
-            update.voterId,
-            update.sourceChatId.toLong(),
-            update.voteValue,
-            created = Instant.ofEpochMilli(update.createdAt)
+                meme.id,
+                update.voterId,
+                update.sourceChatId.toLong(),
+                update.voteValue,
+                created = Instant.ofEpochMilli(update.createdAt)
         )
 
         lateinit var voteUpdate: Runnable
@@ -86,49 +81,33 @@ class VoteHandler(
             voteUpdate = Runnable { voteDao.insert(vote) }
         }
 
-        val markupUpdate = updateMarkup(meme, votes)
+        if (meme.channelMessageId != null) {
+            channelMarkupUpdater.submitVote(memeWithVotes)
+        } else {
+            updateGroupMarkup(meme, votes)
+        }
+
         updateStatsInSenderChat(meme, votes)
 
         voteUpdate.run()
-
-        markupUpdate.join()
         log.info("processed vote update=$update")
     }
 
-    fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
-        AnswerCallbackQuery().apply {
-            cacheTime = 0
-            callbackQueryId = userCallbackQueryId
-            text = popupText
-        }.let { api.execute(it) }
+    private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
+            AnswerCallbackQuery().apply {
+                cacheTime = 0
+                callbackQueryId = userCallbackQueryId
+                text = popupText
+            }.let { api.execute(it) }
 
-    private fun updateMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Void> {
-        val channelUpdate = if (meme.channelMessageId != null) {
-            EditMessageReplyMarkup().apply {
-                chatId = CHANNEL_ID
-                messageId = meme.channelMessageId
-                replyMarkup = createMarkup(votes)
-            }.let { api.executeAsync(it) }
-        } else {
-            CompletableFuture.completedFuture(null)
-        }
-
-        val groupUpdate = if (meme.moderationChatId.toString() == CHAT_ID) {
+    private fun updateGroupMarkup(meme: Meme, votes: List<Vote>) =
             EditMessageReplyMarkup().apply {
                 chatId = CHAT_ID
                 messageId = meme.moderationChatMessageId
                 replyMarkup = createMarkup(votes)
-            }.let { api.executeAsync(it) }
-        } else {
-            CompletableFuture.completedFuture(null)
-        }
-
-        return CompletableFuture.allOf(channelUpdate, groupUpdate)
-    }
+            }.let { api.execute(it) }
 
     override fun measureTime(update: VoteUpdate) {
-        metricsUtils.measure(update)
+        metricsUtils.measureDuration(update)
     }
-
-    override fun getExecutor(): ExecutorService = voteExecutorService
 }
