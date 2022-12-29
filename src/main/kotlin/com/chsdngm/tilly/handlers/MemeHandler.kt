@@ -9,13 +9,18 @@ import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTE
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.UserStatus
+import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.WeightedModerationType
 import com.chsdngm.tilly.model.dto.DistributedModerationEvent
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
+import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
+import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ImageMatcher
@@ -52,6 +57,7 @@ class MemeHandler(
     private val imageTextRecognizer: ImageTextRecognizer,
     private val imageDao: ImageDao,
     private val memeDao: MemeDao,
+    private val voteDao: VoteDao,
     private val distributedModerationEventDao: DistributedModerationEventDao,
     private val metricsUtils: MetricsUtils,
     private val api: TelegramApi,
@@ -84,12 +90,20 @@ class MemeHandler(
             return@runBlocking
         }
 
+        val vote = Vote(
+                memeId = 0, // will be set below
+                update.approver.id,
+                telegramProperties.targetChatId.toLong(),
+                VoteValue.UP,
+                created = Instant.ofEpochMilli(update.createdAt)
+        )
+
         val message = SendPhoto().apply {
             chatId = telegramProperties.targetChatId
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
-            replyMarkup = createMarkup(listOf())
+            replyMarkup = createMarkup(listOf(vote))
         }.let(api::execute)
 
         val meme = memeDao.insert(
@@ -103,6 +117,7 @@ class MemeHandler(
                 update.caption
             )
         )
+        voteDao.insert(vote.copy(memeId = meme.id))
 
         log.info("sent for moderation to group chat. meme=$meme")
         handleImage(update, file)

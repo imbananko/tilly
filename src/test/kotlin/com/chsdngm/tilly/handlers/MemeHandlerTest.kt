@@ -6,10 +6,7 @@ import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.dto.TelegramUser
-import com.chsdngm.tilly.repository.DistributedModerationEventDao
-import com.chsdngm.tilly.repository.ImageDao
-import com.chsdngm.tilly.repository.MemeDao
-import com.chsdngm.tilly.repository.TelegramUserDao
+import com.chsdngm.tilly.repository.*
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
@@ -34,6 +31,7 @@ class MemeHandlerTest {
     private val imageTextRecognizer = mock<ImageTextRecognizer>()
     private val imageDao = mock<ImageDao>()
     private val memeDao = mock<MemeDao>()
+    private val voteDao = mock<VoteDao>()
     private val distributedModerationEventDao = mock<DistributedModerationEventDao>()
     private val metricsUtils = mock<MetricsUtils>()
     private val api = mock<TelegramApi>()
@@ -55,6 +53,7 @@ class MemeHandlerTest {
         imageTextRecognizer,
         imageDao,
         memeDao,
+        voteDao,
         distributedModerationEventDao,
         metricsUtils,
         api,
