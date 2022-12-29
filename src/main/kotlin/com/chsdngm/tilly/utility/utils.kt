@@ -15,8 +15,7 @@ import java.sql.ResultSet
 import java.time.Instant
 
 fun User.mention(montornId: Long): String =
-    if (this.id == montornId) "montorn"
-    else """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName}</a>"""
+    if (this.id == montornId) "montorn" else this.mention()
 
 fun User.mention(): String = """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName}</a>"""
 
