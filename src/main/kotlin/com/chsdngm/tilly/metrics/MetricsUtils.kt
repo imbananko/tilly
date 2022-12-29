@@ -76,30 +76,6 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         log.error("Failed to send metrics", it)
     }
 
-    fun measureMergedVotes(mergedVotesCount: Int): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
-        if (COMMIT_SHA == "local") {
-            return@supplyAsync
-        }
-
-        val startTimeMs = System.currentTimeMillis()
-
-        val durationPoint = buildDurationPoint(startTimeMs, startTimeMs, mergedVotesCount)
-        val metric = Metric.newBuilder()
-                .setType("$CUSTOM_GOOGLEAPIS/vote_processing/merged_votes")
-                .build()
-
-        voteMergedSeries.add(TimeSeries.newBuilder()
-                .setMetric(metric)
-                .setMetricKind(MetricDescriptor.MetricKind.GAUGE)
-                .setResource(resource)
-                .addPoints(durationPoint)
-                .build())
-
-        checkMetricShipment()
-    }.exceptionally {
-        log.error("Failed to send metrics", it)
-    }
-
     private fun buildMetric(update: Timestampable): Metric? {
         val metric = when (update) {
             is VoteUpdate -> Metric.newBuilder()
