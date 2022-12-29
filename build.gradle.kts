@@ -53,6 +53,9 @@ dependencies {
 //    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
 
+    // rxjava
+    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
+
     // spring
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
