@@ -17,7 +17,9 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import java.io.Serializable
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
 @Service
@@ -32,7 +34,7 @@ class VoteHandler(
 
     override fun handleSync(update: VoteUpdate) {
         if (update.isOld) {
-            sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
+            sendPopupNotification(update.callbackQueryId, "Мем слишком стар").join()
             return
         }
 
@@ -58,54 +60,57 @@ class VoteHandler(
                 created = Instant.ofEpochMilli(update.createdAt)
         )
 
-        lateinit var voteUpdate: Runnable
+        lateinit var voteUpdate: CompletableFuture<*>
+        lateinit var popupNotification: CompletableFuture<Boolean>
         votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
             if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
-                sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
-                voteUpdate = Runnable { voteDao.delete(found) }
+                popupNotification = sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
+                voteUpdate = CompletableFuture.supplyAsync { voteDao.delete(found) }
             } else {
                 found.value = vote.value
                 found.sourceChatId = vote.sourceChatId
-                voteUpdate = Runnable { voteDao.update(found) }
+                voteUpdate = CompletableFuture.supplyAsync { voteDao.update(found) }
 
                 when (vote.value) {
                     VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                     VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
-                }.let { sendPopupNotification(update.callbackQueryId, it) }
+                }.let { popupNotification = sendPopupNotification(update.callbackQueryId, it) }
             }
         } ?: votes.add(vote).also {
             when (vote.value) {
                 VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                 VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
-            }.let { sendPopupNotification(update.callbackQueryId, it) }
-            voteUpdate = Runnable { voteDao.insert(vote) }
+            }.let { popupNotification = sendPopupNotification(update.callbackQueryId, it) }
+            voteUpdate = CompletableFuture.supplyAsync { voteDao.insert(vote) }
         }
 
+
+        var groupMarkupUpdate = CompletableFuture.completedFuture<Serializable>(null)
         if (meme.channelMessageId != null) {
             channelMarkupUpdater.submitVote(meme to votes)
         } else {
-            updateGroupMarkup(meme, votes)
+            groupMarkupUpdate = updateGroupMarkup(meme, votes)
         }
 
         updateStatsInSenderChat(meme, votes)
 
-        voteUpdate.run()
+        CompletableFuture.allOf(voteUpdate, popupNotification, groupMarkupUpdate)
         log.info("processed vote update=$update")
     }
 
-    private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
+    private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): CompletableFuture<Boolean> =
             AnswerCallbackQuery().apply {
                 cacheTime = 0
                 callbackQueryId = userCallbackQueryId
                 text = popupText
-            }.let { api.execute(it) }
+            }.let { api.executeAsync(it) }
 
-    private fun updateGroupMarkup(meme: Meme, votes: List<Vote>) =
+    private fun updateGroupMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Serializable> =
             EditMessageReplyMarkup().apply {
                 chatId = CHAT_ID
                 messageId = meme.moderationChatMessageId
                 replyMarkup = createMarkup(votes)
-            }.let { api.execute(it) }
+            }.let { api.executeAsync(it) }
 
     override fun measureTime(update: VoteUpdate) {
         metricsUtils.measureDuration(update)

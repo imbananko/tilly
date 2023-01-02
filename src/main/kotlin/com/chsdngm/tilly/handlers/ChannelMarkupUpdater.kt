@@ -1,44 +1,37 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.utility.createMarkup
-import com.google.common.util.concurrent.RateLimiter
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.subjects.PublishSubject
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
-import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @Service
-class ChannelMarkupUpdater(val metricsUtils: MetricsUtils) {
-    private val queue = ExtendedCopyOnWriteArrayList<Pair<Meme, List<Vote>>>()
-    private val rateLimiter = RateLimiter.create(0.2)
+class ChannelMarkupUpdater {
+    private val markupSubject = PublishSubject.create<Pair<Meme, List<Vote>>>()
 
     init {
-        Executors.newSingleThreadExecutor().submit {
-            while (true) {
-                if (queue.isNotEmpty() && rateLimiter.tryAcquire()) {
-                    val head = queue.removeAt(0)
-                    var mergedVotesCount = 1
-                    val lastSimilarToHead = queue.dropIf({ it.first.id == head.first.id }, { mergedVotesCount += it })
+        val timeoutObservable = Flowable.interval(/* initialDelay = */ 0, /* period = */ 5, TimeUnit.SECONDS)
+            .onBackpressureDrop()
+            .toObservable()
 
-                    if (lastSimilarToHead == null) {
-                        updateChannelMarkup(head.first, head.second)
-                    } else if (lastSimilarToHead.second != head.second) {
-                        updateChannelMarkup(lastSimilarToHead.first, lastSimilarToHead.second)
-                    }
+        val markupObservable: Observable<Pair<Meme, List<Vote>>> = markupSubject
+            .groupBy { it.first.id }
+            .flatMap { it.throttleLatest(5, TimeUnit.SECONDS, /* emitLast = */ true) }
 
-                    metricsUtils.measureMergedVotes(mergedVotesCount)
-
-                }
+        timeoutObservable.zipWith(markupObservable) { _, m -> m }
+            .subscribe {
+                updateChannelMarkup(it.first, it.second)
             }
-        }
     }
 
     fun submitVote(memeWithVotes: Pair<Meme, List<Vote>>) {
-        queue.add(memeWithVotes)
+        markupSubject.onNext(memeWithVotes)
     }
 
     private final fun updateChannelMarkup(meme: Meme, votes: List<Vote>) {
