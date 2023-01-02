@@ -85,7 +85,7 @@ class VoteHandler(
         }
 
 
-        lateinit var groupMarkupUpdate: CompletableFuture<*>
+        var groupMarkupUpdate = CompletableFuture.completedFuture<Serializable>(null)
         if (meme.channelMessageId != null) {
             channelMarkupUpdater.submitVote(meme to votes)
         } else {
