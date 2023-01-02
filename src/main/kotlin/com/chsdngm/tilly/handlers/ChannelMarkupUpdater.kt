@@ -7,6 +7,7 @@ import com.chsdngm.tilly.utility.createMarkup
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.util.concurrent.TimeUnit
@@ -14,6 +15,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class ChannelMarkupUpdater {
     private val markupSubject = PublishSubject.create<Pair<Meme, List<Vote>>>()
+    private val log = LoggerFactory.getLogger(javaClass)
 
     init {
         val timeoutObservable = Flowable.interval(/* initialDelay = */ 0, /* period = */ 5, TimeUnit.SECONDS)
@@ -26,7 +28,9 @@ class ChannelMarkupUpdater {
 
         timeoutObservable.zipWith(markupObservable) { _, m -> m }
             .subscribe {
+                log.info("before update")
                 updateChannelMarkup(it.first, it.second)
+                log.info("after update")
             }
     }
 
@@ -39,6 +43,6 @@ class ChannelMarkupUpdater {
             chatId = TelegramConfig.CHANNEL_ID
             messageId = meme.channelMessageId
             replyMarkup = createMarkup(votes)
-        }.let { TelegramConfig.api.executeAsync(it) }
+        }.let { TelegramConfig.api.execute(it) }
     }
 }
