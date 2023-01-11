@@ -19,7 +19,7 @@ class ElasticsearchService(val elasticsearchRestClient: RestHighLevelClient) {
 
     companion object {
         const val INDEX_NAME = "memes"
-        const val TEXT_FIELD = "text"
+        const val TEXT_FIELD = "raw_text"
     }
 
     suspend fun search(text: String, pageNumber: Int, pageSize: Int): SearchHits {
