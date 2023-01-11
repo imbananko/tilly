@@ -25,7 +25,8 @@ class ImageTextRecognizer(
     )
 
     companion object {
-        private const val TEXT_FIELD_NAME = "text"
+        private const val TEXT_FIELD_NAME = "raw_text"
+        private const val LABELS_FIELD_NAME = "raw_labels"
         private const val INDEX_DOCUMENT_TYPE = "_doc"
         private const val INDEX_NAME = "memes"
     }
@@ -53,7 +54,10 @@ class ImageTextRecognizer(
                 IndexRequest(INDEX_NAME)
                     .id(results.fileId)
                     .type(INDEX_DOCUMENT_TYPE)
-                    .source(TEXT_FIELD_NAME, results.words)
+                    .source(
+                        TEXT_FIELD_NAME, results.words,
+                        LABELS_FIELD_NAME, results.labels
+                    )
 
             runCatching {
                 elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
