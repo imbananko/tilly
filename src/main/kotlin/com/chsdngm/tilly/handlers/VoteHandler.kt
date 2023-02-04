@@ -15,6 +15,7 @@ import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import javassist.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.io.Serializable
@@ -24,10 +25,11 @@ import java.util.concurrent.Executors
 
 @Service
 class VoteHandler(
-        val memeDao: MemeDao,
-        val voteDao: VoteDao,
-        val metricsUtils: MetricsUtils,
-        val channelMarkupUpdater: ChannelMarkupUpdater
+        private val memeDao: MemeDao,
+        private val voteDao: VoteDao,
+        private val metricsUtils: MetricsUtils,
+        private val channelMarkupUpdater: ChannelMarkupUpdater,
+        private val api: DefaultAbsSender
 ) : AbstractHandler<VoteUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)

@@ -2,7 +2,6 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
@@ -16,10 +15,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
-import java.util.concurrent.ExecutorService
 
 @Service
 class CommandHandler(
@@ -27,9 +26,9 @@ class CommandHandler(
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils,
-    forkJoinPool: ExecutorService
+    private val api: DefaultAbsSender
 ) :
-    AbstractHandler<CommandUpdate>(forkJoinPool) {
+    AbstractHandler<CommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: CommandUpdate) {
@@ -89,7 +88,6 @@ class CommandHandler(
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
           Ранк: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId) } ?: "NaN"}</b>
-          
           """.trimIndent()
         }
     }.let { statsMessageText ->

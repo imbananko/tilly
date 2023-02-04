@@ -68,8 +68,7 @@ abstract class MemeUpdate(
         !trashCaptionParts.any { lowerCaseCaption.contains(it) }
     }
 
-    val status: MemeStatus = if (caption?.contains("#local") == true) MemeStatus.LOCAL
-    else MemeStatus.MODERATION
+    val status: MemeStatus = if (caption?.contains("#local") == true) MemeStatus.LOCAL else MemeStatus.MODERATION
 
     var isFreshman: Boolean = false
 
@@ -194,11 +193,11 @@ class PrivateVoteUpdate(update: Update) : Timestampable() {
 }
 
 class DistributedModerationVoteUpdate(update: Update) : Timestampable() {
-    val user: User = update.callbackQuery.from
+    val userId: Long = update.callbackQuery.from.id
     val messageId: Int = update.callbackQuery.message.messageId
     val voteValue: DistributedModerationVoteValue = DistributedModerationVoteValue.valueOf(update.callbackQuery.data)
     override fun toString(): String {
-        return "DistributedModerationVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
+        return "DistributedModerationVoteUpdate(user=$userId, messageId=$messageId, voteValue=$voteValue)"
     }
 }
 
@@ -214,4 +213,6 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
     override fun toString(): String {
         return "AutosuggestionVoteUpdate(approver=$approverName, whoSuggests=${whoSuggests.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
     }
+
+    fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
 }
