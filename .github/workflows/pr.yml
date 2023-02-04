@@ -16,18 +16,3 @@ jobs:
     - name: Run tests
       run: ./gradlew test
 
-    - name: Run Test Coverage
-      run: ./gradlew jacocoTestReport
-
-    - name: Generate JaCoCo Badge
-      uses: cicirello/jacoco-badge-generator@v2
-      with:
-        generate-branches-badge: true
-        jacoco-csv-file: build/reports/jacoco/test/jacocoTestReport.csv
-
-    - name: Commit and push the badge (if it changed)
-      uses: EndBug/add-and-commit@v7
-      with:
-        default_author: github_actions
-        message: 'commit badge'
-        add: '*.svg'
