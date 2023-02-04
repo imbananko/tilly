@@ -4,9 +4,9 @@ import com.chsdngm.tilly.model.Timestampable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool.commonPool
 
-abstract class AbstractHandler<T : Timestampable>(private val executorService: ExecutorService) {
-
+abstract class AbstractHandler<T : Timestampable>(private val executorService: ExecutorService = commonPool()) {
     abstract fun handleSync(update: T)
 
     fun handle(update: T): CompletableFuture<Void> = CompletableFuture

@@ -16,9 +16,10 @@ plugins {
     id("org.springframework.boot") version "2.7.4"
     // https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/htmlsingle/#reacting-to-other-plugins.dependency-management
     id("io.spring.dependency-management") version "1.0.14.RELEASE"
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
+    id("org.jetbrains.kotlin.jvm") version "1.8.10"
     // makes all classes open https://kotlinlang.org/docs/all-open-plugin.html#spring-support
-    id("org.jetbrains.kotlin.plugin.spring") version "1.7.10"
+    id("org.jetbrains.kotlin.plugin.spring") version "1.8.10"
+    id("jacoco")
 }
 
 configurations {
@@ -70,9 +71,10 @@ dependencies {
 //    compileOnly("org.ktorm:ktorm-core:3.3.0")
 //    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
+//    testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
+//    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+//    testImplementation("com.ninja-squad:springmockk:3.1.2")
 }
 
 tasks.bootJar {
@@ -85,7 +87,12 @@ tasks.withType<Test> {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        // K2 does not support plugins yet, so please remove -Xuse-k2 flag
-        //freeCompilerArgs = listOf("-Xuse-k2")
+        freeCompilerArgs = listOf("-Xuse-k2")
+    }
+}
+
+tasks.jacocoTestReport {
+    reports {
+        csv.required.set(true)
     }
 }

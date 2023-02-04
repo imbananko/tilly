@@ -25,19 +25,18 @@ import java.util.concurrent.ExecutorService
 @Service
 class PrivateModerationVoteHandler(
         private val memeDao: MemeDao,
-        private val voteDao: VoteDao,
-        forkJoinPool: ExecutorService) :
-    AbstractHandler<PrivateVoteUpdate>(forkJoinPool) {
+        private val voteDao: VoteDao) :
+        AbstractHandler<PrivateVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: PrivateVoteUpdate) {
         memeDao.findMemeByModerationChatIdAndModerationChatMessageId(update.user.id, update.messageId)
-            ?.let {
-                when (update.voteValue) {
-                    PrivateVoteValue.APPROVE -> approve(update, it.first, it.second)
-                    PrivateVoteValue.DECLINE -> decline(update, it.first, it.second)
-                }
-            } ?: log.error("unknown voteValue=${update.voteValue}")
+                ?.let {
+                    when (update.voteValue) {
+                        PrivateVoteValue.APPROVE -> approve(update, it.first, it.second)
+                        PrivateVoteValue.DECLINE -> decline(update, it.first, it.second)
+                    }
+                } ?: log.error("unknown voteValue=${update.voteValue}")
 
         log.info("processed private vote update=$update")
     }
@@ -78,8 +77,8 @@ class PrivateModerationVoteHandler(
 
     private fun sendPrivateModerationEventToLog(meme: Meme, moderator: User, solution: PrivateVoteValue) {
         val memeCaption =
-            "${moderator.mention()} " + if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
-            else "предал(а) мем забвению"
+                "${moderator.mention()} " + if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
+                else "предал(а) мем забвению"
 
         SendPhoto().apply {
             chatId = LOGS_CHAT_ID
