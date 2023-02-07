@@ -12,12 +12,12 @@ class ExposedConfiguration {
     @Bean
     fun dataSource(dataSourceProperties: DatabaseProperties): HikariDataSource {
         return dataSourceProperties
-            .initializeDataSourceBuilder()
-            .type(HikariDataSource::class.java)
-            .username(dataSourceProperties.username)
-            .password(dataSourceProperties.password)
-            .driverClassName(dataSourceProperties.driverClassName)
-            .build()
+                .initializeDataSourceBuilder()
+                .type(HikariDataSource::class.java)
+                .username(dataSourceProperties.username)
+                .password(dataSourceProperties.password)
+                .driverClassName(dataSourceProperties.driverClassName)
+                .build()
     }
 
     @Bean

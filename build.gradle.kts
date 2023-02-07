@@ -85,6 +85,12 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+allOpen {
+    annotation("org.springframework.context.annotation.Configuration")
+    annotation("org.springframework.boot.autoconfigure.SpringBootApplication")
+    annotation("org.springframework.stereotype.Repository")
+}
+
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xuse-k2")
