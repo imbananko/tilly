@@ -12,7 +12,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Setting up the token
+        if: env.GH_TOKEN == ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "GH_TOKEN=${GITHUB_TOKEN}" >> $GITHUB_ENV
+
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ env.GH_TOKEN }}
 
       - name: Set up JDK 11
         uses: actions/setup-java@v1
