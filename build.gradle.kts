@@ -3,8 +3,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 group = "com.chsdngm"
 version = "1.1"
 
-val jupiterVersion = "5.9.0"
-
 repositories {
     mavenCentral()
     maven(url = "https://repo.spring.io/milestone")
@@ -85,6 +83,7 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+//remove when K2 will be okay with spring gralde plugin
 allOpen {
     annotation("org.springframework.context.annotation.Configuration")
     annotation("org.springframework.boot.autoconfigure.SpringBootApplication")
