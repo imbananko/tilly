@@ -11,11 +11,6 @@ import java.util.concurrent.Executors
 @Configuration
 class Configuration {
     @Bean
-    fun forkJoinPool(): ExecutorService {
-        return Executors.newWorkStealingPool()
-    }
-
-    @Bean
     fun api(): DefaultAbsSender {
         return object : DefaultAbsSender(DefaultBotOptions()) {
             override fun getBotToken(): String = TelegramConfig.BOT_TOKEN

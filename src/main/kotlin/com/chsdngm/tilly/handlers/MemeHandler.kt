@@ -4,15 +4,14 @@ import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
+import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
-import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
-import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.WeightedModerationType
 import com.chsdngm.tilly.model.dto.DistributedModerationEvent
@@ -28,6 +27,7 @@ import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import com.chsdngm.tilly.utility.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
@@ -42,13 +42,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.function.Function
 import kotlin.math.abs
-
 
 @Service
 class MemeHandler(
@@ -58,10 +54,11 @@ class MemeHandler(
         private val imageDao: ImageDao,
         private val memeDao: MemeDao,
         private val distributedModerationEventDao: DistributedModerationEventDao,
-        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
+        private val metricsUtils: MetricsUtils,
+        private val api: DefaultAbsSender
+    ) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
     private val random = Random()
@@ -452,7 +449,7 @@ class MemeHandler(
 
     private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
                                                attemptNum: Int = 1,
-                                               executor: Executor = distributedModerationExecutor): CompletableFuture<Message?> =
+                                               executor: Executor = ForkJoinPool.commonPool()): CompletableFuture<Message?> =
             if (attemptNum > 3) CompletableFuture.completedFuture(null)
             else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
                     .thenApply { CompletableFuture.completedFuture(it) }
