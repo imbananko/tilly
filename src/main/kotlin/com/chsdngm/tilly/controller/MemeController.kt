@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -17,7 +18,7 @@ import javax.imageio.ImageIO
 
 
 @RestController
-class MemeController {
+class MemeController(private val api: DefaultAbsSender) {
     @PostMapping(value = ["/memes/suggest"])
     fun suggest(@RequestParam file: MultipartFile, params: Params) {
         val markup = InlineKeyboardMarkup(
@@ -45,7 +46,7 @@ class MemeController {
                 }"
             disableNotification = true
             replyMarkup = markup
-        }.let { TelegramConfig.api.execute(it) }
+        }.let { api.execute(it) }
     }
 
     data class Params(
