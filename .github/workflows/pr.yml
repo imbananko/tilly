@@ -1,4 +1,4 @@
-name: Tilly CI
+name: On open pull request
 on: [pull_request]
 
 jobs:
