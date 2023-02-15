@@ -101,3 +101,7 @@ tasks.jacocoTestReport {
         csv.required.set(true)
     }
 }
+
+kotlin {
+    jvmToolchain(17)
+}
