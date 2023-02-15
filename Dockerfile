@@ -11,4 +11,4 @@ RUN mkdir -p /opt/cprof
 COPY ./build/libs/tilly-1.1.jar ./app.jar
 COPY ./build/resources/main/cprof /opt/cprof
 
-CMD ["java", "-agentpath:/opt/cprof/profiler_java_agent.so=-logtostderr,-cprof_service=tilly,-cprof_service_version=1.0.0,-cprof_enable_heap_sampling=true", "-jar", "app.jar"]
+CMD ["java", "-agentpath:/opt/cprof/profiler_java_agent.so=-logtostderr,-minloglevel=1,-cprof_service=tilly,-cprof_service_version=2.0.0,-cprof_enable_heap_sampling=true", "-jar", "app.jar"]
