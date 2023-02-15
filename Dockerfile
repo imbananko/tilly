@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk
+FROM openjdk:17-jdk-slim
 
 ENV APP_HOME=/usr/app/
 ARG COMMIT_SHA_ARG='unknown'
