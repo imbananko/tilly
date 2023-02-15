@@ -5,6 +5,10 @@ ARG COMMIT_SHA_ARG='unknown'
 ENV METADATA_COMMIT_SHA=$COMMIT_SHA_ARG
 
 WORKDIR $APP_HOME
-COPY ./build/libs/tilly-1.1.jar ./app.jar
 
-CMD ["java", "-jar", "app.jar"]
+RUN mkdir -p /opt/cprof
+
+COPY ./build/libs/tilly-1.1.jar ./app.jar
+COPY ./build/resources/main/cprof /opt/cprof
+
+RUN java -agentpath:/opt/cprof/profiler_java_agent.so=-cprof_service=tilly,-cprof_service_version=1.0.0 -jar app.jar
