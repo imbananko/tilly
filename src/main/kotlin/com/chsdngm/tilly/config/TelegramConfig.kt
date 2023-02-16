@@ -79,4 +79,7 @@ class TelegramConfig {
     fun setMontornChatId(montornChatId: String) {
         MONTORN_CHAT_ID = montornChatId
     }
+
+    @Value("\${webhook.url}")
+    lateinit var webhookUrl: String
 }

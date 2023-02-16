@@ -37,3 +37,7 @@ montorn.chat.id: -1001662205170
 metadata:
   commit.sha: local
   moderation.threshold: 5
+
+webhook:
+  enabled: false
+  url: http://localhost:8443
