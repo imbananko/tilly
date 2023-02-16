@@ -24,5 +24,5 @@ class Configuration {
 
     @Bean
     fun telegramBotsApi(): TelegramBotsApi =
-            TelegramBotsApi(DefaultBotSession::class.java, DefaultWebhook().apply { setInternalUrl("http://127.0.0.1:8443") })
+            TelegramBotsApi(DefaultBotSession::class.java, DefaultWebhook().apply { setInternalUrl("https://127.0.0.1:8443") })
 }
