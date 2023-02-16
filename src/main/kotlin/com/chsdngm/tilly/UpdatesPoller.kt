@@ -8,6 +8,7 @@ import com.chsdngm.tilly.handlers.*
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.utility.*
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -17,6 +18,7 @@ import java.lang.reflect.UndeclaredThrowableException
 import java.util.concurrent.CompletableFuture
 
 @Component
+@ConditionalOnMissingBean(UpdatesHooker::class)
 class UpdatesPoller(
     val memeHandler: MemeHandler,
     val voteHandler: VoteHandler,
