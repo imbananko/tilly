@@ -2,7 +2,6 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
@@ -10,6 +9,7 @@ import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
+import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import javassist.NotFoundException
@@ -36,7 +36,7 @@ class VoteHandler(
 
     override fun handleSync(update: VoteUpdate) {
         if (update.isOld) {
-            sendPopupNotification(update.callbackQueryId, "Мем слишком стар").join()
+            sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
             return
         }
 
@@ -62,16 +62,16 @@ class VoteHandler(
                 created = Instant.ofEpochMilli(update.createdAt)
         )
 
-        lateinit var voteUpdate: CompletableFuture<*>
+        lateinit var voteDatabaseUpdate: CompletableFuture<*>
         lateinit var popupNotification: CompletableFuture<Boolean>
         votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
             if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
                 popupNotification = sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
-                voteUpdate = CompletableFuture.supplyAsync { voteDao.delete(found) }
+                voteDatabaseUpdate = CompletableFuture.supplyAsync { voteDao.delete(found) }
             } else {
                 found.value = vote.value
                 found.sourceChatId = vote.sourceChatId
-                voteUpdate = CompletableFuture.supplyAsync { voteDao.update(found) }
+                voteDatabaseUpdate = CompletableFuture.supplyAsync { voteDao.update(found) }
 
                 when (vote.value) {
                     VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
@@ -83,9 +83,8 @@ class VoteHandler(
                 VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                 VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
             }.let { popupNotification = sendPopupNotification(update.callbackQueryId, it) }
-            voteUpdate = CompletableFuture.supplyAsync { voteDao.insert(vote) }
+            voteDatabaseUpdate = CompletableFuture.supplyAsync { voteDao.insert(vote) }
         }
-
 
         var groupMarkupUpdate = CompletableFuture.completedFuture<Serializable>(null)
         if (meme.channelMessageId != null) {
@@ -96,13 +95,12 @@ class VoteHandler(
 
         updateStatsInSenderChat(meme, votes)
 
-        CompletableFuture.allOf(voteUpdate, popupNotification, groupMarkupUpdate)
+        CompletableFuture.allOf(voteDatabaseUpdate, popupNotification, groupMarkupUpdate)
         log.info("processed vote update=$update")
     }
 
     private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): CompletableFuture<Boolean> =
             AnswerCallbackQuery().apply {
-                cacheTime = 0
                 callbackQueryId = userCallbackQueryId
                 text = popupText
             }.let { api.executeAsync(it) }
