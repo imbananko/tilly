@@ -1,4 +1,4 @@
-package com.chsdngm.tilly.handlers
+package com.chsdngm.tilly.schedulers
 
 import com.chsdngm.tilly.config.TelegramConfig
 import com.chsdngm.tilly.model.dto.Meme
@@ -10,6 +10,7 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -18,18 +19,20 @@ class ChannelMarkupUpdater {
     private val log = LoggerFactory.getLogger(javaClass)
 
     init {
-        val timeoutObservable = Flowable.interval(/* initialDelay = */ 0, /* period = */ 5, TimeUnit.SECONDS)
-            .onBackpressureDrop()
-            .toObservable()
+        Executors.newSingleThreadExecutor().submit {
+            val timeoutObservable = Flowable.interval(/* initialDelay = */ 0, /* period = */ 5, TimeUnit.SECONDS)
+                .onBackpressureDrop()
+                .toObservable()
 
-        val markupObservable: Observable<Pair<Meme, List<Vote>>> = markupSubject
-            .groupBy { it.first.id }
-            .flatMap { it.throttleLatest(5, TimeUnit.SECONDS, /* emitLast = */ true) }
+            val markupObservable: Observable<Pair<Meme, List<Vote>>> = markupSubject
+                .groupBy { it.first.id }
+                .flatMap { it.throttleLatest(5, TimeUnit.SECONDS, /* emitLast = */ true) }
 
-        timeoutObservable.zipWith(markupObservable) { _, m -> m }
-            .subscribe {
-                updateChannelMarkup(it.first, it.second)
-            }
+            timeoutObservable.zipWith(markupObservable) { _, m -> m }
+                .subscribe {
+                    updateChannelMarkup(it.first, it.second)
+                }
+        }
     }
 
     fun submitVote(memeWithVotes: Pair<Meme, List<Vote>>) {

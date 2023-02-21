@@ -4,9 +4,9 @@ import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
-import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
+import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import javassist.NotFoundException
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

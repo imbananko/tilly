@@ -1,4 +1,4 @@
-package com.chsdngm.tilly
+package com.chsdngm.tilly.schedulers
 
 import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
 import com.chsdngm.tilly.config.TelegramConfig
@@ -6,6 +6,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.format
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.dto.Meme
