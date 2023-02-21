@@ -63,10 +63,9 @@ class VoteHandler(
         )
 
         lateinit var voteDatabaseUpdate: CompletableFuture<*>
-        lateinit var popupNotification: CompletableFuture<Boolean>
         votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
             if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
-                popupNotification = sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
+                sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема")
                 voteDatabaseUpdate = CompletableFuture.supplyAsync { voteDao.delete(found) }
             } else {
                 found.value = vote.value
@@ -76,13 +75,13 @@ class VoteHandler(
                 when (vote.value) {
                     VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                     VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
-                }.let { popupNotification = sendPopupNotification(update.callbackQueryId, it) }
+                }.let { sendPopupNotification(update.callbackQueryId, it) }
             }
         } ?: votes.add(vote).also {
             when (vote.value) {
                 VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
                 VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
-            }.let { popupNotification = sendPopupNotification(update.callbackQueryId, it) }
+            }.let { sendPopupNotification(update.callbackQueryId, it) }
             voteDatabaseUpdate = CompletableFuture.supplyAsync { voteDao.insert(vote) }
         }
 
@@ -90,7 +89,7 @@ class VoteHandler(
         if (meme.channelMessageId != null) {
             channelMarkupUpdater.submitVote(meme to votes)
         } else {
-            groupMarkupUpdate = updateGroupMarkup(meme, votes)
+            updateGroupMarkup(meme, votes)
         }
 
         updateStatsInSenderChat(meme, votes)
@@ -100,11 +99,11 @@ class VoteHandler(
         log.info("processed vote update=$update")
     }
 
-    private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): CompletableFuture<Boolean> =
+    private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
             AnswerCallbackQuery().apply {
                 callbackQueryId = userCallbackQueryId
                 text = popupText
-            }.let { api.executeAsync(it) }
+            }.let { api.execute(it) }
 
     private fun updateGroupMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Serializable> =
             EditMessageReplyMarkup().apply {
