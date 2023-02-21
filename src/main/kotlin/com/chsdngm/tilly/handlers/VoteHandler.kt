@@ -95,7 +95,8 @@ class VoteHandler(
 
         updateStatsInSenderChat(meme, votes)
 
-        CompletableFuture.allOf(voteDatabaseUpdate, popupNotification, groupMarkupUpdate)
+        voteDatabaseUpdate.join()
+//        CompletableFuture.allOf(voteDatabaseUpdate, popupNotification, groupMarkupUpdate)
         log.info("processed vote update=$update")
     }
 
