@@ -33,7 +33,6 @@ class VoteHandlerTest {
         }
 
         val expectedMethod = AnswerCallbackQuery().apply {
-            cacheTime = 0
             callbackQueryId = "random_callback"
             text = "Мем слишком стар"
         }
@@ -73,7 +72,6 @@ class VoteHandlerTest {
         }
 
         val expectedMethod = AnswerCallbackQuery().apply {
-            cacheTime = 0
             callbackQueryId = "random_callback"
             text = "Голосуй за других, а не за себя"
         }
