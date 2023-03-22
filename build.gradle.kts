@@ -76,6 +76,7 @@ dependencies {
 //    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
+    implementation("jakarta.json:jakarta.json-api:2.1.1")
 }
 
 tasks.bootJar {
@@ -95,7 +96,7 @@ allOpen {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-//        freeCompilerArgs = listOf("-Xuse-k2")
+        freeCompilerArgs = listOf("-Xuse-k2")
     }
 }
 

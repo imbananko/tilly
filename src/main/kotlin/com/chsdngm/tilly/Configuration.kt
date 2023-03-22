@@ -1,12 +1,16 @@
 package com.chsdngm.tilly
 
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient
+import co.elastic.clients.json.jackson.JacksonJsonpMapper
+import co.elastic.clients.transport.rest_client.RestClientTransport
 import com.chsdngm.tilly.config.TelegramConfig
+import org.apache.http.HttpHost
+import org.elasticsearch.client.RestClient
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.TelegramBotsApi
-import org.telegram.telegrambots.meta.api.methods.updates.SetWebhook
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 import org.telegram.telegrambots.updatesreceivers.DefaultWebhook
 
@@ -20,7 +24,12 @@ class Configuration {
     }
 
     @Bean
-    fun webhook(telegramConfig: TelegramConfig): SetWebhook = SetWebhook(telegramConfig.webhookUrl)
+    fun elasticsearchClient(config: TelegramConfig): ElasticsearchAsyncClient {
+        val restClient = RestClient.builder(HttpHost(config.elasticsearchUrl, 9200)).build()
+        val transport = RestClientTransport(restClient, JacksonJsonpMapper())
+
+        return ElasticsearchAsyncClient(transport)
+    }
 
     @Bean
     fun telegramBotsApi(): TelegramBotsApi =
