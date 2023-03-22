@@ -64,7 +64,6 @@ dependencies {
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.data:spring-data-elasticsearch")
 
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.postgresql:postgresql:42.5.0")
@@ -77,8 +76,6 @@ dependencies {
 //    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
-    implementation(kotlin("script-runtime"))
-    implementation("jakarta.json:jakarta.json-api:2.0.1")
 }
 
 tasks.bootJar {
