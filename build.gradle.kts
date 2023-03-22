@@ -49,7 +49,6 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
     implementation("co.elastic.clients:elasticsearch-java:8.6.2")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
 //    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
