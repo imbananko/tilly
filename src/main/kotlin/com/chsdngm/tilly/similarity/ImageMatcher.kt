@@ -20,7 +20,6 @@ class ImageMatcher(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @PostConstruct
-    @Suppress("unused")
     fun init() {
         addHashingAlgorithm(mainHashingAlgorithm, normalizedHammingDistance, true)
         addImage("0", BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB))

@@ -82,4 +82,7 @@ class TelegramConfig {
 
     @Value("\${webhook.url}")
     lateinit var webhookUrl: String
+
+    @Value("\${elasticsearch.url}")
+    lateinit var elasticsearchUrl: String
 }

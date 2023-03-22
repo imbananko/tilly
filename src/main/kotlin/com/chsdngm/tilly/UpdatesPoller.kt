@@ -31,6 +31,10 @@ class UpdatesPoller(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    init {
+        log.info("UpdatesHooker init")
+    }
+
     override fun getBotUsername(): String = BOT_USERNAME
 
     override fun getBotToken(): String = BOT_TOKEN

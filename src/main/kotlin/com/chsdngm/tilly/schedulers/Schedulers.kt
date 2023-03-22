@@ -7,6 +7,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
 import com.chsdngm.tilly.format
+import com.chsdngm.tilly.metrics.AccumulatingAppender
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.dto.Meme
@@ -15,9 +16,12 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
+import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
+import kotlinx.coroutines.runBlocking
+import org.apache.logging.log4j.core.LogEvent
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
@@ -44,6 +48,7 @@ final class Schedulers(
     private val memeDao: MemeDao,
     private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
+    private val elasticsearchService: ElasticsearchService
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -206,6 +211,23 @@ final class Schedulers(
         }
     }.onFailure {
         log.error("failed to schedule memes", it)
+    }
+
+    @Scheduled(cron = "0 * * * * *")
+    private fun sendLogs() = runCatching {
+        val logs = mutableListOf<LogEvent>()
+        AccumulatingAppender.drain(logs)
+        if (logs.isNotEmpty()) {
+            runBlocking {
+                elasticsearchService.bulkIndexLogs(logs)
+            }
+        }
+    }.onFailure {
+        SendMessage().apply {
+            chatId = BETA_CHAT_ID
+            text = it.format(update = null)
+            parseMode = ParseMode.HTML
+        }.let { method -> api.execute(method) }
     }
 }
 

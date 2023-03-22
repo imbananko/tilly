@@ -25,10 +25,10 @@ class InlineCommandHandler(
         val offset = if (update.offset.isBlank()) 0 else update.offset.toInt()
 
         val cachedPhotos = runBlocking {
-            elasticsearchService.search(update.value, offset, chunkSize).hits.map {
+            elasticsearchService.searchMemesByText(update.value, offset, chunkSize).hits().hits().map {
                 InlineQueryResultCachedPhoto().apply {
-                    photoFileId = it.id
-                    id = it.id.take(64)
+                    photoFileId = it.id()
+                    id = it.id().take(64)
                 }
             }
         }
