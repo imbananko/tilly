@@ -33,7 +33,11 @@ class TelegramConfig {
         @JvmField
         var LOGS_CHAT_ID = ""
 
-        val api = object : DefaultAbsSender(DefaultBotOptions()) {
+        val api = object : DefaultAbsSender(
+            DefaultBotOptions().apply {
+                maxThreads = 8
+                getUpdatesTimeout = 5
+            }) {
             override fun getBotToken(): String = BOT_TOKEN
         }
 
@@ -82,4 +86,7 @@ class TelegramConfig {
 
     @Value("\${webhook.url}")
     lateinit var webhookUrl: String
+
+    @Value("\${elasticsearch.url}")
+    lateinit var elasticsearchUrl: String
 }

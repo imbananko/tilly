@@ -1,11 +1,12 @@
 package com.chsdngm.tilly.handlers
 
+import co.elastic.clients.elasticsearch.core.SearchResponse
+import co.elastic.clients.elasticsearch.core.search.Hit
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata
 import com.chsdngm.tilly.model.InlineCommandUpdate
 import com.chsdngm.tilly.similarity.ElasticsearchService
+import com.chsdngm.tilly.similarity.ElasticsearchService.MemeDocument
 import kotlinx.coroutines.runBlocking
-import org.apache.lucene.search.TotalHits
-import org.elasticsearch.search.SearchHit
-import org.elasticsearch.search.SearchHits
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import org.telegram.telegrambots.bots.DefaultAbsSender
@@ -37,11 +38,20 @@ class InlineCommandHandlerTest {
             `when`(offset).thenReturn("0")
         }
 
-        val hitsList = (0..16).map { mock(SearchHit::class.java).apply { `when`(id).thenReturn("$it") } }.toTypedArray()
-        val hits = SearchHits(hitsList, TotalHits(20, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), 1.0f)
+        val hits = (0..16).map {
+            mock(Hit::class.java).apply {
+                `when`(id()).thenReturn("$it")
+            } as Hit<MemeDocument>
+        }
+        val hitsMetadata = mock(HitsMetadata::class.java) as HitsMetadata<MemeDocument>
+        `when`(hitsMetadata.hits()).thenReturn(hits)
+
+        val response = mock(SearchResponse::class.java) as SearchResponse<MemeDocument>
+        `when`(response.hits()).thenReturn(hitsMetadata)
+
         //TODO shouldn't be runBlocking in tests???
         runBlocking {
-            `when`(elasticsearchService.search("куда гонишь дед", 0, 16)).thenReturn(hits)
+            `when`(elasticsearchService.searchMemesByText("куда гонишь дед", 0, 16)).thenReturn(response)
         }
 
         val cachedPhotos = (0..16).map {
@@ -59,7 +69,7 @@ class InlineCommandHandlerTest {
 
         inlineCommandHandler.handleSync(update)
         runBlocking {
-            verify(elasticsearchService).search("куда гонишь дед", 0, 16)
+            verify(elasticsearchService).searchMemesByText("куда гонишь дед", 0, 16)
         }
         verify(api).execute(answerInlineMethod)
         verifyNoMoreInteractions(elasticsearchService)

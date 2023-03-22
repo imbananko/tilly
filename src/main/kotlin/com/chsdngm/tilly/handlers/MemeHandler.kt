@@ -22,9 +22,12 @@ import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
+import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import com.chsdngm.tilly.utility.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.bots.DefaultAbsSender
@@ -55,7 +58,8 @@ class MemeHandler(
         private val memeDao: MemeDao,
         private val distributedModerationEventDao: DistributedModerationEventDao,
         private val metricsUtils: MetricsUtils,
-        private val api: DefaultAbsSender
+        private val api: DefaultAbsSender,
+        private val elasticsearchService: ElasticsearchService
     ) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -169,8 +173,8 @@ class MemeHandler(
         handleImage(update)
     }
 
-    private fun handleImage(update: MemeUpdate) {
-        val analyzingResults = imageTextRecognizer.analyzeAndIndex(update.file, update.fileId)
+    private fun handleImage(update: MemeUpdate) = runBlocking {
+        val analyzingResults = imageTextRecognizer.analyze(update.file, update.fileId)
         val image = Image(
             update.fileId,
             update.file.readBytes(),
@@ -179,7 +183,13 @@ class MemeHandler(
             rawLabels = analyzingResults?.labels
         )
 
-        imageDao.insert(image)
+        if (analyzingResults != null) {
+            if (!(analyzingResults.words.isNullOrEmpty() && analyzingResults.labels.isNullOrEmpty())) {
+                elasticsearchService.indexMeme(update.fileId, ElasticsearchService.MemeDocument(analyzingResults.words, analyzingResults.labels))
+            }
+        }
+
+        launch { imageDao.insert(image) }
         imageMatcher.add(image)
     }
 

@@ -48,6 +48,9 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("co.elastic.clients:elasticsearch-java:8.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
+
 //    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
 //    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
@@ -60,7 +63,6 @@ dependencies {
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.data:spring-data-elasticsearch")
 
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.postgresql:postgresql:42.5.0")
@@ -73,6 +75,7 @@ dependencies {
 //    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
+    implementation("jakarta.json:jakarta.json-api:2.1.1")
 }
 
 tasks.bootJar {
