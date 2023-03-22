@@ -1,10 +1,4 @@
 spring:
-#  datasource:
-#    hikari:
-#      driver-class-name: org.postgresql.Driver
-#      password: tilly
-#      jdbc-url: jdbc:postgresql://localhost:5432/tilly
-#      username: tilly
   datasource:
     driver-class-name: org.postgresql.Driver
     password: tilly
@@ -14,10 +8,6 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-  cloud:
-    gcp:
-      metrics:
-        enabled: false
 
 bot:
   token: token
