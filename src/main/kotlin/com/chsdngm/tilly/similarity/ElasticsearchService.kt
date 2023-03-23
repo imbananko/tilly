@@ -80,15 +80,10 @@ class ElasticsearchService(val asyncClient: ElasticsearchAsyncClient) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class LogDocument(
-        @JsonProperty("level")
         var level: String,
-        @JsonProperty("logger")
-        var loggerName: String,
-        @JsonProperty("thread")
-        var threadName: String,
-        @JsonProperty("timestamp")
-        var timestampMs: Long,
-        @JsonProperty("message")
+        var logger: String,
+        var thread: String,
+        var timestamp: Long,
         var message: String,
     ) {
         constructor(event: LogEvent) : this(event.level.name(), event.loggerName, event.threadName, event.timeMillis, event.message.formattedMessage)
