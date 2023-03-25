@@ -80,6 +80,7 @@ dependencies {
 
 tasks.bootJar {
     "${project.name}.jar"
+    mainClass.set("com.chsdngm.tilly.DefaultRun")
 }
 
 tasks.withType<Test> {

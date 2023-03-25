@@ -11,9 +11,20 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 @SpringBootApplication
 class TillyApplication
 
-fun main(args: Array<String>) {
-    SpringApplication.run(TillyApplication::class.java, *args)
-    sendStartMessageToBeta()
+object DefaultRun {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        SpringApplication.run(TillyApplication::class.java, *args)
+        sendStartMessageToBeta()
+    }
+}
+
+object LocalRun {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        System.setProperty("spring.profiles.active", "local")
+        SpringApplication.run(TillyApplication::class.java, *args)
+    }
 }
 
 private fun sendStartMessageToBeta() = SendMessage().apply {
