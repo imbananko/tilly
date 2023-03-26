@@ -16,7 +16,7 @@ interface ImageTextRecognizer {
 }
 
 @Service
-@ConditionalOnMissingBean(ImageTextRecognizerGcp::class)
+@Profile("local")
 class ImageTextRecognizerLocal: ImageTextRecognizer {
     override fun analyze(image: File, fileId: String): ImageTextRecognizerGcp.AnalyzingResults? {
         return null

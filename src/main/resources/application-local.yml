@@ -4,6 +4,10 @@ spring:
     driver-class-name: org.postgresql.Driver
     password: tilly
     username: tilly
+  cloud:
+    gcp:
+      vision:
+        enabled: false
 
 elasticsearch:
   url: http://localhost

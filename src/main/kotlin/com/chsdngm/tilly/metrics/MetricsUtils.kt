@@ -27,11 +27,11 @@ interface MetricsUtils {
 }
 
 @Component
-@ConditionalOnMissingBean(ImageTextRecognizerGcp::class)
+@Profile("local")
 class MetricsUtilsLocal: MetricsUtils {
 
     override fun measureDuration(update: Timestampable): CompletableFuture<Unit> {
-        return CompletableFuture()
+        return CompletableFuture.completedFuture(Unit)
     }
 
 }

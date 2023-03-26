@@ -34,11 +34,11 @@ class ExposedConfiguration {
     @Profile("local")
     fun databaseLocal(dataSource: HikariDataSource): Database {
         return Database.connect(dataSource).apply {
-            initSchema()
+            createMissingTablesAndColumns()
         }
     }
 
-    private fun initSchema() {
+    private fun createMissingTablesAndColumns() {
         transaction {
             SchemaUtils.create(Images)
             SchemaUtils.create(Memes)
