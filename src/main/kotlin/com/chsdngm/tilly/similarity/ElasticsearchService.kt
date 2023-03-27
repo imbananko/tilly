@@ -74,9 +74,11 @@ class ElasticsearchService(val asyncClient: ElasticsearchAsyncClient) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     data class MemeDocument(
-        @JsonProperty("raw_text")
+        @get:JsonProperty("raw_text")
+        @param:JsonProperty("raw_text")
         var rawText: String?,
-        @JsonProperty("raw_labels")
+        @get:JsonProperty("raw_labels")
+        @param:JsonProperty("raw_labels")
         var rawLabels: String?
     )
 
