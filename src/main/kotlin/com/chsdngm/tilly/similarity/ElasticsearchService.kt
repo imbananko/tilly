@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch.core.BulkRequest
 import co.elastic.clients.elasticsearch.core.BulkResponse
 import co.elastic.clients.elasticsearch.core.IndexResponse
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation
+import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.coroutines.future.await
@@ -71,6 +72,7 @@ class ElasticsearchService(val asyncClient: ElasticsearchAsyncClient) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     data class MemeDocument(
         @JsonProperty("raw_text")
         var rawText: String?,
