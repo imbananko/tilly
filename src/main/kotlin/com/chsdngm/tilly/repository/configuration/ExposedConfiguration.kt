@@ -40,12 +40,14 @@ class ExposedConfiguration {
 
     private fun createMissingTablesAndColumns() {
         transaction {
-            SchemaUtils.create(Images)
-            SchemaUtils.create(Memes)
-            SchemaUtils.create(MemesLogs)
-            SchemaUtils.create(Votes)
-            SchemaUtils.create(TelegramUsers)
-            SchemaUtils.create(DistributedModerationEvents)
+            SchemaUtils.createMissingTablesAndColumns(
+                Images,
+                Memes,
+                MemesLogs,
+                Votes,
+                TelegramUsers,
+                DistributedModerationEvents
+            )
         }
     }
 }
