@@ -71,11 +71,6 @@ class MetricsUtilsGcp(credentialsProvider: CredentialsProvider): MetricsUtils {
     }
 
     override fun measureDuration(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
-        //TODO refactor
-        if (COMMIT_SHA == "local") {
-            return@supplyAsync
-        }
-
         val endTimeMs = System.currentTimeMillis()
         val startTimeMs = update.createdAt
 
