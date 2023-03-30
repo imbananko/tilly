@@ -7,6 +7,7 @@ services:
     environment:
       - POSTGRES_USER=tilly
       - POSTGRES_PASSWORD=tilly
+      - POSTGRES_DB=tilly
     ports:
       - '5432:5432'
   elasticsearch:
