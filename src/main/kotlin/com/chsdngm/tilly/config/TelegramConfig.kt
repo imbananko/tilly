@@ -84,9 +84,6 @@ class TelegramConfig {
         MONTORN_CHAT_ID = montornChatId
     }
 
-    @Value("\${webhook.url}")
-    lateinit var webhookUrl: String
-
     @Value("\${elasticsearch.url}")
     lateinit var elasticsearchUrl: String
 }

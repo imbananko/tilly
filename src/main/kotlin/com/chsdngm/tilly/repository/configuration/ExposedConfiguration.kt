@@ -16,12 +16,12 @@ class ExposedConfiguration {
     @Bean
     fun dataSource(dataSourceProperties: DatabaseProperties): HikariDataSource {
         return dataSourceProperties
-                .initializeDataSourceBuilder()
-                .type(HikariDataSource::class.java)
-                .username(dataSourceProperties.username)
-                .password(dataSourceProperties.password)
-                .driverClassName(dataSourceProperties.driverClassName)
-                .build()
+            .initializeDataSourceBuilder()
+            .type(HikariDataSource::class.java)
+            .username(dataSourceProperties.username)
+            .password(dataSourceProperties.password)
+            .driverClassName(dataSourceProperties.driverClassName)
+            .build()
     }
 
     @Bean
@@ -34,20 +34,16 @@ class ExposedConfiguration {
     @Profile("local")
     fun databaseLocal(dataSource: HikariDataSource): Database {
         return Database.connect(dataSource).apply {
-            createMissingTablesAndColumns()
-        }
-    }
-
-    private fun createMissingTablesAndColumns() {
-        transaction {
-            SchemaUtils.createMissingTablesAndColumns(
-                Images,
-                Memes,
-                MemesLogs,
-                Votes,
-                TelegramUsers,
-                DistributedModerationEvents
-            )
+            transaction {
+                SchemaUtils.createMissingTablesAndColumns(
+                    Images,
+                    Memes,
+                    MemesLogs,
+                    Votes,
+                    TelegramUsers,
+                    DistributedModerationEvents
+                )
+            }
         }
     }
 }
