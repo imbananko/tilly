@@ -1,6 +1,7 @@
 version: '3.8'
 services:
   db:
+    platform: linux/amd64
     container_name: pg-container
     image: postgres:14.1-alpine
     restart: always
@@ -11,6 +12,7 @@ services:
     ports:
       - '5432:5432'
   elasticsearch:
+    platform: linux/amd64
     container_name: es-container
     image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
     environment:

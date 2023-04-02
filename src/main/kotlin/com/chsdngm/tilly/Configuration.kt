@@ -11,9 +11,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
-import org.telegram.telegrambots.meta.TelegramBotsApi
-import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
-import org.telegram.telegrambots.updatesreceivers.DefaultWebhook
 
 @Configuration
 class Configuration {
@@ -31,8 +28,4 @@ class Configuration {
 
         return ElasticsearchAsyncClient(transport)
     }
-
-    @Bean
-    fun telegramBotsApi(): TelegramBotsApi =
-            TelegramBotsApi(DefaultBotSession::class.java, DefaultWebhook().apply { setInternalUrl("https://127.0.0.1:8443") })
 }

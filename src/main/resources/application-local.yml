@@ -12,12 +12,5 @@ spring:
 elasticsearch:
   url: http://localhost
 
-bot:
-  id: 1
-
-logs:
-  chat:
-    id: 1
-
-telegrambots:
-  enabled: false
+#telegram.polling:
+#  enabled: false
