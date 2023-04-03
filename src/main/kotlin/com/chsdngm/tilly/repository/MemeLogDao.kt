@@ -7,11 +7,12 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 
 @Repository
 class MemeLogDao(val database: Database) {
     fun insert(memeLog: MemeLog) = transaction {
         MemesLogs.insert { memeLog.toInsertStatement(it) }.resultedValues?.first()
-            ?: throw NoSuchElementException("Error saving meme log")
+            ?: throw SQLException("Error saving meme log")
     }
 }

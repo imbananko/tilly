@@ -6,11 +6,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.MONTORN_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
-import com.chsdngm.tilly.format
-import com.chsdngm.tilly.model.AutosuggestionVoteValue
-import com.chsdngm.tilly.model.DistributedModerationVoteValue
-import com.chsdngm.tilly.model.PrivateVoteValue
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import org.apache.commons.io.IOUtils
@@ -32,10 +28,14 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.io.Serializable
+import java.lang.reflect.UndeclaredThrowableException
 import java.net.URL
 import java.sql.ResultSet
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
+
+fun Update.hasReelsUrl() = this.hasMessage() &&
+        this.message.chat.isUserChat && this.message.hasText() && this.message.text.startsWith("https://www.instagram.com/reel")
 
 fun Update.hasMeme() = this.hasMessage() && this.message.chat.isUserChat && this.message.hasPhoto()
 
@@ -115,7 +115,7 @@ fun updateStatsInSenderChat(meme: Meme, votes: List<Vote>): CompletableFuture<Se
 fun logExceptionInBetaChat(ex: Throwable): Message =
     SendMessage().apply {
         chatId = BETA_CHAT_ID
-        text = ex.format(update = null)
+        text = ex.format()
         parseMode = ParseMode.HTML
     }.let { method -> api.execute(method) }
 
@@ -158,3 +158,63 @@ fun download(fileId: String): File {
 
 val Table.allColumns get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
 val Table.indexedColumns get() = realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
+
+fun Throwable.format(update: Update): String {
+    val updateInfo = when {
+        update.hasReelsUrl() -> ReelsLinkUpdate(update).toString()
+        update.hasVote() -> VoteUpdate(update).toString()
+        update.hasMeme() -> UserMemeUpdate(update).toString()
+        update.hasCommand() -> CommandUpdate(update).toString()
+        update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
+        update.hasAutosuggestionVote() -> AutosuggestionVoteUpdate(update).toString()
+        update.hasDistributedModerationVote() -> DistributedModerationVoteUpdate(update).toString()
+        update.hasInlineQuery() -> InlineCommandUpdate(update).toString()
+        else -> "unknown update=$update"
+    }
+
+    val formatted = formatExceptionForTelegramMessage(this)
+
+    return """
+          |Exception: ${formatted.message}
+          |
+          |Cause: ${formatted.cause}
+          |
+          |Update: $updateInfo
+          |
+          |Stacktrace: 
+          |${formatted.stackTrace}
+  """.trimMargin()
+}
+
+fun Throwable.format(): String {
+    val formatted = formatExceptionForTelegramMessage(this)
+
+    return """
+          |Exception: ${formatted.message}
+          |
+          |Cause: ${formatted.cause}
+          |
+          |Update: null
+          |
+          |Stacktrace: 
+          |${formatted.stackTrace}
+  """.trimMargin()
+}
+
+private fun formatExceptionForTelegramMessage(e: Throwable) = when (e) {
+    is UndeclaredThrowableException ->
+        TelegramFormattedException(e.undeclaredThrowable.message, e, filterAndFormat(e.undeclaredThrowable.stackTrace))
+    else ->
+        TelegramFormattedException(e.message, e.cause, filterAndFormat(e.stackTrace))
+}
+
+private fun filterAndFormat(stackTrace: Array<StackTraceElement>): String {
+    return stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }
+        .joinToString(separator = "\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }
+}
+
+class TelegramFormattedException(
+    val message: String?,
+    val cause: Throwable?,
+    val stackTrace: String
+)

@@ -216,3 +216,7 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
 
     fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
 }
+
+class ReelsLinkUpdate(update: Update) : Timestampable() {
+    val url: String = update.message.text
+}

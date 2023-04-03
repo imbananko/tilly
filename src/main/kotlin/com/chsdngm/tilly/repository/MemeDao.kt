@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 import java.time.LocalDate
 
 @Repository
@@ -35,7 +36,7 @@ class MemeDao(val database: Database) {
 
     fun insert(meme: Meme) = transaction {
         Memes.insert { meme.toInsertStatement(it) }.resultedValues?.first()?.toMeme()
-            ?: throw NoSuchElementException("Error saving meme")
+            ?: throw SQLException("Error saving meme")
     }
 
     fun update(meme: Meme) = transaction {

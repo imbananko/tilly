@@ -18,7 +18,12 @@ import org.telegram.telegrambots.updatesreceivers.DefaultWebhook
 class Configuration {
     @Bean
     fun api(): DefaultAbsSender {
-        return object : DefaultAbsSender(DefaultBotOptions()) {
+        return object : DefaultAbsSender(
+            DefaultBotOptions().apply {
+                maxThreads = 8
+                getUpdatesTimeout = 5
+            }) {
+
             override fun getBotToken(): String = TelegramConfig.BOT_TOKEN
         }
     }

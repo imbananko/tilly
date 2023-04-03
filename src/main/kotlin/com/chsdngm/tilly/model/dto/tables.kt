@@ -64,6 +64,11 @@ object DistributedModerationEvents : Table("distributed_moderation_event") {
     val moderationGroupId = integer("moderation_group_id")
 }
 
+object Reels : IntIdTable("reel", "id") {
+    val url = text("url")
+    val processed = bool("processed")
+}
+
 /**
  * Нужно для корректного логгирования sql-запросов
  */

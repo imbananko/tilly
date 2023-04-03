@@ -6,6 +6,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 import java.time.Instant
 
 @Repository
@@ -16,7 +17,7 @@ class TelegramUserDao(val database: Database) {
 
     fun insert(telegramUser: TelegramUser): TelegramUser = transaction {
         TelegramUsers.insert { telegramUser.toInsertStatement(it) }.resultedValues?.first()?.toTelegramUser()
-            ?: throw NoSuchElementException("Error saving telegramUser")
+            ?: throw SQLException("Error saving telegramUser")
     }
 
     fun update(telegramUser: TelegramUser) = transaction {

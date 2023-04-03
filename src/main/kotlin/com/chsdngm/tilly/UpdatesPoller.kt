@@ -26,14 +26,11 @@ class UpdatesPoller(
     val inlineCommandHandler: InlineCommandHandler,
     val privateModerationVoteHandler: PrivateModerationVoteHandler,
     val autosuggestionVoteHandler: AutosuggestionVoteHandler,
-    val distributedModerationVoteHandler: DistributedModerationVoteHandler
+    val distributedModerationVoteHandler: DistributedModerationVoteHandler,
+    val reelLinkHandler: ReelLinkHandler
 ) : TelegramLongPollingBot() {
 
     private val log = LoggerFactory.getLogger(javaClass)
-
-    init {
-        log.info("UpdatesHooker poller")
-    }
 
     override fun getBotUsername(): String = BOT_USERNAME
 
@@ -41,12 +38,16 @@ class UpdatesPoller(
 
     final override fun onUpdateReceived(update: Update) {
         when {
+            update.hasReelsUrl() -> reelLinkHandler.handle(ReelsLinkUpdate(update))
             update.hasVote() -> voteHandler.handle(VoteUpdate(update))
             update.hasMeme() -> memeHandler.handle(UserMemeUpdate(update))
             update.hasCommand() -> commandHandler.handle(CommandUpdate(update))
             update.hasPrivateVote() -> privateModerationVoteHandler.handle(PrivateVoteUpdate(update))
             update.hasAutosuggestionVote() -> autosuggestionVoteHandler.handle(AutosuggestionVoteUpdate(update))
-            update.hasDistributedModerationVote() -> distributedModerationVoteHandler.handle(DistributedModerationVoteUpdate(update))
+            update.hasDistributedModerationVote() -> distributedModerationVoteHandler.handle(
+                DistributedModerationVoteUpdate(update)
+            )
+
             update.hasInlineQuery() -> inlineCommandHandler.handle(InlineCommandUpdate(update))
             else -> CompletableFuture.completedFuture(null)
 
@@ -63,46 +64,8 @@ class UpdatesPoller(
         }
     }
 
-    override fun onUpdatesReceived(updates: MutableList<Update>?) {
+    override fun onUpdatesReceived(updates: MutableList<Update>) {
+        log.info("multiple (${updates.size}) update received")
         super.onUpdatesReceived(updates)
     }
 }
-
-fun Throwable.format(update: Update?): String {
-    val updateInfo = when {
-        update == null -> "no update"
-        update.hasVote() -> VoteUpdate(update).toString()
-        update.hasMeme() -> UserMemeUpdate(update).toString()
-        update.hasCommand() -> CommandUpdate(update).toString()
-        update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
-        else -> "unknown update=$update"
-    }
-
-    val exForBeta = when (this) {
-        is UndeclaredThrowableException ->
-            ExceptionForBeta(this.undeclaredThrowable.message, this, this.undeclaredThrowable.stackTrace)
-        else ->
-            ExceptionForBeta(this.message, this.cause, this.stackTrace)
-    }
-
-    return """
-  |Exception: ${exForBeta.message}
-  |
-  |Cause: ${exForBeta.cause}
-  |
-  |Update: $updateInfo
-  |
-  |Stacktrace: 
-  |${
-        exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }
-            .joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }
-    }
-  """.trimMargin()
-}
-
-private data class ExceptionForBeta(
-    val message: String?,
-    val cause: Throwable?,
-    val stackTrace: Array<StackTraceElement>
-)
-

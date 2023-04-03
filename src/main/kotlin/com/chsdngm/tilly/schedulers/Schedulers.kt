@@ -6,7 +6,6 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
-import com.chsdngm.tilly.format
 import com.chsdngm.tilly.metrics.AccumulatingAppender
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
@@ -18,6 +17,7 @@ import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.utility.createMarkup
+import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import kotlinx.coroutines.runBlocking
@@ -65,7 +65,7 @@ final class Schedulers(
     }.onFailure {
         SendMessage().apply {
             chatId = BETA_CHAT_ID
-            text = it.format(update = null)
+            text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
     }
@@ -140,7 +140,7 @@ final class Schedulers(
 
             SendMessage().apply {
                 chatId = BETA_CHAT_ID
-                text = ex.format(update = null)
+                text = ex.format()
                 parseMode = ParseMode.HTML
             }.let { api.execute(it) }
         }
@@ -225,7 +225,7 @@ final class Schedulers(
     }.onFailure {
         SendMessage().apply {
             chatId = BETA_CHAT_ID
-            text = it.format(update = null)
+            text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
     }

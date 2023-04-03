@@ -4,12 +4,13 @@ import com.chsdngm.tilly.model.dto.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 
 @Repository
 class VoteDao(val database: Database) {
     fun insert(vote: Vote) = transaction {
         Votes.insert { vote.toInsertStatement(it) }.resultedValues?.first()?.toVote()
-            ?: throw NoSuchElementException("Error saving vote")
+            ?: throw SQLException("Error saving vote")
     }
 
     fun delete(vote: Vote) = transaction {
