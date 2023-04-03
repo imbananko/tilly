@@ -1,15 +1,33 @@
 package com.chsdngm.tilly.similarity
 
+import com.chsdngm.tilly.model.dto.*
 import com.google.cloud.spring.vision.CloudVisionTemplate
 import com.google.cloud.vision.v1.Feature.Type
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.context.annotation.Profile
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.stereotype.Service
 import java.io.File
 
 
+interface ImageTextRecognizer {
+    fun analyze(image: File, fileId: String): ImageTextRecognizerGcp.AnalyzingResults?
+}
+
 @Service
-class ImageTextRecognizer(val cloudVisionTemplate: CloudVisionTemplate) {
+@Profile("local")
+class ImageTextRecognizerLocal: ImageTextRecognizer {
+    override fun analyze(image: File, fileId: String): ImageTextRecognizerGcp.AnalyzingResults? {
+        return ImageTextRecognizerGcp.AnalyzingResults("локальный запуск", "локальный запуск")
+    }
+}
+
+@Service
+@Profile("default")
+class ImageTextRecognizerGcp(
+    val cloudVisionTemplate: CloudVisionTemplate,
+): ImageTextRecognizer {
     private val log = LoggerFactory.getLogger(javaClass)
 
     data class AnalyzingResults(
@@ -17,7 +35,7 @@ class ImageTextRecognizer(val cloudVisionTemplate: CloudVisionTemplate) {
         val labels: String?
     )
 
-    fun analyze(image: File, fileId: String): AnalyzingResults? = runCatching {
+    override fun analyze(image: File, fileId: String): AnalyzingResults? = runCatching {
             val response = cloudVisionTemplate.analyzeImage(
                 ByteArrayResource(image.readBytes()),
                 Type.TEXT_DETECTION,

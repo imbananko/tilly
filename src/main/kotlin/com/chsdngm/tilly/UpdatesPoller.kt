@@ -8,17 +8,17 @@ import com.chsdngm.tilly.handlers.*
 import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.utility.*
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
-import java.lang.reflect.UndeclaredThrowableException
 import java.util.concurrent.CompletableFuture
+import javax.annotation.PostConstruct
 
 @Component
-@ConditionalOnMissingBean(UpdatesHooker::class)
+@ConditionalOnProperty(prefix = "telegram.polling", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class UpdatesPoller(
     val memeHandler: MemeHandler,
     val voteHandler: VoteHandler,
@@ -26,14 +26,12 @@ class UpdatesPoller(
     val inlineCommandHandler: InlineCommandHandler,
     val privateModerationVoteHandler: PrivateModerationVoteHandler,
     val autosuggestionVoteHandler: AutosuggestionVoteHandler,
-    val distributedModerationVoteHandler: DistributedModerationVoteHandler
+    val distributedModerationVoteHandler: DistributedModerationVoteHandler,
+    val metadata: com.chsdngm.tilly.config.Metadata,
+    val telegramConfig: TelegramConfig,
 ) : TelegramLongPollingBot() {
 
     private val log = LoggerFactory.getLogger(javaClass)
-
-    init {
-        log.info("UpdatesHooker poller")
-    }
 
     override fun getBotUsername(): String = BOT_USERNAME
 
@@ -63,46 +61,16 @@ class UpdatesPoller(
         }
     }
 
-    override fun onUpdatesReceived(updates: MutableList<Update>?) {
-        super.onUpdatesReceived(updates)
+    @PostConstruct
+    fun init() {
+        log.info("UpdatesPoller init")
+
+        SendMessage().apply {
+            chatId = TelegramConfig.BETA_CHAT_ID
+            text = "$botUsername started with sha: ${com.chsdngm.tilly.config.Metadata.COMMIT_SHA}"
+            parseMode = ParseMode.HTML
+        }.let { method -> executeAsync(method) }
     }
 }
 
-fun Throwable.format(update: Update?): String {
-    val updateInfo = when {
-        update == null -> "no update"
-        update.hasVote() -> VoteUpdate(update).toString()
-        update.hasMeme() -> UserMemeUpdate(update).toString()
-        update.hasCommand() -> CommandUpdate(update).toString()
-        update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
-        else -> "unknown update=$update"
-    }
-
-    val exForBeta = when (this) {
-        is UndeclaredThrowableException ->
-            ExceptionForBeta(this.undeclaredThrowable.message, this, this.undeclaredThrowable.stackTrace)
-        else ->
-            ExceptionForBeta(this.message, this.cause, this.stackTrace)
-    }
-
-    return """
-  |Exception: ${exForBeta.message}
-  |
-  |Cause: ${exForBeta.cause}
-  |
-  |Update: $updateInfo
-  |
-  |Stacktrace: 
-  |${
-        exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }
-            .joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }
-    }
-  """.trimMargin()
-}
-
-private data class ExceptionForBeta(
-    val message: String?,
-    val cause: Throwable?,
-    val stackTrace: Array<StackTraceElement>
-)
 

@@ -23,9 +23,5 @@ metadata:
   commit.sha: local
   moderation.threshold: 5
 
-webhook:
-  enabled: false
-  url: https://localhost:8443
-
 elasticsearch:
   url: elasticsearch

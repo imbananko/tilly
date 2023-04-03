@@ -1,11 +1,13 @@
 package com.chsdngm.tilly.config
 
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Component
+@ConditionalOnProperty(prefix = "telegram.polling", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class TelegramConfig {
     companion object {
 
@@ -84,9 +86,4 @@ class TelegramConfig {
         MONTORN_CHAT_ID = montornChatId
     }
 
-    @Value("\${webhook.url}")
-    lateinit var webhookUrl: String
-
-    @Value("\${elasticsearch.url}")
-    lateinit var elasticsearchUrl: String
 }

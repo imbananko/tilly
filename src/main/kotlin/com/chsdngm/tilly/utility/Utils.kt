@@ -6,11 +6,7 @@ import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.MONTORN_CHAT_ID
 import com.chsdngm.tilly.config.TelegramConfig.Companion.api
-import com.chsdngm.tilly.format
-import com.chsdngm.tilly.model.AutosuggestionVoteValue
-import com.chsdngm.tilly.model.DistributedModerationVoteValue
-import com.chsdngm.tilly.model.PrivateVoteValue
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import org.apache.commons.io.IOUtils
@@ -32,6 +28,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.io.File
 import java.io.FileOutputStream
 import java.io.Serializable
+import java.lang.reflect.UndeclaredThrowableException
 import java.net.URL
 import java.sql.ResultSet
 import java.time.Instant
@@ -158,3 +155,41 @@ fun download(fileId: String): File {
 
 val Table.allColumns get() = fields.joinToString(", ") { "$tableName.${(it as Column<*>).name}" }
 val Table.indexedColumns get() = realFields.toSet().mapIndexed { index, expression -> expression to index }.toMap()
+
+fun Throwable.format(update: Update?): String {
+    val updateInfo = when {
+        update == null -> "no update"
+        update.hasVote() -> VoteUpdate(update).toString()
+        update.hasMeme() -> UserMemeUpdate(update).toString()
+        update.hasCommand() -> CommandUpdate(update).toString()
+        update.hasPrivateVote() -> PrivateVoteUpdate(update).toString()
+        else -> "unknown update=$update"
+    }
+
+    val exForBeta = when (this) {
+        is UndeclaredThrowableException ->
+            ExceptionForBeta(this.undeclaredThrowable.message, this, this.undeclaredThrowable.stackTrace)
+        else ->
+            ExceptionForBeta(this.message, this.cause, this.stackTrace)
+    }
+
+    return """
+  |Exception: ${exForBeta.message}
+  |
+  |Cause: ${exForBeta.cause}
+  |
+  |Update: $updateInfo
+  |
+  |Stacktrace: 
+  |${
+        exForBeta.stackTrace.filter { it.className.contains("chsdngm") || it.className.contains("telegram") }
+            .joinToString(separator = "\n\n") { "${it.className}.${it.methodName}:${it.lineNumber}" }
+    }
+  """.trimMargin()
+}
+
+private class ExceptionForBeta(
+    val message: String?,
+    val cause: Throwable?,
+    val stackTrace: Array<StackTraceElement>
+)

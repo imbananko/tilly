@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tilly
+    driver-class-name: org.postgresql.Driver
+    password: tilly
+    username: tilly
+  cloud:
+    gcp:
+      vision:
+        enabled: false
+
+elasticsearch:
+  url: http://localhost
+
+#telegram.polling:
+#  enabled: false
