@@ -27,7 +27,8 @@ class UpdatesPoller(
     val privateModerationVoteHandler: PrivateModerationVoteHandler,
     val autosuggestionVoteHandler: AutosuggestionVoteHandler,
     val distributedModerationVoteHandler: DistributedModerationVoteHandler,
-    val metadata: com.chsdngm.tilly.config.Metadata
+    val metadata: com.chsdngm.tilly.config.Metadata,
+    val telegramConfig: TelegramConfig,
 ) : TelegramLongPollingBot() {
 
     private val log = LoggerFactory.getLogger(javaClass)

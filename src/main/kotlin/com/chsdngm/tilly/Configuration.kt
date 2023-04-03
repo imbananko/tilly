@@ -22,7 +22,7 @@ class Configuration {
     }
 
     @Bean
-    fun elasticsearchClient(@Value("elasticsearch.url") elasticsearchUrl: String): ElasticsearchAsyncClient {
+    fun elasticsearchClient(@Value("\${elasticsearch.url}") elasticsearchUrl: String): ElasticsearchAsyncClient {
         val restClient = RestClient.builder(HttpHost(elasticsearchUrl, 9200)).build()
         val transport = RestClientTransport(restClient, JacksonJsonpMapper())
 
