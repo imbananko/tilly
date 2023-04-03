@@ -63,8 +63,6 @@ class UpdatesPoller(
 
     @PostConstruct
     fun init() {
-        log.info("UpdatesPoller init")
-
         SendMessage().apply {
             chatId = TelegramConfig.BETA_CHAT_ID
             text = "$botUsername started with sha: ${com.chsdngm.tilly.config.Metadata.COMMIT_SHA}"
