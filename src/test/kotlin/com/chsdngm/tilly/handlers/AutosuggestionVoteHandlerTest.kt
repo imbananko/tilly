@@ -1,17 +1,17 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.User
 
 class AutosuggestionVoteHandlerTest {
     private val memeHandler = mock(MemeHandler::class.java)
-    private val api = mock(DefaultAbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
 
     private val autosuggestionVoteHandler = AutosuggestionVoteHandler(memeHandler, api)
 

@@ -1,20 +1,18 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Service
 class AutosuggestionVoteHandler(
         private val memeHandler: MemeHandler,
-        private val api: DefaultAbsSender)
+        private val api: TelegramApi
+)
     : AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -48,4 +46,6 @@ class AutosuggestionVoteHandler(
 
         log.info("auto-suggested meme was declined. update=$update")
     }
+
+    override fun getUpdateType() = AutosuggestionVoteUpdate::class
 }

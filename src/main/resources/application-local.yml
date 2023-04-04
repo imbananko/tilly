@@ -12,5 +12,5 @@ spring:
 elasticsearch:
   url: http://localhost
 
-#telegram.polling:
-#  enabled: false
+#telegram:
+#  polling-enabled: false

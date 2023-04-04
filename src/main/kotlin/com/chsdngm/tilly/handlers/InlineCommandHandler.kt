@@ -1,18 +1,18 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.InlineCommandUpdate
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
 
 @Service
 class InlineCommandHandler(
         val elasticsearchService: ElasticsearchService,
-        val api: DefaultAbsSender
+        val api: TelegramApi
 ) : AbstractHandler<InlineCommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
     val chunkSize = 16
@@ -41,4 +41,6 @@ class InlineCommandHandler(
 
         log.info("processed inline command update=$update")
     }
+
+    override fun getUpdateType() = InlineCommandUpdate::class
 }

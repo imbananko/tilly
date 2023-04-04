@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.repository.configuration
 
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.*
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
@@ -11,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 
 @Configuration
-@EnableConfigurationProperties(DatabaseProperties::class)
+@EnableConfigurationProperties(DatabaseProperties::class, TelegramProperties::class)
 class ExposedConfiguration {
     @Bean
     fun dataSource(dataSourceProperties: DatabaseProperties): HikariDataSource {

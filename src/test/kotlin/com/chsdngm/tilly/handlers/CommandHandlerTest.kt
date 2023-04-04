@@ -1,6 +1,7 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.VoteValue
@@ -12,7 +13,6 @@ import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.minusDays
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
@@ -21,9 +21,19 @@ class CommandHandlerTest {
     private val telegramUserDao = mock(TelegramUserDao::class.java)
     private val memeDao = mock(MemeDao::class.java)
     private val voteDao = mock(VoteDao::class.java)
-    private val api = mock(DefaultAbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
+    private val telegramProperties = TelegramProperties(
+        "betaChatId",
+        "montornChatId",
+        "targetChatId",
+        "targetChannelId",
+        "botToken",
+        "botUsername",
+        "logsChatId",
+        777
+    )
 
-    private val commandHandler = CommandHandler(telegramUserDao, memeDao, voteDao, mock(MetricsUtils::class.java), api)
+    private val commandHandler = CommandHandler(telegramUserDao, memeDao, voteDao, mock(MetricsUtils::class.java), api, telegramProperties)
 
     @Test
     fun shouldSendInfoMessageWhenHelpOrStartCommandReceived() {
@@ -36,9 +46,8 @@ class CommandHandlerTest {
         val sendMessageMethod = SendMessage().apply {
             chatId = update.senderId
             parseMode = ParseMode.HTML
-            //TODO: fix the static mocking for bot_name in text
             text = """
-                Привет, я ${TelegramConfig.BOT_USERNAME}. 
+                Привет, я botUsername. 
 
                 Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
                 Сейчас же отправляй мне самый крутой мем, и, если он пройдёт модерацию, то попадёт на канал <a href="https://t.me/chsdngm/">че с деньгами</a>. 
@@ -66,15 +75,14 @@ class CommandHandlerTest {
         val update = mock(CommandUpdate::class.java).apply {
             `when`(value).thenReturn(CommandUpdate.Command.CONFIG)
             `when`(messageId).thenReturn(666)
-            //TODO fix the static mocking properties
-            `when`(chatId).thenReturn(TelegramConfig.BETA_CHAT_ID)
+            `when`(chatId).thenReturn("betaChatId")
             `when`(text).thenReturn("enable publishing")
         }
 
         commandHandler.handleSync(update)
 
         val sendMessageMethod = SendMessage().apply {
-            chatId = TelegramConfig.BETA_CHAT_ID
+            chatId = "betaChatId"
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = "Публикация мемов включена"
@@ -89,21 +97,19 @@ class CommandHandlerTest {
         val update = mock(CommandUpdate::class.java).apply {
             `when`(value).thenReturn(CommandUpdate.Command.CONFIG)
             `when`(messageId).thenReturn(666)
-            //TODO fix the static mocking properties
-            `when`(chatId).thenReturn(TelegramConfig.BETA_CHAT_ID)
+            `when`(chatId).thenReturn("betaChatId")
             `when`(text).thenReturn("disable publishing")
         }
 
         `when`(update.value).thenReturn(CommandUpdate.Command.CONFIG)
         `when`(update.messageId).thenReturn(666)
-        //TODO fix the static mocking properties
-        `when`(update.chatId).thenReturn(TelegramConfig.BETA_CHAT_ID)
+        `when`(update.chatId).thenReturn("betaChatId")
         `when`(update.text).thenReturn("disable publishing")
 
         commandHandler.handleSync(update)
 
         val sendMessageMethod = SendMessage().apply {
-            chatId = TelegramConfig.BETA_CHAT_ID
+            chatId = "betaChatId"
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = "Публикация мемов выключена"
@@ -181,26 +187,26 @@ class CommandHandlerTest {
         }
 
         val memesWithVotes = mapOf(
-                freshMeme to listOf(freshLike, freshLike, freshLike),
-                freshMeme to listOf(freshLike, freshLike, freshDislike),
-                freshMeme to listOf(freshLike, freshDislike, freshDislike),
+            freshMeme to listOf(freshLike, freshLike, freshLike),
+            freshMeme to listOf(freshLike, freshLike, freshDislike),
+            freshMeme to listOf(freshLike, freshDislike, freshDislike),
 
-                oldMeme to listOf(freshLike, freshLike, freshLike),
-                oldMeme to listOf(freshLike, freshLike, freshDislike),
-                oldMeme to listOf(freshLike, freshDislike, freshDislike)
+            oldMeme to listOf(freshLike, freshLike, freshLike),
+            oldMeme to listOf(freshLike, freshLike, freshDislike),
+            oldMeme to listOf(freshLike, freshDislike, freshDislike)
         )
         `when`(memeDao.findAllBySenderId(777)).thenReturn(memesWithVotes)
 
         val votes = listOf(
-                freshLike,
-                freshLike,
-                freshDislike,
-                freshDislike,
-                freshDislike,
+            freshLike,
+            freshLike,
+            freshDislike,
+            freshDislike,
+            freshDislike,
 
-                oldLike,
-                oldDislike,
-                oldDislike
+            oldLike,
+            oldDislike,
+            oldDislike
 
         )
         `when`(voteDao.findAllByVoterId(777)).thenReturn(votes)

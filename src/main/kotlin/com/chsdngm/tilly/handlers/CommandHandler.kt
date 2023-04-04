@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
@@ -15,7 +15,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import java.time.Instant
@@ -26,7 +25,8 @@ class CommandHandler(
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils,
-    private val api: DefaultAbsSender
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
 ) :
     AbstractHandler<CommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -36,7 +36,7 @@ class CommandHandler(
             sendStats(update)
         } else if (update.value == Command.HELP || update.value == Command.START) {
             sendInfoMessage(update)
-        } else if (update.value == Command.CONFIG && update.chatId == TelegramConfig.BETA_CHAT_ID) {
+        } else if (update.value == Command.CONFIG && update.chatId == telegramProperties.betaChatId) {
             changeConfig(update)
         } else {
             log.warn("unknown command from update=$update")
@@ -100,7 +100,7 @@ class CommandHandler(
 
     fun sendInfoMessage(update: CommandUpdate) {
         val infoText = """
-      Привет, я $BOT_USERNAME. 
+      Привет, я ${telegramProperties.botUsername}. 
       
       Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
       Сейчас же отправляй мне самый крутой мем, и, если он пройдёт модерацию, то попадёт на канал <a href="https://t.me/chsdngm/">че с деньгами</a>. 
@@ -125,11 +125,11 @@ class CommandHandler(
     fun changeConfig(update: CommandUpdate) {
         val message = when {
             update.text.contains("enable publishing") -> {
-                TelegramConfig.publishEnabled = true
+                telegramProperties.publishingEnabled = true
                 "Публикация мемов включена"
             }
             update.text.contains("disable publishing") -> {
-                TelegramConfig.publishEnabled = false
+                telegramProperties.publishingEnabled = false
                 "Публикация мемов выключена"
             }
             else ->
@@ -141,10 +141,12 @@ class CommandHandler(
         }
 
         SendMessage().apply {
-            chatId = TelegramConfig.BETA_CHAT_ID
+            chatId = telegramProperties.betaChatId
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = message
         }.let { api.execute(it) }
     }
+
+    override fun getUpdateType() = CommandUpdate::class
 }

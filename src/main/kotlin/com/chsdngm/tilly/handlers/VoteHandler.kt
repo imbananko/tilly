@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
@@ -11,11 +11,9 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import javassist.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import java.io.Serializable
@@ -25,11 +23,12 @@ import java.util.concurrent.Executors
 
 @Service
 class VoteHandler(
-        private val memeDao: MemeDao,
-        private val voteDao: VoteDao,
-        private val metricsUtils: MetricsUtils,
-        private val channelMarkupUpdater: ChannelMarkupUpdater,
-        private val api: DefaultAbsSender
+    private val memeDao: MemeDao,
+    private val voteDao: VoteDao,
+    private val metricsUtils: MetricsUtils,
+    private val channelMarkupUpdater: ChannelMarkupUpdater,
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
 ) : AbstractHandler<VoteUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -41,8 +40,8 @@ class VoteHandler(
         }
 
         val memeWithVotes = when (update.sourceChatId) {
-            CHANNEL_ID -> memeDao.findMemeByChannelMessageId(update.messageId)
-            CHAT_ID -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(CHAT_ID.toLong(), update.messageId)
+            telegramProperties.targetChannelId -> memeDao.findMemeByChannelMessageId(update.messageId)
+            telegramProperties.targetChatId -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(telegramProperties.targetChatId.toLong(), update.messageId)
             else -> null
         } ?: throw NotFoundException("Meme wasn't found. update=$update")
 
@@ -92,7 +91,7 @@ class VoteHandler(
             updateGroupMarkup(meme, votes)
         }
 
-        updateStatsInSenderChat(meme, votes)
+        api.updateStatsInSenderChat(meme, votes)
 
         voteDatabaseUpdate.join()
 //        CompletableFuture.allOf(voteDatabaseUpdate, popupNotification, groupMarkupUpdate)
@@ -107,7 +106,7 @@ class VoteHandler(
 
     private fun updateGroupMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Serializable> =
             EditMessageReplyMarkup().apply {
-                chatId = CHAT_ID
+                chatId = telegramProperties.targetChatId
                 messageId = meme.moderationChatMessageId
                 replyMarkup = createMarkup(votes)
             }.let { api.executeAsync(it) }
@@ -115,4 +114,6 @@ class VoteHandler(
     override fun measureTime(update: VoteUpdate) {
         metricsUtils.measureDuration(update)
     }
+
+    override fun getUpdateType() = VoteUpdate::class
 }

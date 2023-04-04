@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.DistributedModerationVoteUpdate
 import com.chsdngm.tilly.model.DistributedModerationVoteValue
 import com.chsdngm.tilly.model.VoteValue
@@ -9,13 +10,12 @@ import com.chsdngm.tilly.repository.VoteDao
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import org.telegram.telegrambots.meta.bots.AbsSender
 
 @Service
 class DistributedModerationVoteHandler(
         private val distributedModerationEventDao: DistributedModerationEventDao,
         private val voteDao: VoteDao,
-        private val api: AbsSender
+        private val api: TelegramApi
 ) : AbstractHandler<DistributedModerationVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -53,4 +53,6 @@ class DistributedModerationVoteHandler(
 
         log.info("moderator with id=${update.userId} voted down for meme memeId=$memeId")
     }
+
+    override fun getUpdateType() = DistributedModerationVoteUpdate::class
 }

@@ -1,5 +1,7 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
@@ -12,7 +14,6 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.*
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import java.util.concurrent.CompletableFuture
 
@@ -21,9 +22,19 @@ class VoteHandlerTest {
     private val voteDao = mock(VoteDao::class.java)
     private val metricsUtils = mock(MetricsUtils::class.java)
     private val channelMarkupUpdater = mock(ChannelMarkupUpdater::class.java)
-    private val api = mock(DefaultAbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
+    private val telegramProperties = TelegramProperties(
+        "betaChatId",
+        "montornChatId",
+        "targetChatId",
+        "targetChannelId",
+        "botToken",
+        "botUsername",
+        "logsChatId",
+        777
+    )
 
-    private val voteHandler = VoteHandler(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
+    private val voteHandler = VoteHandler(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api, telegramProperties)
 
 //    @Test
     fun shouldSendNotificationWhenVotingTooOldMeme() {
