@@ -10,12 +10,13 @@ import com.chsdngm.tilly.repository.VoteDao
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.objects.Update
 
 @Service
 class DistributedModerationVoteHandler(
-        private val distributedModerationEventDao: DistributedModerationEventDao,
-        private val voteDao: VoteDao,
-        private val api: TelegramApi
+    private val distributedModerationEventDao: DistributedModerationEventDao,
+    private val voteDao: VoteDao,
+    private val api: TelegramApi
 ) : AbstractHandler<DistributedModerationVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -54,5 +55,11 @@ class DistributedModerationVoteHandler(
         log.info("moderator with id=${update.userId} voted down for meme memeId=$memeId")
     }
 
-    override fun getUpdateType() = DistributedModerationVoteUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasCallbackQuery()
+            && update.callbackQuery.message.chat.isUserChat
+            && DistributedModerationVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+        ) {
+            DistributedModerationVoteUpdate(update)
+        } else null
 }

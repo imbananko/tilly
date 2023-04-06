@@ -10,7 +10,7 @@ spring:
       max-request-size: 5MB
 
 telegram:
-  bot-id: id
+  bot-id: 0
   bot-token: token
   bot-username: username
 

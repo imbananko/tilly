@@ -1,19 +1,21 @@
 package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.concurrent.Executors
 
 @Service
 class AutosuggestionVoteHandler(
-        private val memeHandler: MemeHandler,
-        private val api: TelegramApi
-)
-    : AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
+    private val memeHandler: MemeHandler,
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
+) : AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: AutosuggestionVoteUpdate) {
@@ -47,5 +49,11 @@ class AutosuggestionVoteHandler(
         log.info("auto-suggested meme was declined. update=$update")
     }
 
-    override fun getUpdateType() = AutosuggestionVoteUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasCallbackQuery()
+            && update.callbackQuery.message.chatId.toString() == telegramProperties.montornChatId
+            && AutosuggestionVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+        ) {
+            AutosuggestionVoteUpdate(update)
+        } else null
 }

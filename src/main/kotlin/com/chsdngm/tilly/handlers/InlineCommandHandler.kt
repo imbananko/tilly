@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
+import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
 
 @Service
@@ -42,5 +43,6 @@ class InlineCommandHandler(
         log.info("processed inline command update=$update")
     }
 
-    override fun getUpdateType() = InlineCommandUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasInlineQuery()) InlineCommandUpdate(update) else null
 }

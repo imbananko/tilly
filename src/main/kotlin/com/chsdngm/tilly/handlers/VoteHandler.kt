@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import org.telegram.telegrambots.meta.api.objects.Update
 import java.io.Serializable
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -41,7 +42,11 @@ class VoteHandler(
 
         val memeWithVotes = when (update.sourceChatId) {
             telegramProperties.targetChannelId -> memeDao.findMemeByChannelMessageId(update.messageId)
-            telegramProperties.targetChatId -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(telegramProperties.targetChatId.toLong(), update.messageId)
+            telegramProperties.targetChatId -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
+                telegramProperties.targetChatId.toLong(),
+                update.messageId
+            )
+
             else -> null
         } ?: throw NotFoundException("Meme wasn't found. update=$update")
 
@@ -54,11 +59,11 @@ class VoteHandler(
         }
 
         val vote = Vote(
-                meme.id,
-                update.voterId,
-                update.sourceChatId.toLong(),
-                update.voteValue,
-                created = Instant.ofEpochMilli(update.createdAt)
+            meme.id,
+            update.voterId,
+            update.sourceChatId.toLong(),
+            update.voteValue,
+            created = Instant.ofEpochMilli(update.createdAt)
         )
 
         lateinit var voteDatabaseUpdate: CompletableFuture<*>
@@ -99,21 +104,27 @@ class VoteHandler(
     }
 
     private fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
-            AnswerCallbackQuery().apply {
-                callbackQueryId = userCallbackQueryId
-                text = popupText
-            }.let { api.execute(it) }
+        AnswerCallbackQuery().apply {
+            callbackQueryId = userCallbackQueryId
+            text = popupText
+        }.let { api.execute(it) }
 
     private fun updateGroupMarkup(meme: Meme, votes: List<Vote>): CompletableFuture<Serializable> =
-            EditMessageReplyMarkup().apply {
-                chatId = telegramProperties.targetChatId
-                messageId = meme.moderationChatMessageId
-                replyMarkup = createMarkup(votes)
-            }.let { api.executeAsync(it) }
+        EditMessageReplyMarkup().apply {
+            chatId = telegramProperties.targetChatId
+            messageId = meme.moderationChatMessageId
+            replyMarkup = createMarkup(votes)
+        }.let { api.executeAsync(it) }
 
     override fun measureTime(update: VoteUpdate) {
         metricsUtils.measureDuration(update)
     }
 
-    override fun getUpdateType() = VoteUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasCallbackQuery()
+            && (update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)
+            && VoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+        ) {
+            VoteUpdate(update)
+        } else null
 }

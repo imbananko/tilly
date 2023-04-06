@@ -17,6 +17,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.InputFile
+import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 
 @Service
@@ -89,5 +90,11 @@ class PrivateModerationVoteHandler(
         }.let { api.execute(it) }
     }
 
-    override fun getUpdateType() = PrivateVoteUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasCallbackQuery()
+            && update.callbackQuery.message.chat.isUserChat
+            && PrivateVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+        ) {
+            PrivateVoteUpdate(update)
+        } else null
 }

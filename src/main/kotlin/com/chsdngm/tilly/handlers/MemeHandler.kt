@@ -3,15 +3,12 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
-import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
 import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
-import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
-import com.chsdngm.tilly.model.UserStatus
-import com.chsdngm.tilly.model.WeightedModerationType
 import com.chsdngm.tilly.model.dto.DistributedModerationEvent
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
@@ -36,10 +33,7 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMem
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.objects.InputFile
-import org.telegram.telegrambots.meta.api.objects.MemberStatus
-import org.telegram.telegrambots.meta.api.objects.Message
-import org.telegram.telegrambots.meta.api.objects.User
+import org.telegram.telegrambots.meta.api.objects.*
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -63,7 +57,7 @@ class MemeHandler(
     private val api: TelegramApi,
     private val elasticsearchService: ElasticsearchService,
     private val telegramProperties: TelegramProperties
-    ) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
+) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -303,7 +297,11 @@ class MemeHandler(
 
             }
 
-            sendDuplicateToLog(update.user.mention(telegramProperties.botId), duplicateFileId = update.fileId, originalFileId = meme.fileId)
+            sendDuplicateToLog(
+                update.user.mention(telegramProperties.botId),
+                duplicateFileId = update.fileId,
+                originalFileId = meme.fileId
+            )
         }
     }
 
@@ -514,5 +512,8 @@ class MemeHandler(
     private fun ChatMember.isFromChat(): Boolean =
         setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)
 
-    override fun getUpdateType() = MemeUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasMessage() && update.message.chat.isUserChat && update.message.hasPhoto()) {
+            UserMemeUpdate(update)
+        } else null
 }

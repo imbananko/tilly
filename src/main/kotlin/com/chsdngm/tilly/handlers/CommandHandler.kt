@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
 
 @Service
@@ -76,7 +77,14 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserWeek.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId, 7) } ?: "NaN"}</b>
+          Ранк за неделю: <b>#${
+                withContext(Dispatchers.IO) {
+                    telegramUserDao.findUserRank(
+                        update.senderId,
+                        7
+                    )
+                } ?: "NaN"
+            }</b>
           
           <u><b>Статистика за все время:</b></u>
           
@@ -128,10 +136,12 @@ class CommandHandler(
                 telegramProperties.publishingEnabled = true
                 "Публикация мемов включена"
             }
+
             update.text.contains("disable publishing") -> {
                 telegramProperties.publishingEnabled = false
                 "Публикация мемов выключена"
             }
+
             else ->
                 """
           Не удается прочитать сообщение. Правильные команды выглядят так:
@@ -148,5 +158,11 @@ class CommandHandler(
         }.let { api.execute(it) }
     }
 
-    override fun getUpdateType() = CommandUpdate::class
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasMessage() &&
+            (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.betaChatId) &&
+            update.message.isCommand
+        ) {
+            CommandUpdate(update)
+        } else null
 }
