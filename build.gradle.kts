@@ -76,8 +76,6 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
     implementation("jakarta.json:jakarta.json-api:2.1.1")
-    implementation(kotlin("script-runtime"))
-    implementation("org.asynchttpclient:async-http-client:2.12.3")
 
 }
 
@@ -98,7 +96,7 @@ allOpen {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-//        freeCompilerArgs = listOf("-Xuse-k2")
+        freeCompilerArgs = listOf("-Xuse-k2")
     }
 }
 
