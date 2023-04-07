@@ -456,11 +456,12 @@ class MemeHandler(
         )
     )
 
-    private fun replyToBannedUser(update: MemeUpdate): Message = SendMessage().apply {
-        chatId = update.user.id.toString()
-        replyToMessageId = update.messageId
-        text = "Мем на привитой модерации"
-    }.let { api.execute(it) }
+    private fun replyToBannedUser(update: MemeUpdate): Message =
+        SendMessage().apply {
+            chatId = update.user.id.toString()
+            replyToMessageId = update.messageId
+            text = "Мем на привитой модерации"
+        }.let { api.execute(it) }
 
     private fun sendBannedEventToLog(update: MemeUpdate, telegramUser: TelegramUser) =
         SendPhoto().apply {
@@ -470,7 +471,7 @@ class MemeHandler(
             parseMode = ParseMode.HTML
             disableNotification = true
 
-        }.let { api.execute(it) }
+        }.let { api.executeAsync(it) }
 
     private fun sendMemeToDistributedModerator(
         memeMessage: SendPhoto,

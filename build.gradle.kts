@@ -67,6 +67,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.postgresql:postgresql:42.5.0")
     implementation("com.github.kilianB:JImageHash:3.0.0")
+    implementation("jakarta.json:jakarta.json-api:2.1.1")
 
 //    compileOnly("org.ktorm:ktorm-core:3.3.0")
 //    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
@@ -75,7 +76,7 @@ dependencies {
 //    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
-    implementation("jakarta.json:jakarta.json-api:2.1.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
 
 }
 
