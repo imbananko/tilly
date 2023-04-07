@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.ConstructorBinding
 @ConstructorBinding
 @ConfigurationProperties(prefix = "telegram")
 data class TelegramProperties(
-    val betaChatId: String,
     val montornChatId: String,
     val targetChatId: String,
     val targetChannelId: String,

@@ -37,7 +37,7 @@ class CommandHandler(
             sendStats(update)
         } else if (update.value == Command.HELP || update.value == Command.START) {
             sendInfoMessage(update)
-        } else if (update.value == Command.CONFIG && update.chatId == telegramProperties.betaChatId) {
+        } else if (update.value == Command.CONFIG && update.chatId == telegramProperties.logsChatId) {
             changeConfig(update)
         } else {
             log.warn("unknown command from update=$update")
@@ -151,7 +151,7 @@ class CommandHandler(
         }
 
         SendMessage().apply {
-            chatId = telegramProperties.betaChatId
+            chatId = telegramProperties.logsChatId
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = message
@@ -160,7 +160,7 @@ class CommandHandler(
 
     override fun retrieveSubtype(update: Update) =
         if (update.hasMessage() &&
-            (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.betaChatId) &&
+            (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.logsChatId) &&
             update.message.isCommand
         ) {
             CommandUpdate(update)

@@ -62,7 +62,7 @@ final class Schedulers(
         publishMemeIfSomethingExists()
     }.onFailure {
         SendMessage().apply {
-            chatId = telegramProperties.betaChatId
+            chatId = telegramProperties.logsChatId
             text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
@@ -137,7 +137,7 @@ final class Schedulers(
             log.error("Failed to process meme of the week, exception=", ex)
 
             SendMessage().apply {
-                chatId = telegramProperties.betaChatId
+                chatId = telegramProperties.logsChatId
                 text = ex.format()
                 parseMode = ParseMode.HTML
             }.let { api.execute(it) }
@@ -222,7 +222,7 @@ final class Schedulers(
         }
     }.onFailure {
         SendMessage().apply {
-            chatId = telegramProperties.betaChatId
+            chatId = telegramProperties.logsChatId
             text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }

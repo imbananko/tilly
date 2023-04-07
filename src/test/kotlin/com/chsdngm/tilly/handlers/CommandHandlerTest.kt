@@ -23,7 +23,6 @@ class CommandHandlerTest {
     private val voteDao = mock(VoteDao::class.java)
     private val api = mock(TelegramApi::class.java)
     private val telegramProperties = TelegramProperties(
-        "betaChatId",
         "montornChatId",
         "targetChatId",
         "targetChannelId",
@@ -75,14 +74,14 @@ class CommandHandlerTest {
         val update = mock(CommandUpdate::class.java).apply {
             `when`(value).thenReturn(CommandUpdate.Command.CONFIG)
             `when`(messageId).thenReturn(666)
-            `when`(chatId).thenReturn("betaChatId")
+            `when`(chatId).thenReturn("logsChatId")
             `when`(text).thenReturn("enable publishing")
         }
 
         commandHandler.handleSync(update)
 
         val sendMessageMethod = SendMessage().apply {
-            chatId = "betaChatId"
+            chatId = "logsChatId"
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = "Публикация мемов включена"
@@ -97,19 +96,19 @@ class CommandHandlerTest {
         val update = mock(CommandUpdate::class.java).apply {
             `when`(value).thenReturn(CommandUpdate.Command.CONFIG)
             `when`(messageId).thenReturn(666)
-            `when`(chatId).thenReturn("betaChatId")
+            `when`(chatId).thenReturn("logsChatId")
             `when`(text).thenReturn("disable publishing")
         }
 
         `when`(update.value).thenReturn(CommandUpdate.Command.CONFIG)
         `when`(update.messageId).thenReturn(666)
-        `when`(update.chatId).thenReturn("betaChatId")
+        `when`(update.chatId).thenReturn("logsChatId")
         `when`(update.text).thenReturn("disable publishing")
 
         commandHandler.handleSync(update)
 
         val sendMessageMethod = SendMessage().apply {
-            chatId = "betaChatId"
+            chatId = "logsChatId"
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = "Публикация мемов выключена"

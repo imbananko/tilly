@@ -270,7 +270,7 @@ class MemeHandler(
                 sendPrivateModerationEventToLog(meme, sender, moderator)
             }
         }.onFailure {
-            logExceptionInBetaChat(it)
+            logExceptionInChat(it)
         }.isSuccess
 
         for (moderator in moderationCandidates) {
@@ -481,7 +481,7 @@ class MemeHandler(
         else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
             .thenApply { CompletableFuture.completedFuture(it) }
             .exceptionally { ex ->
-                logExceptionInBetaChat(ex)
+                logExceptionInChat(ex)
                 val delayedExecutor = CompletableFuture.delayedExecutor(5L * attemptNum, TimeUnit.SECONDS)
                 sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
             }
@@ -500,9 +500,9 @@ class MemeHandler(
         disableNotification = true
     }.let { api.execute(it) }
 
-    fun logExceptionInBetaChat(ex: Throwable): Message =
+    fun logExceptionInChat(ex: Throwable): Message =
         SendMessage().apply {
-            chatId = telegramProperties.betaChatId
+            chatId = telegramProperties.logsChatId
             text = ex.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }

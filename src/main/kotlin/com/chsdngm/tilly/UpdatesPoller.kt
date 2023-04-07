@@ -44,7 +44,7 @@ class UpdatesPoller(
             log.error("can't handle handle $update because of", it)
 
             SendMessage().apply {
-                chatId = telegramProperties.betaChatId
+                chatId = telegramProperties.logsChatId
                 text = it.format(castedUpdate)
                 parseMode = ParseMode.HTML
             }.let { method -> api.execute(method) }
@@ -71,7 +71,7 @@ class UpdatesPoller(
     @PostConstruct
     fun init() {
         SendMessage().apply {
-            chatId = telegramProperties.betaChatId
+            chatId = telegramProperties.logsChatId
             text = "$botUsername started with sha: ${com.chsdngm.tilly.config.Metadata.COMMIT_SHA}"
             parseMode = ParseMode.HTML
         }.let { method -> executeAsync(method) }

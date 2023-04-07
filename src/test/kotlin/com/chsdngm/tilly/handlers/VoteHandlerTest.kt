@@ -24,7 +24,6 @@ class VoteHandlerTest {
     private val channelMarkupUpdater = mock(ChannelMarkupUpdater::class.java)
     private val api = mock(TelegramApi::class.java)
     private val telegramProperties = TelegramProperties(
-        "betaChatId",
         "montornChatId",
         "targetChatId",
         "targetChannelId",
