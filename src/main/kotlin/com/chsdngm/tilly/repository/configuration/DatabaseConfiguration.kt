@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Profile
 
 @Configuration
 @EnableConfigurationProperties(DatabaseProperties::class)
-class ExposedConfiguration {
+class DatabaseConfiguration {
     @Bean
     fun dataSource(dataSourceProperties: DatabaseProperties): HikariDataSource {
         return dataSourceProperties

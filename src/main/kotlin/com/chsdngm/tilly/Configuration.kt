@@ -3,22 +3,23 @@ package com.chsdngm.tilly
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient
 import co.elastic.clients.json.jackson.JacksonJsonpMapper
 import co.elastic.clients.transport.rest_client.RestClientTransport
-import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.config.TelegramProperties
+import com.chsdngm.tilly.handlers.AbstractHandler
+import com.chsdngm.tilly.model.Timestampable
 import org.apache.http.HttpHost
 import org.elasticsearch.client.RestClient
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.telegram.telegrambots.bots.DefaultAbsSender
-import org.telegram.telegrambots.bots.DefaultBotOptions
 
 @Configuration
+@EnableConfigurationProperties(TelegramProperties::class)
 class Configuration {
     @Bean
-    fun api(): DefaultAbsSender {
-        return object : DefaultAbsSender(DefaultBotOptions()) {
-            override fun getBotToken(): String = TelegramConfig.BOT_TOKEN
-        }
+    @Suppress("UNCHECKED_CAST")
+    fun updateHandlers(updateHandlers: List<AbstractHandler<out Timestampable>>): List<AbstractHandler<Timestampable>> {
+        return updateHandlers as List<AbstractHandler<Timestampable>>
     }
 
     @Bean

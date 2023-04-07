@@ -3,19 +3,19 @@ package com.chsdngm.tilly.handlers
 import co.elastic.clients.elasticsearch.core.SearchResponse
 import co.elastic.clients.elasticsearch.core.search.Hit
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.InlineCommandUpdate
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ElasticsearchService.MemeDocument
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
 
 class InlineCommandHandlerTest {
     private val elasticsearchService = mock(ElasticsearchService::class.java)
-    private val api = mock(DefaultAbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
     private val inlineCommandHandler = InlineCommandHandler(elasticsearchService, api)
 
     @Test

@@ -1,11 +1,8 @@
 package com.chsdngm.tilly.schedulers
 
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.config.TelegramConfig.Companion.BETA_CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.AccumulatingAppender
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
@@ -19,7 +16,6 @@ import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
-import com.chsdngm.tilly.utility.updateStatsInSenderChat
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.core.LogEvent
 import org.slf4j.LoggerFactory
@@ -48,7 +44,9 @@ final class Schedulers(
     private val memeDao: MemeDao,
     private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
-    private val elasticsearchService: ElasticsearchService
+    private val elasticsearchService: ElasticsearchService,
+    private val telegramProperties: TelegramProperties,
+    private val api: TelegramApi,
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -64,14 +62,14 @@ final class Schedulers(
         publishMemeIfSomethingExists()
     }.onFailure {
         SendMessage().apply {
-            chatId = BETA_CHAT_ID
-            text = it.format(update = null)
+            chatId = telegramProperties.logsChatId
+            text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
     }
 
     private fun publishMemeIfSomethingExists() {
-        if (!TelegramConfig.publishEnabled) {
+        if (!telegramProperties.publishingEnabled) {
             log.info("meme publishing is disabled")
         }
 
@@ -86,7 +84,7 @@ final class Schedulers(
             meme.status = MemeStatus.PUBLISHED
 
             memeDao.update(meme)
-            updateStatsInSenderChat(meme, votes)
+            api.updateStatsInSenderChat(meme, votes)
             updateLogChannelTitle(scheduledMemes.size - 1)
         } else {
             log.info("Nothing to post")
@@ -96,13 +94,13 @@ final class Schedulers(
     private fun updateLogChannelTitle(queueSize: Int): CompletableFuture<Boolean> =
         CompletableFuture.supplyAsync {
             SetChatTitle().apply {
-                chatId = LOGS_CHAT_ID
+                chatId = telegramProperties.logsChatId
                 title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
             }.let { api.execute(it) }
         }
 
     private fun sendMemeToChannel(meme: Meme, votes: List<Vote>) = SendPhoto().apply {
-        chatId = CHANNEL_ID
+        chatId = telegramProperties.targetChannelId
         photo = InputFile(meme.fileId)
         replyMarkup = createMarkup(votes)
         parseMode = ParseMode.HTML
@@ -118,12 +116,12 @@ final class Schedulers(
         }
 
         val winner = GetChatMember().apply {
-            chatId = CHANNEL_ID
+            chatId = telegramProperties.targetChannelId
             userId = meme.senderId
-        }.let { api.execute(it) }.user.mention()
+        }.let { api.execute(it) }.user.mention(telegramProperties.botId)
 
         SendMessage().apply {
-            chatId = CHANNEL_ID
+            chatId = telegramProperties.targetChannelId
             parseMode = ParseMode.HTML
             replyToMessageId = meme.channelMessageId
             text = "Поздравляем $winner с мемом недели!"
@@ -139,8 +137,8 @@ final class Schedulers(
             log.error("Failed to process meme of the week, exception=", ex)
 
             SendMessage().apply {
-                chatId = BETA_CHAT_ID
-                text = ex.format(update = null)
+                chatId = telegramProperties.logsChatId
+                text = ex.format()
                 parseMode = ParseMode.HTML
             }.let { api.execute(it) }
         }
@@ -154,7 +152,7 @@ final class Schedulers(
             )
         )
 
-        val moderators = telegramUserDao.findTopFiveSendersForLastWeek(TelegramConfig.BOT_ID).iterator()
+        val moderators = telegramUserDao.findTopFiveSendersForLastWeek(telegramProperties.botId).iterator()
         val deadMemes = memeDao.findDeadMemes().iterator()
 
         while (deadMemes.hasNext() && moderators.hasNext()) {
@@ -180,7 +178,7 @@ final class Schedulers(
             memeDao.update(updatedMeme)
 
             SendPhoto().apply {
-                chatId = LOGS_CHAT_ID
+                chatId = telegramProperties.logsChatId
                 photo = InputFile(meme.fileId)
                 caption = "мем отправлен на воскрешение к ${moderator.mention()}"
                 parseMode = ParseMode.HTML
@@ -224,12 +222,9 @@ final class Schedulers(
         }
     }.onFailure {
         SendMessage().apply {
-            chatId = BETA_CHAT_ID
-            text = it.format(update = null)
+            chatId = telegramProperties.logsChatId
+            text = it.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
     }
 }
-
-
-

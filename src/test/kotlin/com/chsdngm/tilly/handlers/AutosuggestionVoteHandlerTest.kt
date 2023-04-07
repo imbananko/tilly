@@ -1,19 +1,29 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.User
 
 class AutosuggestionVoteHandlerTest {
     private val memeHandler = mock(MemeHandler::class.java)
-    private val api = mock(DefaultAbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
+    private val telegramProperties = TelegramProperties(
+        "montornChatId",
+        "targetChatId",
+        "targetChannelId",
+        "botToken",
+        "botUsername",
+        "logsChatId",
+        777
+    )
 
-    private val autosuggestionVoteHandler = AutosuggestionVoteHandler(memeHandler, api)
+    private val autosuggestionVoteHandler = AutosuggestionVoteHandler(memeHandler, api, telegramProperties)
 
     @Test
     fun shouldHandleByMemeHandlerOnPositiveAutosuggestionDecision() {

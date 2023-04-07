@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.handlers
 
+import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.DistributedModerationVoteUpdate
 import com.chsdngm.tilly.model.DistributedModerationVoteValue
 import com.chsdngm.tilly.model.VoteValue
@@ -9,12 +10,11 @@ import com.chsdngm.tilly.repository.VoteDao
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import org.telegram.telegrambots.meta.bots.AbsSender
 
 class DistributedModerationVoteHandlerTest {
     private val distributedModerationEventDao = mock(DistributedModerationEventDao::class.java)
     private val voteDao = mock(VoteDao::class.java)
-    private val api = mock(AbsSender::class.java)
+    private val api = mock(TelegramApi::class.java)
 
     private val distributedModerationVoteHandler = DistributedModerationVoteHandler(distributedModerationEventDao, voteDao, api)
 

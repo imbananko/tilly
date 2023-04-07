@@ -24,20 +24,19 @@ spring:
       connection-timeout: 5s
       read-timeout: 1s
 
-bot:
-  token: token
-  username: username
-  id: 123
+telegram:
+  bot-id: 0
+  bot-token: token
+  bot-username: username
 
-target.chat.id: 0
-target.channel.id: 0
+  target-chat-id: 0
+  target-channel-id: 0
 
-beta.chat.id: -1
-montorn.chat.id: -1
+  montorn-chat-id: -1
+  publishing-enabled: true
+  logs-chat-id: 0
+
 
 metadata:
   commit.sha: local
   moderation.threshold: 5
-
-logs:
-  chat.id: 11

@@ -1,12 +1,12 @@
 package com.chsdngm.tilly.controller
 
-import com.chsdngm.tilly.config.TelegramConfig
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -15,7 +15,10 @@ import java.util.*
 
 
 @RestController
-class MemeController(private val api: DefaultAbsSender) {
+class MemeController(
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
+) {
     @PostMapping(value = ["/memes/suggest"])
     fun suggest(@RequestParam file: MultipartFile, params: Params) {
         val markup = InlineKeyboardMarkup(
@@ -35,7 +38,7 @@ class MemeController(private val api: DefaultAbsSender) {
         }
 
         SendPhoto().apply {
-            chatId = TelegramConfig.MONTORN_CHAT_ID
+            chatId = telegramProperties.montornChatId
             photo = inputFile
             caption =
                 "автопредложка:\n\nПаблик: ${params.communityName}\nСсылка на пост: ${params.url}\nВремя публикации: ${
