@@ -19,4 +19,5 @@ abstract class AbstractHandler<T>(
 
     open fun measureTime(update: T) {}
     abstract fun retrieveSubtype(update: Update): T?
+    abstract fun canHandle(update: Update): Boolean
 }

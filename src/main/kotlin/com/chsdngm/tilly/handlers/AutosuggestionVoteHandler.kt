@@ -50,10 +50,11 @@ class AutosuggestionVoteHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && update.callbackQuery.message.chatId.toString() == telegramProperties.montornChatId
-            && AutosuggestionVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            AutosuggestionVoteUpdate(update)
-        } else null
+        if (canHandle(update)) AutosuggestionVoteUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasCallbackQuery()
+                && update.callbackQuery.message.chatId.toString() == telegramProperties.montornChatId
+                && AutosuggestionVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+    }
 }

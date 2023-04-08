@@ -159,10 +159,11 @@ class CommandHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasMessage() &&
-            (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.logsChatId) &&
-            update.message.isCommand
-        ) {
-            CommandUpdate(update)
-        } else null
+        if (canHandle(update)) CommandUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasMessage() &&
+                (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.logsChatId) &&
+                update.message.isCommand
+    }
 }

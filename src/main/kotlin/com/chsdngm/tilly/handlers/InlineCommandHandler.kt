@@ -44,5 +44,9 @@ class InlineCommandHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasInlineQuery()) InlineCommandUpdate(update) else null
+        if (canHandle(update)) InlineCommandUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasInlineQuery()
+    }
 }

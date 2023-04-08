@@ -27,29 +27,24 @@ class UpdatesPoller(
     override fun getBotToken(): String = telegramProperties.botToken
 
     final override fun onUpdateReceived(update: Update) {
-        val handlersIterator = handlers.iterator()
-        var castedUpdate: Timestampable? = null
-        var currentHandler: AbstractHandler<Timestampable>? = null
-        while (handlersIterator.hasNext() && castedUpdate == null) {
-            currentHandler = handlersIterator.next()
-            castedUpdate = currentHandler.retrieveSubtype(update)
-        }
-
-        if (castedUpdate == null) {
+        val handler = handlers.find { handler -> handler.canHandle(update) }
+        if (handler == null) {
             log.warn("No handler found for update=$update")
             return
         }
 
-        currentHandler?.handle(castedUpdate)?.exceptionally {
-            log.error("can't handle handle $update because of", it)
+        handler.retrieveSubtype(update)?.let { subType ->
+            handler.handle(subType).exceptionally {
+                log.error("can't handle handle $update because of", it)
 
-            SendMessage().apply {
-                chatId = telegramProperties.logsChatId
-                text = it.format(castedUpdate)
-                parseMode = ParseMode.HTML
-            }.let { method -> api.execute(method) }
+                SendMessage().apply {
+                    chatId = telegramProperties.logsChatId
+                    text = it.format(subType)
+                    parseMode = ParseMode.HTML
+                }.let { method -> api.execute(method) }
 
-            null
+                null
+            }
         }
     }
 

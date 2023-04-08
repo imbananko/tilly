@@ -91,10 +91,11 @@ class PrivateModerationVoteHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && update.callbackQuery.message.chat.isUserChat
-            && PrivateVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            PrivateVoteUpdate(update)
-        } else null
+        if (canHandle(update))  PrivateVoteUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasCallbackQuery()
+                && update.callbackQuery.message.chat.isUserChat
+                && PrivateVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+    }
 }
