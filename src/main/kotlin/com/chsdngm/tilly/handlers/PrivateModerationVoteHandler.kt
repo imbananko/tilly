@@ -11,6 +11,8 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.mention
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -42,41 +44,45 @@ class PrivateModerationVoteHandler(
         log.info("processed private vote update=$update")
     }
 
-    private fun approve(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) {
-        EditMessageCaption().apply {
+    private fun approve(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) = runBlocking {
+        val editMessageCaption = EditMessageCaption().apply {
             chatId = update.user.id.toString()
             messageId = update.messageId
             caption = "мем будет отправлен на канал"
-        }.let { api.execute(it) }
+        }
+
+        launch { api.executeSuspended(editMessageCaption) }
 
         meme.status = MemeStatus.SCHEDULED
         memeDao.update(meme)
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.UP))
 
-        api.updateStatsInSenderChat(meme, votes)
+        launch { api.updateStatsInSenderChat(meme, votes) }
 
         log.info("ranked moderator with id=${update.user.id} approved meme=$meme")
-        sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.APPROVE)
+        launch { sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.APPROVE) }
     }
 
-    private fun decline(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) {
-        EditMessageCaption().apply {
+    private fun decline(update: PrivateVoteUpdate, meme: Meme, votes: List<Vote>) = runBlocking {
+        val editMessageCaption = EditMessageCaption().apply {
             chatId = update.user.id.toString()
             messageId = update.messageId
             caption = "мем предан забвению"
-        }.let { api.execute(it) }
+        }
+
+        launch { api.executeSuspended(editMessageCaption) }
 
         meme.status = MemeStatus.DECLINED
         memeDao.update(meme)
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.DOWN))
 
-        api.updateStatsInSenderChat(meme, votes)
+        launch { api.updateStatsInSenderChat(meme, votes) }
 
         log.info("ranked moderator with id=${update.user.id} declined meme=$meme")
-        sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.DECLINE)
+        launch { sendPrivateModerationEventToLog(meme, update.user, PrivateVoteValue.DECLINE) }
     }
 
-    private fun sendPrivateModerationEventToLog(meme: Meme, moderator: User, solution: PrivateVoteValue) {
+    private suspend fun sendPrivateModerationEventToLog(meme: Meme, moderator: User, solution: PrivateVoteValue) {
         val memeCaption =
             "${moderator.mention()} " + if (solution == PrivateVoteValue.APPROVE) "отправил(а) мем на канал"
             else "предал(а) мем забвению"
@@ -87,7 +93,7 @@ class PrivateModerationVoteHandler(
             caption = memeCaption
             parseMode = ParseMode.HTML
             disableNotification = true
-        }.let { api.execute(it) }
+        }.let { api.executeSuspended(it) }
     }
 
     override fun retrieveSubtype(update: Update) =
