@@ -14,15 +14,16 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.*
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
-import java.util.concurrent.CompletableFuture
 
 class VoteHandlerTest {
-    private val memeDao = mock(MemeDao::class.java)
-    private val voteDao = mock(VoteDao::class.java)
-    private val metricsUtils = mock(MetricsUtils::class.java)
-    private val channelMarkupUpdater = mock(ChannelMarkupUpdater::class.java)
-    private val api = mock(TelegramApi::class.java)
+    private val memeDao = mock<MemeDao>()
+    private val voteDao = mock<VoteDao>()
+    private val metricsUtils = mock<MetricsUtils>()
+    private val channelMarkupUpdater = mock<ChannelMarkupUpdater>()
+    private val api = mock<TelegramApi>()
     private val telegramProperties = TelegramProperties(
         "montornChatId",
         "targetChatId",
@@ -35,64 +36,63 @@ class VoteHandlerTest {
 
     private val voteHandler = VoteHandler(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api, telegramProperties)
 
-//    @Test
+    @Test
     fun shouldSendNotificationWhenVotingTooOldMeme() {
-        val update = mock(VoteUpdate::class.java).apply {
-            `when`(isOld).thenReturn(true)
-            `when`(callbackQueryId).thenReturn("random_callback")
+        val update = mock<VoteUpdate> {
+            on(it.isOld).thenReturn(true)
+            on(it.callbackQueryId).thenReturn("random_callback")
         }
 
-        val expectedMethod = AnswerCallbackQuery().apply {
+        val answerCallbackQuery = AnswerCallbackQuery().apply {
             callbackQueryId = "random_callback"
             text = "Мем слишком стар"
         }
 
-        `when`(api.executeAsync(expectedMethod)).thenReturn(CompletableFuture.completedFuture(true))
+        whenever(api.execute(answerCallbackQuery)).thenReturn(true)
 
         voteHandler.handleSync(update)
 
-        verify(api).executeAsync(expectedMethod)
+        verify(api).execute(answerCallbackQuery)
         verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 
     @Test
     fun shouldThrowExceptionWhenMemeNotFound() {
-        val update = mock(VoteUpdate::class.java).apply {
-            `when`(isOld).thenReturn(false)
-            `when`(sourceChatId).thenReturn("bad_source_chat_id")
+        val update = mock<VoteUpdate> {
+            on(it.isOld).thenReturn(false)
+            on(it.sourceChatId).thenReturn("bad_source_chat_id")
         }
 
         assertThrows<NotFoundException> { voteHandler.handleSync(update) }
         verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 
-//    @Test
+    @Test
     fun shouldSendNotificationWhenSelfVoting() {
-        val update = mock(VoteUpdate::class.java).apply {
-            `when`(isOld).thenReturn(false)
-            //TODO fix after remove static field as properties
-            `when`(sourceChatId).thenReturn("")
-            `when`(voterId).thenReturn(444)
-            `when`(messageId).thenReturn(555)
-            `when`(callbackQueryId).thenReturn("random_callback")
+        val update = mock<VoteUpdate> {
+            on(it.isOld).thenReturn(false)
+            on(it.sourceChatId).thenReturn("targetChannelId")
+            on(it.voterId).thenReturn(444)
+            on(it.messageId).thenReturn(555)
+            on(it.callbackQueryId).thenReturn("random_callback")
         }
 
-        val meme = mock(Meme::class.java).apply {
-            `when`(senderId).thenReturn(444)
+        val meme = mock<Meme> {
+            on(it.senderId).thenReturn(444)
         }
 
-        val expectedMethod = AnswerCallbackQuery().apply {
+        val answerCallbackQuery = AnswerCallbackQuery().apply {
             callbackQueryId = "random_callback"
             text = "Голосуй за других, а не за себя"
         }
 
-        `when`(memeDao.findMemeByChannelMessageId(555)).thenReturn(meme to listOf())
-        `when`(api.executeAsync(expectedMethod)).thenReturn(CompletableFuture.completedFuture(true))
+        whenever(memeDao.findMemeByChannelMessageId(555)).thenReturn(meme to listOf())
+        whenever(api.execute(answerCallbackQuery)).thenReturn(true)
 
         voteHandler.handleSync(update)
 
         verify(memeDao).findMemeByChannelMessageId(555)
-        verify(api).executeAsync(expectedMethod)
+        verify(api).execute(answerCallbackQuery)
         verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 

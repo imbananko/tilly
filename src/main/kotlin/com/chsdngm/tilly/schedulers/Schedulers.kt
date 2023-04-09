@@ -68,7 +68,7 @@ final class Schedulers(
         }.let { method -> api.execute(method) }
     }
 
-    private fun publishMemeIfSomethingExists() {
+    private fun publishMemeIfSomethingExists() = runBlocking {
         if (!telegramProperties.publishingEnabled) {
             log.info("meme publishing is disabled")
         }
@@ -76,9 +76,7 @@ final class Schedulers(
         val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
         if (scheduledMemes.isNotEmpty()) {
-            val recordToPublish = scheduledMemes.entries.first().toPair()
-            val meme = recordToPublish.first
-            val votes = recordToPublish.second
+            val (meme, votes) = scheduledMemes.entries.first().toPair()
 
             meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
             meme.status = MemeStatus.PUBLISHED

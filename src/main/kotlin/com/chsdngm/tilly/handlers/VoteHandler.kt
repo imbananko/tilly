@@ -12,6 +12,8 @@ import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import com.chsdngm.tilly.utility.createMarkup
 import javassist.NotFoundException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
@@ -34,10 +36,10 @@ class VoteHandler(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun handleSync(update: VoteUpdate) {
+    override fun handleSync(update: VoteUpdate) = runBlocking {
         if (update.isOld) {
             sendPopupNotification(update.callbackQueryId, "Мем слишком стар")
-            return
+            return@runBlocking
         }
 
         val memeWithVotes = when (update.sourceChatId) {
@@ -55,7 +57,7 @@ class VoteHandler(
 
         if (meme.senderId == update.voterId) {
             sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return
+            return@runBlocking
         }
 
         val vote = Vote(
@@ -96,7 +98,7 @@ class VoteHandler(
             updateGroupMarkup(meme, votes)
         }
 
-        api.updateStatsInSenderChat(meme, votes)
+        launch { api.updateStatsInSenderChat(meme, votes) }
 
         voteDatabaseUpdate.join()
 //        CompletableFuture.allOf(voteDatabaseUpdate, popupNotification, groupMarkupUpdate)
