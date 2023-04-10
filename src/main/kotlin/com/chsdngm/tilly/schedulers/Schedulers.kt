@@ -16,6 +16,7 @@ import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.core.LogEvent
 import org.slf4j.LoggerFactory
@@ -30,13 +31,13 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.InputFile
+import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.concurrent.CompletableFuture
 
 @Service
 @EnableScheduling
@@ -82,28 +83,42 @@ final class Schedulers(
             meme.status = MemeStatus.PUBLISHED
 
             memeDao.update(meme)
-            api.updateStatsInSenderChat(meme, votes)
-            updateLogChannelTitle(scheduledMemes.size - 1)
+            launch { api.updateStatsInSenderChat(meme, votes) }
+            launch { updateLogChannelTitle(scheduledMemes.size - 1) }
         } else {
             log.info("Nothing to post")
         }
     }
 
-    private fun updateLogChannelTitle(queueSize: Int): CompletableFuture<Boolean> =
-        CompletableFuture.supplyAsync {
-            SetChatTitle().apply {
-                chatId = telegramProperties.logsChatId
-                title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
-            }.let { api.execute(it) }
+    private suspend fun updateLogChannelTitle(queueSize: Int) =
+        SetChatTitle().apply {
+            chatId = telegramProperties.logsChatId
+            title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
+        }.let { api.executeSuspended(it) }
+
+    private suspend fun updateLogChannelTitle(): Boolean {
+        val queueSize = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED).size
+
+        return SetChatTitle().apply {
+            chatId = telegramProperties.logsChatId
+            title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
+        }.let { api.executeSuspended(it) }
+    }
+
+    private suspend fun sendMemeToChannel(meme: Meme, votes: List<Vote>): Message {
+        val sendPhoto = SendPhoto().apply {
+            chatId = telegramProperties.targetChannelId
+            photo = InputFile(meme.fileId)
+            replyMarkup = createMarkup(votes)
+            parseMode = ParseMode.HTML
+            caption = meme.caption
         }
 
-    private fun sendMemeToChannel(meme: Meme, votes: List<Vote>) = SendPhoto().apply {
-        chatId = telegramProperties.targetChannelId
-        photo = InputFile(meme.fileId)
-        replyMarkup = createMarkup(votes)
-        parseMode = ParseMode.HTML
-        caption = meme.caption
-    }.let(api::execute).also { log.info("sent meme to channel. meme=$meme") }
+        val message = api.executeSuspended(sendPhoto)
+        log.info("sent meme to channel. meme=$meme")
+
+        return message
+    }
 
     @Scheduled(cron = "0 0 19 * * WED")
     private fun sendMemeOfTheWeek() = runCatching {
@@ -145,8 +160,12 @@ final class Schedulers(
     private fun resurrectMemes() = runCatching {
         fun createResurrectionMarkup() = InlineKeyboardMarkup(
             listOf(
-                listOf(InlineKeyboardButton("Воскресить ${PrivateVoteValue.APPROVE.emoji}").also { it.callbackData = PrivateVoteValue.APPROVE.name }),
-                listOf(InlineKeyboardButton("Похоронить ${PrivateVoteValue.DECLINE.emoji}").also { it.callbackData = PrivateVoteValue.DECLINE.name })
+                listOf(InlineKeyboardButton("Воскресить ${PrivateVoteValue.APPROVE.emoji}").also {
+                    it.callbackData = PrivateVoteValue.APPROVE.name
+                }),
+                listOf(InlineKeyboardButton("Похоронить ${PrivateVoteValue.DECLINE.emoji}").also {
+                    it.callbackData = PrivateVoteValue.DECLINE.name
+                })
             )
         )
 
@@ -171,7 +190,8 @@ final class Schedulers(
                 moderationChatId = moderator.id,
                 moderationChatMessageId = sentMessage.messageId,
                 status = MemeStatus.RESURRECTION_ASKED,
-                created = Instant.now())
+                created = Instant.now()
+            )
 
             memeDao.update(updatedMeme)
 
@@ -190,23 +210,26 @@ final class Schedulers(
     }
 
     @Scheduled(cron = "0 */9 4-22 * * *")
-    private fun checkMemesForScheduling() = runCatching {
-        val memes = memeDao.scheduleMemes()
-
-        if (memes.isNotEmpty()) {
-            log.info("successfully scheduled memes: $memes")
-        } else {
-            log.info("there is nothing to schedule")
-        }
-
-        memes.forEach {
+    private fun checkMemesForScheduling() {
+        suspend fun editMessageReplyMarkup(meme: Meme) {
             EditMessageReplyMarkup().apply {
-                chatId = it.moderationChatId.toString()
-                messageId = it.moderationChatMessageId
-            }.let { api.executeAsync(it) }
+                chatId = meme.moderationChatId.toString()
+                messageId = meme.moderationChatMessageId
+            }.let { api.executeSuspended(it) }
         }
-    }.onFailure {
-        log.error("failed to schedule memes", it)
+
+        runBlocking {
+            val memes = memeDao.scheduleMemes()
+
+            if (memes.isEmpty()) {
+                log.info("there was nothing to schedule")
+                return@runBlocking
+            }
+
+            log.info("successfully scheduled memes: $memes")
+            launch { updateLogChannelTitle() }
+            memes.map { launch { editMessageReplyMarkup(it) } }
+        }
     }
 
     @Scheduled(cron = "0 * * * * *")
