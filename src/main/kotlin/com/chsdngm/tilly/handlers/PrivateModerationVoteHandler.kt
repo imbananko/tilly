@@ -26,8 +26,8 @@ import org.telegram.telegrambots.meta.api.objects.User
 class PrivateModerationVoteHandler(
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
-    private val telegramProperties: TelegramProperties,
-    private val api: TelegramApi
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
 ) :
     AbstractHandler<PrivateVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
