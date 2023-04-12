@@ -46,8 +46,8 @@ final class Schedulers(
     private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
     private val elasticsearchService: ElasticsearchService,
-    private val telegramProperties: TelegramProperties,
     private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties,
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -59,10 +59,12 @@ final class Schedulers(
 
     // every hour since 8 am till 1 am Moscow time
     @Scheduled(cron = "0 0 5-22/1 * * *")
-    private fun publishMeme() = runBlocking {
+    fun publishMeme() = runBlocking {
         if (!telegramProperties.publishingEnabled) {
             log.info("meme publishing is disabled")
+            return@runBlocking
         }
+
         runCatching {
             val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
@@ -76,7 +78,7 @@ final class Schedulers(
             meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
             meme.status = MemeStatus.PUBLISHED
 
-            launch { memeDao.update(meme) }
+            memeDao.update(meme)
             launch { api.updateStatsInSenderChat(meme, votes) }
             launch { updateLogChannelTitle(scheduledMemes.size - 1) }
         }.onFailure {
