@@ -4,6 +4,7 @@ import com.chsdngm.tilly.model.dto.*
 import com.chsdngm.tilly.utility.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -23,7 +24,7 @@ class TelegramUserDao(val database: Database) {
         TelegramUsers.update({ TelegramUsers.id eq telegramUser.id }) { telegramUser.toUpdateStatement(it) }
     }
 
-    fun findTopFiveSendersForLastWeek(vararg idsToExclude: Long): List<TelegramUser> = transaction {
+    suspend fun findTopFiveSendersForLastWeek(vararg idsToExclude: Long): List<TelegramUser> = newSuspendedTransaction {
         val limit = 5
         val days = 7
         val sql = """

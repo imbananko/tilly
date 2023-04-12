@@ -82,7 +82,7 @@ class TelegramApi(val properties: TelegramProperties) : DefaultAbsSender(
         }
     }
 
-    suspend fun <T : Serializable?, Method : BotApiMethod<T>?> executeSuspended(method: Method): T =
+    suspend fun <T : Serializable> executeSuspended(method: BotApiMethod<T>): T =
         sendApiMethodAsync(method).await()
 
     suspend fun executeSuspended(sendPhoto: SendPhoto): Message =

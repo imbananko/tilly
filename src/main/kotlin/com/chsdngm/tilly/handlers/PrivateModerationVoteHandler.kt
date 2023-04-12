@@ -54,7 +54,7 @@ class PrivateModerationVoteHandler(
         launch { api.executeSuspended(editMessageCaption) }
 
         meme.status = MemeStatus.SCHEDULED
-        memeDao.update(meme)
+        launch { memeDao.update(meme) }
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.UP))
 
         launch { api.updateStatsInSenderChat(meme, votes) }
@@ -73,7 +73,7 @@ class PrivateModerationVoteHandler(
         launch { api.executeSuspended(editMessageCaption) }
 
         meme.status = MemeStatus.DECLINED
-        memeDao.update(meme)
+        launch { memeDao.update(meme) }
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.DOWN))
 
         launch { api.updateStatsInSenderChat(meme, votes) }

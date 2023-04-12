@@ -50,37 +50,36 @@ class PrivateModerationVoteHandlerTest {
 
         whenever(memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222))
             .thenReturn(meme to votes)
-        whenever(memeDao.update(meme)).thenReturn(1)
+        memeDao.stub {
+            onBlocking { it.update(meme) }.thenReturn(1)
+        }
         whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
 
-        val editMessageCaption = EditMessageCaption().apply {
+        val editMessageCaption: EditMessageCaption = EditMessageCaption().apply {
             chatId = "111"
             messageId = 222
             caption = "мем будет отправлен на канал"
         }
 
-        val sendPhoto = SendPhoto().apply {
-            chatId = "targetChannelId"
+        val sendPhoto: SendPhoto = SendPhoto().apply {
+            chatId = "logsChatId"
             photo = InputFile("fileId")
-            caption = "user_name отправил(а) мем на канал"
+            caption = "<a href=\"tg://user?id=111\">user_name</a> отправил(а) мем на канал"
             parseMode = ParseMode.HTML
             disableNotification = true
         }
 
-        api.stub {
-            onBlocking { api.executeSuspended(editMessageCaption) }.thenReturn(mock())
-            onBlocking { api.updateStatsInSenderChat(meme, votes) }.thenReturn(Unit)
-            onBlocking { api.executeSuspended(sendPhoto) }.thenReturn(mock())
-        }
-
         privateModerationVoteHandler.handleSync(update)
-        verifyBlocking(api) {
-            executeSuspended(editMessageCaption)
-            updateStatsInSenderChat(meme, votes)
-            executeSuspended(sendPhoto)
-        }
-        verify(memeDao).update(meme)
+
+        verifyBlocking(api) { executeSuspended(editMessageCaption) }
+        verifyBlocking(api) { updateStatsInSenderChat(meme, votes) }
+        verifyBlocking(api) { executeSuspended(sendPhoto) }
+
+        verifyBlocking(memeDao) { update(meme) }
+        verifyBlocking(memeDao) { memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222) }
+
         verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.UP))
+        verifyNoMoreInteractions(memeDao, voteDao, api)
     }
 
     @Test
@@ -100,7 +99,9 @@ class PrivateModerationVoteHandlerTest {
 
         whenever(memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222))
             .thenReturn(meme to votes)
-        whenever(memeDao.update(meme)).thenReturn(1)
+        memeDao.stub {
+            onBlocking { it.update(meme) }.thenReturn(1)
+        }
         whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
 
         val editMessageCaption = EditMessageCaption().apply {
@@ -110,26 +111,24 @@ class PrivateModerationVoteHandlerTest {
         }
 
         val sendPhoto = SendPhoto().apply {
-            chatId = "targetChannelId"
+            chatId = "logsChatId"
             photo = InputFile("fileId")
-            caption = "предал(а) мем забвению"
+            caption = "<a href=\"tg://user?id=111\">user_name</a> предал(а) мем забвению"
             parseMode = ParseMode.HTML
             disableNotification = true
         }
 
-        api.stub {
-            onBlocking { api.executeSuspended(editMessageCaption) }.thenReturn(mock())
-            onBlocking { api.updateStatsInSenderChat(meme, votes) }.thenReturn(Unit)
-            onBlocking { api.executeSuspended(sendPhoto) }.thenReturn(mock())
-        }
-
         privateModerationVoteHandler.handleSync(update)
-        verifyBlocking(api) {
-            executeSuspended(editMessageCaption)
-            updateStatsInSenderChat(meme, votes)
-            executeSuspended(sendPhoto)
-        }
-        verify(memeDao).update(meme)
+
+        verifyBlocking(api) { executeSuspended(editMessageCaption) }
+        verifyBlocking(api) { updateStatsInSenderChat(meme, votes) }
+        verifyBlocking(api) { executeSuspended(sendPhoto) }
+
         verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.DOWN))
+
+        verifyBlocking(memeDao) { update(meme) }
+        verifyBlocking(memeDao) { memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222) }
+
+        verifyNoMoreInteractions(memeDao, voteDao, api)
     }
 }

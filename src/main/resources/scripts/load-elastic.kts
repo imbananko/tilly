@@ -1,5 +1,4 @@
-@file:DependsOn("org.postgresql:postgresql:42.2.6")
-@file:DependsOn("org.ktorm:ktorm-core:3.3.0")
+@file:DependsOn("org.postgresql:postgresql:42.2.6", "org.ktorm:ktorm-core:3.3.0")
 
 import org.apache.http.HttpHost
 import org.apache.http.client.config.RequestConfig
@@ -14,7 +13,7 @@ import org.ktorm.schema.Table
 import org.ktorm.schema.blob
 import org.ktorm.schema.varchar
 import org.ktorm.support.postgresql.textArray
-import kotlin.script.experimental.dependencies.DependsOn
+import org.springframework.context.annotation.DependsOn
 
 
 val dbUrl = ""
