@@ -50,7 +50,9 @@ class PrivateModerationVoteHandlerTest {
 
         whenever(memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222))
             .thenReturn(meme to votes)
-        whenever(memeDao.update(meme)).thenReturn(1)
+        memeDao.stub {
+            onBlocking { it.update(meme) }.thenReturn(1)
+        }
         whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
 
         val editMessageCaption = EditMessageCaption().apply {
@@ -79,7 +81,9 @@ class PrivateModerationVoteHandlerTest {
             updateStatsInSenderChat(meme, votes)
             executeSuspended(sendPhoto)
         }
-        verify(memeDao).update(meme)
+        verifyBlocking(memeDao) {
+            update(meme)
+        }
         verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.UP))
     }
 
@@ -100,7 +104,9 @@ class PrivateModerationVoteHandlerTest {
 
         whenever(memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222))
             .thenReturn(meme to votes)
-        whenever(memeDao.update(meme)).thenReturn(1)
+        memeDao.stub {
+            onBlocking { it.update(meme) }.thenReturn(1)
+        }
         whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
 
         val editMessageCaption = EditMessageCaption().apply {
@@ -129,7 +135,9 @@ class PrivateModerationVoteHandlerTest {
             updateStatsInSenderChat(meme, votes)
             executeSuspended(sendPhoto)
         }
-        verify(memeDao).update(meme)
+        verifyBlocking(memeDao) {
+            update(meme)
+        }
         verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.DOWN))
     }
 }

@@ -9,6 +9,7 @@ import com.chsdngm.tilly.utility.indexedColumns
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.StatementType
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
@@ -38,11 +39,11 @@ class MemeDao(val database: Database) {
             ?: throw NoSuchElementException("Error saving meme")
     }
 
-    fun update(meme: Meme) = transaction {
+    suspend fun update(meme: Meme) = newSuspendedTransaction {
         Memes.update({ Memes.id eq meme.id }) { meme.toUpdateStatement(it) }
     }
 
-    fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): Map<Meme, List<Vote>> = transaction {
+    suspend fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): Map<Meme, List<Vote>> = newSuspendedTransaction {
         (Memes leftJoin Votes)
             .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemesWithVotes()
     }
@@ -56,7 +57,7 @@ class MemeDao(val database: Database) {
         Memes.select { Memes.fileId eq fileId }.singleOrNull()?.toMeme()
     }
 
-    fun findTopRatedMemeForLastWeek(): Meme? = transaction {
+    suspend fun findTopRatedMemeForLastWeek(): Meme? = newSuspendedTransaction {
         val sql = """
                 select ${Memes.allColumns} 
                 from meme    
@@ -70,7 +71,7 @@ class MemeDao(val database: Database) {
         sql.execAndMap { rs -> ResultRow.create(rs, Memes.indexedColumns) }.toMeme()
     }
 
-    fun saveMemeOfTheWeek(memeId: Int) = transaction {
+    suspend fun saveMemeOfTheWeek(memeId: Int) = newSuspendedTransaction {
         val sql = """
             insert into meme_of_week (meme_id) 
             values ($memeId);
@@ -79,7 +80,7 @@ class MemeDao(val database: Database) {
         sql.execAndMap { }
     }
 
-    fun findDeadMemes(): List<Meme> = transaction {
+    suspend fun findDeadMemes(): List<Meme> = newSuspendedTransaction {
         val ascOrDesc = if (LocalDate.now().dayOfYear % 2 == 0) "asc" else "desc"
 
         val sql = """

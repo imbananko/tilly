@@ -1,11 +1,9 @@
 package com.chsdngm.tilly.metrics
 
-import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.Timestampable
 import com.chsdngm.tilly.model.VoteUpdate
-import com.chsdngm.tilly.similarity.ImageTextRecognizerGcp
 import com.google.api.Metric
 import com.google.api.MetricDescriptor
 import com.google.api.MonitoredResource
@@ -16,7 +14,6 @@ import com.google.cloud.monitoring.v3.MetricServiceSettings
 import com.google.monitoring.v3.*
 import com.google.protobuf.Timestamp
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.util.concurrent.CompletableFuture

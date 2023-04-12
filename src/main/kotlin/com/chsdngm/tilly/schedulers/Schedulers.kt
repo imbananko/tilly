@@ -59,34 +59,32 @@ final class Schedulers(
 
     // every hour since 8 am till 1 am Moscow time
     @Scheduled(cron = "0 0 5-22/1 * * *")
-    private fun publishMeme() = runCatching {
-        publishMemeIfSomethingExists()
-    }.onFailure {
-        SendMessage().apply {
-            chatId = telegramProperties.logsChatId
-            text = it.format()
-            parseMode = ParseMode.HTML
-        }.let { method -> api.execute(method) }
-    }
-
-    private fun publishMemeIfSomethingExists() = runBlocking {
+    private fun publishMeme() = runBlocking {
         if (!telegramProperties.publishingEnabled) {
             log.info("meme publishing is disabled")
         }
+        runCatching {
+            val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
 
-        val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
+            if (scheduledMemes.isEmpty()) {
+                log.info("Nothing to post")
+                return@runBlocking
+            }
 
-        if (scheduledMemes.isNotEmpty()) {
             val (meme, votes) = scheduledMemes.entries.first().toPair()
 
             meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
             meme.status = MemeStatus.PUBLISHED
 
-            memeDao.update(meme)
+            launch { memeDao.update(meme) }
             launch { api.updateStatsInSenderChat(meme, votes) }
             launch { updateLogChannelTitle(scheduledMemes.size - 1) }
-        } else {
-            log.info("Nothing to post")
+        }.onFailure {
+            SendMessage().apply {
+                chatId = telegramProperties.logsChatId
+                text = it.format()
+                parseMode = ParseMode.HTML
+            }.let { method -> api.executeSuspended(method) }
         }
     }
 
@@ -121,43 +119,45 @@ final class Schedulers(
     }
 
     @Scheduled(cron = "0 0 19 * * WED")
-    private fun sendMemeOfTheWeek() = runCatching {
-        val meme = memeDao.findTopRatedMemeForLastWeek()
-        if (meme == null) {
-            log.info("can't find meme of the week")
-            return@runCatching
-        }
+    private fun sendMemeOfTheWeek() = runBlocking {
+        runCatching {
+            val meme = memeDao.findTopRatedMemeForLastWeek()
+            if (meme == null) {
+                log.info("can't find meme of the week")
+                return@runCatching
+            }
 
-        val winner = GetChatMember().apply {
-            chatId = telegramProperties.targetChannelId
-            userId = meme.senderId
-        }.let { api.execute(it) }.user.mention(telegramProperties.botId)
+            val winner = GetChatMember().apply {
+                chatId = telegramProperties.targetChannelId
+                userId = meme.senderId
+            }.let { api.executeSuspended(it) }.user
 
-        SendMessage().apply {
-            chatId = telegramProperties.targetChannelId
-            parseMode = ParseMode.HTML
-            replyToMessageId = meme.channelMessageId
-            text = "Поздравляем $winner с мемом недели!"
-        }.let {
-            val message = api.execute(it)
-            api.execute(PinChatMessage(message.chatId.toString(), message.messageId))
-        }
+            val winnerMention = if (winner.id == telegramProperties.botId) "montorn" else winner.mention()
 
-        memeDao.saveMemeOfTheWeek(meme.id)
-    }
-        .onSuccess { log.info("successful send meme of the week") }
-        .onFailure { ex ->
+            val message = SendMessage().apply {
+                chatId = telegramProperties.targetChannelId
+                parseMode = ParseMode.HTML
+                replyToMessageId = meme.channelMessageId
+                text = "Поздравляем $winnerMention с мемом недели!"
+            }.let { api.executeSuspended(it) }
+
+            launch { api.executeSuspended(PinChatMessage(message.chatId.toString(), message.messageId)) }
+            launch { memeDao.saveMemeOfTheWeek(meme.id) }
+
+            log.info("successful sent meme of the week")
+        }.onFailure { ex ->
             log.error("Failed to process meme of the week, exception=", ex)
 
             SendMessage().apply {
                 chatId = telegramProperties.logsChatId
                 text = ex.format()
                 parseMode = ParseMode.HTML
-            }.let { api.execute(it) }
+            }.let { api.executeSuspended(it) }
         }
+    }
 
     @Scheduled(cron = "0 0 8 * * *")
-    private fun resurrectMemes() = runCatching {
+    private fun resurrectMemes() = runBlocking {
         fun createResurrectionMarkup() = InlineKeyboardMarkup(
             listOf(
                 listOf(InlineKeyboardButton("Воскресить ${PrivateVoteValue.APPROVE.emoji}").also {
@@ -169,48 +169,59 @@ final class Schedulers(
             )
         )
 
-        val moderators = telegramUserDao.findTopFiveSendersForLastWeek(telegramProperties.botId).iterator()
-        val deadMemes = memeDao.findDeadMemes().iterator()
+        runCatching {
+            val moderators = telegramUserDao.findTopFiveSendersForLastWeek(telegramProperties.botId).iterator()
+            val deadMemes = memeDao.findDeadMemes().iterator()
 
-        while (deadMemes.hasNext() && moderators.hasNext()) {
-            val meme = deadMemes.next()
-            val moderator = moderators.next()
+            while (deadMemes.hasNext() && moderators.hasNext()) {
+                val meme = deadMemes.next()
+                val moderator = moderators.next()
 
-            memeLogDao.insert(MemeLog.fromMeme(meme))
+                launch { memeLogDao.insert(MemeLog.fromMeme(meme)) }
 
-            val sentMessage = SendPhoto().apply {
-                chatId = moderator.id.toString()
-                photo = InputFile(meme.fileId)
-                caption = "Настало время некромантии \uD83C\uDF83 \nДата отправки: ${formatter.format(meme.created)}"
-                parseMode = ParseMode.HTML
-                replyMarkup = createResurrectionMarkup()
-            }.let { api.execute(it) }
+                val sentMessage = SendPhoto().apply {
+                    chatId = moderator.id.toString()
+                    photo = InputFile(meme.fileId)
+                    caption =
+                        "Настало время некромантии \uD83C\uDF83 \nДата отправки: ${formatter.format(meme.created)}"
+                    parseMode = ParseMode.HTML
+                    replyMarkup = createResurrectionMarkup()
+                }.let { api.executeSuspended(it) }
 
-            val updatedMeme = meme.copy(
-                moderationChatId = moderator.id,
-                moderationChatMessageId = sentMessage.messageId,
-                status = MemeStatus.RESURRECTION_ASKED,
-                created = Instant.now()
-            )
+                val updatedMeme = meme.copy(
+                    moderationChatId = moderator.id,
+                    moderationChatMessageId = sentMessage.messageId,
+                    status = MemeStatus.RESURRECTION_ASKED,
+                    created = Instant.now()
+                )
 
-            memeDao.update(updatedMeme)
+                launch { memeDao.update(updatedMeme) }
 
-            SendPhoto().apply {
+                val sendPhoto = SendPhoto().apply {
+                    chatId = telegramProperties.logsChatId
+                    photo = InputFile(meme.fileId)
+                    caption = "мем отправлен на воскрешение к ${moderator.mention()}"
+                    parseMode = ParseMode.HTML
+                    disableNotification = true
+                }
+
+                launch { api.executeSuspended(sendPhoto) }
+            }
+
+            log.info("successfully sent memes to resurrection")
+        }.onFailure {
+            log.error("failed to resurrect memes", it)
+
+            SendMessage().apply {
                 chatId = telegramProperties.logsChatId
-                photo = InputFile(meme.fileId)
-                caption = "мем отправлен на воскрешение к ${moderator.mention()}"
+                text = it.format()
                 parseMode = ParseMode.HTML
-                disableNotification = true
-            }.let { api.execute(it) }
+            }.let { method -> api.executeSuspended(method) }
         }
-    }.onSuccess {
-        log.info("successfully sent memes to resurrection")
-    }.onFailure {
-        log.error("failed to resurrect memes", it)
     }
 
     @Scheduled(cron = "0 */9 4-22 * * *")
-    private fun checkMemesForScheduling() {
+    private fun checkMemesForScheduling() = runBlocking {
         suspend fun editMessageReplyMarkup(meme: Meme) {
             EditMessageReplyMarkup().apply {
                 chatId = meme.moderationChatId.toString()
@@ -218,34 +229,33 @@ final class Schedulers(
             }.let { api.executeSuspended(it) }
         }
 
-        runBlocking {
-            val memes = memeDao.scheduleMemes()
+        val memes = memeDao.scheduleMemes()
 
-            if (memes.isEmpty()) {
-                log.info("there was nothing to schedule")
-                return@runBlocking
-            }
-
-            log.info("successfully scheduled memes: $memes")
-            launch { updateLogChannelTitle() }
-            memes.map { launch { editMessageReplyMarkup(it) } }
+        if (memes.isEmpty()) {
+            log.info("there was nothing to schedule")
+            return@runBlocking
         }
+
+        log.info("successfully scheduled memes: $memes")
+        launch { updateLogChannelTitle() }
+        memes.map { launch { editMessageReplyMarkup(it) } }
     }
 
     @Scheduled(cron = "0 * * * * *")
-    private fun sendLogs() = runCatching {
+    private fun sendLogs() = runBlocking {
         val logs = mutableListOf<LogEvent>()
         AccumulatingAppender.drain(logs)
-        if (logs.isNotEmpty()) {
-            runBlocking {
-                elasticsearchService.bulkIndexLogs(logs)
-            }
+
+        if (logs.isEmpty()) return@runBlocking
+
+        runCatching {
+            elasticsearchService.bulkIndexLogs(logs)
+        }.onFailure {
+            SendMessage().apply {
+                chatId = telegramProperties.logsChatId
+                text = it.format()
+                parseMode = ParseMode.HTML
+            }.let { method -> api.executeSuspended(method) }
         }
-    }.onFailure {
-        SendMessage().apply {
-            chatId = telegramProperties.logsChatId
-            text = it.format()
-            parseMode = ParseMode.HTML
-        }.let { method -> api.execute(method) }
     }
 }

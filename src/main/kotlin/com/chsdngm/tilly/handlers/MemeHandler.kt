@@ -251,11 +251,11 @@ class MemeHandler(
             return false
         }
 
-        val moderationCandidates = telegramUserDao.findTopFiveSendersForLastWeek(
+        val moderationCandidates = runBlocking { telegramUserDao.findTopFiveSendersForLastWeek(
             sender.id,
             telegramProperties.botId,
             *currentModerators.map { it.id }.toLongArray()
-        )
+        )}
 
         if (moderationCandidates.isEmpty()) {
             return false
