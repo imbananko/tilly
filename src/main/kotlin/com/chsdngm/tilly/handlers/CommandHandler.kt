@@ -10,9 +10,8 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.minusDays
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -52,12 +51,18 @@ class CommandHandler(
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
 
-        val memesByUserAll = withContext(Dispatchers.IO) { memeDao.findAllBySenderId(update.senderId.toLong()) }
-        val votesByUserAll = withContext(Dispatchers.IO) { voteDao.findAllByVoterId(update.senderId.toLong()) }
+        val memesDeferred = async { memeDao.findAllBySenderId(update.senderId.toLong()) }
+        val votesDeferred = async { voteDao.findAllByVoterId(update.senderId.toLong()) }
 
-        if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
+        val memesByUserAll = memesDeferred.await()
+        val votesByUserAll = votesDeferred.await()
+
+        val statsMessageText = if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
             "Статистика недоступна. Отправляй и оценивай мемы!"
         } else {
+            val rankWeek = async { telegramUserDao.findUserRank(update.senderId, 7) }
+            val rankTotal = async { telegramUserDao.findUserRank(update.senderId) }
+
             val memesByUserWeek = memesByUserAll.filter { it.key.created > Instant.now().minusDays(7) }
             val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
 
@@ -77,14 +82,7 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserWeek.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк за неделю: <b>#${
-                withContext(Dispatchers.IO) {
-                    telegramUserDao.findUserRank(
-                        update.senderId,
-                        7
-                    )
-                } ?: "NaN"
-            }</b>
+          ${if (rankWeek.await() == null) "" else "Ранк за неделю: <b>#${rankWeek.await()}</b>"}
           
           <u><b>Статистика за все время:</b></u>
           
@@ -95,15 +93,15 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserAll.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId) } ?: "NaN"}</b>
+          ${if (rankTotal.await() == null) "" else "Ранк: <b>#${rankTotal.await()}</b>"}
           """.trimIndent()
         }
-    }.let { statsMessageText ->
+
         SendMessage().apply {
             parseMode = ParseMode.HTML
             chatId = update.senderId
             text = statsMessageText
-        }.let { api.execute(it) }
+        }.let { api.executeSuspended(it) }
     }
 
     fun sendInfoMessage(update: CommandUpdate) {
