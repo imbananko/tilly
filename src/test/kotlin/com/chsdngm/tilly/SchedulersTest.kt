@@ -15,6 +15,7 @@ import org.mockito.kotlin.*
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatTitle
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -125,8 +126,58 @@ class SchedulersTest {
             executeSuspended(SetChatTitle().apply {
                 chatId = "logsChatId"
                 title = "tilly.log | queued: 0 []"
-            }) }
+            })
+        }
 
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+    }
+
+    @Test
+    fun shouldNotScheduleAnythingWhenThereNoMemesForScheduling() {
+        whenever(memeDao.scheduleMemes()).thenReturn(listOf())
+        schedulers.scheduleMemesIfAny()
+
+        verify(memeDao).scheduleMemes()
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+    }
+
+    @Test
+    fun shouldScheduleMemesWhenThereMemesForScheduling() {
+        val memes = (0..4).map { number ->
+            mock<Meme> {
+                on(it.moderationChatId).thenReturn(number.toLong())
+                on(it.moderationChatMessageId).thenReturn(number)
+            }
+        }
+
+        memeDao.stub {
+            whenever(it.scheduleMemes()).thenReturn(memes)
+            onBlocking { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }.thenReturn(mapOf())
+        }
+
+        val setChatTitle = SetChatTitle().apply {
+            chatId = "logsChatId"
+            title = "tilly.log | queued: 0 []"
+        }
+
+        api.stub {
+            onBlocking { executeSuspended(setChatTitle) }.thenReturn(true)
+        }
+
+        schedulers.scheduleMemesIfAny()
+
+        verify(memeDao).scheduleMemes()
+        verifyBlocking(memeDao) { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }
+        verifyBlocking(api) { executeSuspended(setChatTitle) }
+
+        repeat((0..4).count()) {
+            val editMessageReplyMarkup = EditMessageReplyMarkup().apply {
+                chatId = "$it"
+                messageId = it
+            }
+
+            verifyBlocking(api) { executeSuspended(editMessageReplyMarkup) }
+        }
         verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
     }
 }

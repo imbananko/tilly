@@ -223,7 +223,7 @@ final class Schedulers(
     }
 
     @Scheduled(cron = "0 */9 4-22 * * *")
-    private fun checkMemesForScheduling() = runBlocking {
+    fun scheduleMemesIfAny() = runBlocking {
         suspend fun editMessageReplyMarkup(meme: Meme) {
             EditMessageReplyMarkup().apply {
                 chatId = meme.moderationChatId.toString()

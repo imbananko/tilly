@@ -50,7 +50,7 @@ class TelegramUserDao(val database: Database) {
         sql.execAndMap { rs -> ResultRow.create(rs, TelegramUsers.indexedColumns) }.toTelegramUsers()
     }
 
-    fun findUserRank(userId: String): Long? = transaction {
+    suspend fun findUserRank(userId: String): Long? = newSuspendedTransaction {
         val sql = """
             select rank
             from (select m.sender_id,
@@ -67,7 +67,7 @@ class TelegramUserDao(val database: Database) {
         sql.execAndMap { rs -> rs.getLong(1) }.singleOrNull()
     }
 
-    fun findUserRank(userId: String, daysToPresentCount: Int): Long? = transaction {
+    suspend fun findUserRank(userId: String, daysToPresentCount: Int): Long? = newSuspendedTransaction {
         val sql = """
             select rank
             from (select m.sender_id,

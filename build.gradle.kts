@@ -77,6 +77,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 //    testImplementation("com.ninja-squad:springmockk:3.1.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    implementation(kotlin("script-runtime"))
 
 }
 
@@ -97,7 +98,7 @@ allOpen {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        freeCompilerArgs = listOf("-Xuse-k2")
+//        freeCompilerArgs = listOf("-Xuse-k2")
     }
 }
 

@@ -48,7 +48,7 @@ class MemeDao(val database: Database) {
             .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemesWithVotes()
     }
 
-    fun findAllBySenderId(senderId: Long): Map<Meme, List<Vote>> = transaction {
+    suspend fun findAllBySenderId(senderId: Long): Map<Meme, List<Vote>> = newSuspendedTransaction {
         (Memes leftJoin Votes)
             .select { Memes.senderId eq senderId }.toMemesWithVotes()
     }
