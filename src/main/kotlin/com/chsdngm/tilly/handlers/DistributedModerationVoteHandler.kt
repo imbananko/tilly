@@ -56,10 +56,11 @@ class DistributedModerationVoteHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && update.callbackQuery.message.chat.isUserChat
-            && DistributedModerationVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            DistributedModerationVoteUpdate(update)
-        } else null
+        if (canHandle(update)) DistributedModerationVoteUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasCallbackQuery()
+                && update.callbackQuery.message.chat.isUserChat
+                && DistributedModerationVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+    }
 }

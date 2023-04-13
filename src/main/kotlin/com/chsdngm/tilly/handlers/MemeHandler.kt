@@ -514,7 +514,9 @@ class MemeHandler(
         setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasMessage() && update.message.chat.isUserChat && update.message.hasPhoto()) {
-            UserMemeUpdate(update)
-        } else null
+        if (canHandle(update)) UserMemeUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+        return update.hasMessage() && update.message.chat.isUserChat && update.message.hasPhoto()
+    }
 }

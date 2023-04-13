@@ -123,10 +123,11 @@ class VoteHandler(
     }
 
     override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && (update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)
-            && VoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            VoteUpdate(update)
-        } else null
+        if (canHandle(update)) VoteUpdate(update) else null
+
+    override fun canHandle(update: Update): Boolean {
+       return update.hasCallbackQuery()
+               && (update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)
+               && VoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+    }
 }
