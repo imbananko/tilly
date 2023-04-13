@@ -16,6 +16,7 @@ import com.chsdngm.tilly.similarity.ImageTextRecognizer
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.stub
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -83,14 +84,13 @@ class MemeHandlerTest {
         val message = mock<Message> { on(it.messageId).thenReturn(0) }
         whenever(api.execute(any<SendPhoto>())).thenReturn(message)
         whenever(api.executeAsync(any<SendPhoto>())).thenReturn(mock())
-        whenever(telegramUserDao.findById(111)).thenReturn(
-            TelegramUser(
-                111,
-                "old_name",
-                null,
-                null
+        telegramUserDao.stub {
+            whenever(it.findById(111)).thenReturn(
+                TelegramUser(111, "old_name", null, null)
             )
-        )
+            onBlocking { findUsersWithRecentlyPrivateModerationAssignment() }.thenReturn((0..5).map { mock() })
+        }
+
 
         memeHandler.handleSync(update)
         verify(telegramUserDao).findById(111)

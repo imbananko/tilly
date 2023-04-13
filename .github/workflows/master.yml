@@ -33,10 +33,7 @@ jobs:
           java-version: 11
 
       - name: Run tests
-        run: ./gradlew test
-
-      - name: Run Test Coverage
-        run: ./gradlew jacocoTestReport
+        run: ./gradlew test jacocoTestReport
 
       - name: Generate JaCoCo Badge
         uses: cicirello/jacoco-badge-generator@v2
