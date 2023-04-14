@@ -3,7 +3,6 @@ package com.chsdngm.tilly.schedulers
 import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
-import com.chsdngm.tilly.metrics.AccumulatingAppender
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.PrivateVoteValue
 import com.chsdngm.tilly.model.dto.Meme
@@ -12,13 +11,11 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
-import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.apache.logging.log4j.core.LogEvent
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
@@ -41,11 +38,10 @@ import java.time.format.FormatStyle
 
 @Service
 @EnableScheduling
-final class Schedulers(
+final class MemesSchedulers(
     private val memeDao: MemeDao,
     private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
-    private val elasticsearchService: ElasticsearchService,
     private val api: TelegramApi,
     private val telegramProperties: TelegramProperties,
     private val metadata: MetadataProperties
@@ -101,10 +97,7 @@ final class Schedulers(
     private suspend fun updateLogChannelTitle(): Boolean {
         val queueSize = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED).size
 
-        return SetChatTitle().apply {
-            chatId = telegramProperties.logsChatId
-            title = "$TILLY_LOG | queued: $queueSize [${metadata.commitSha}]"
-        }.let { api.executeSuspended(it) }
+        return updateLogChannelTitle(queueSize)
     }
 
     private suspend fun sendMemeToChannel(meme: Meme, votes: List<Vote>): Message {
@@ -243,23 +236,5 @@ final class Schedulers(
         log.info("successfully scheduled memes: $memes")
         launch { updateLogChannelTitle() }
         memes.map { launch { editMessageReplyMarkup(it) } }
-    }
-
-    @Scheduled(cron = "0 * * * * *")
-    private fun sendLogs() = runBlocking {
-        val logs = mutableListOf<LogEvent>()
-        AccumulatingAppender.drain(logs)
-
-        if (logs.isEmpty()) return@runBlocking
-
-        runCatching {
-            elasticsearchService.bulkIndexLogs(logs)
-        }.onFailure {
-            SendMessage().apply {
-                chatId = telegramProperties.logsChatId
-                text = it.format()
-                parseMode = ParseMode.HTML
-            }.let { method -> api.executeSuspended(method) }
-        }
     }
 }

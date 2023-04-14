@@ -72,7 +72,7 @@ class MemeHandler(
         }
     }
 
-    fun handle(update: AutoSuggestedMemeUpdate) {
+    fun handle(update: AutoSuggestedMemeUpdate) = runBlocking {
         val file = api.download(update.fileId)
         val duplicateFileId = imageMatcher.tryFindDuplicate(file)
         if (duplicateFileId != null) {
@@ -81,7 +81,7 @@ class MemeHandler(
                 duplicateFileId = update.fileId,
                 originalFileId = duplicateFileId
             )
-            return
+            return@runBlocking
         }
 
         val message = SendPhoto().apply {
@@ -114,7 +114,7 @@ class MemeHandler(
         metricsUtils.measureDuration(update)
     }
 
-    override fun handleSync(update: MemeUpdate) {
+    override fun handleSync(update: MemeUpdate) = runBlocking {
         val foundUser = telegramUserDao.findById(update.user.id)
         val memeSender = if (foundUser == null) {
             update.isFreshman = true
@@ -144,14 +144,14 @@ class MemeHandler(
         if (memeSender.status == UserStatus.BANNED) {
             replyToBannedUser(update)
             sendBannedEventToLog(update, memeSender)
-            return
+            return@runBlocking
         }
 
         val file = api.download(update.fileId)
         val duplicateFileId = imageMatcher.tryFindDuplicate(file)
         if (duplicateFileId != null) {
             handleDuplicate(update, duplicateFileId)
-            return
+            return@runBlocking
         }
 
         if (update.isFreshman || update.status == LOCAL) {
@@ -178,7 +178,7 @@ class MemeHandler(
         handleImage(update, file)
     }
 
-    private fun handleImage(update: MemeUpdate, file: File) = runBlocking {
+    private suspend fun handleImage(update: MemeUpdate, file: File) {
         val analyzingResults = imageTextRecognizer.analyze(file, update.fileId)
         val image = Image(
             update.fileId,
@@ -197,11 +197,11 @@ class MemeHandler(
             }
         }
 
-        launch { imageDao.insert(image) }
+        imageDao.insert(image)
         imageMatcher.add(image)
     }
 
-    private fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean = runCatching {
+    private suspend fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean = runCatching {
         fun getDistributedModerationGroupId(): Int = 1
 
         val distributedModerationGroupId = getDistributedModerationGroupId()
@@ -244,7 +244,7 @@ class MemeHandler(
         sendDistributedModerationEventToLog(meme, sender, distributedGroupMembers)
     }.isSuccess
 
-    private fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
+    private suspend fun tryPrivateModeration(update: MemeUpdate, sender: TelegramUser): Boolean {
         val currentModerators = telegramUserDao.findUsersWithRecentlyPrivateModerationAssignment()
 
         if (currentModerators.size >= 5) {
