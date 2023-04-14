@@ -6,17 +6,21 @@ import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Meme
+import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import javassist.NotFoundException
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.mockito.Mockito.*
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.stub
+import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
+import java.time.Instant
 
 class VoteHandlerTest {
     private val memeDao = mock<MemeDao>()
@@ -27,7 +31,7 @@ class VoteHandlerTest {
     private val telegramProperties = TelegramProperties(
         "montornChatId",
         "targetChatId",
-        "targetChannelId",
+        "2105",
         "botToken",
         "botUsername",
         "logsChatId",
@@ -48,16 +52,18 @@ class VoteHandlerTest {
             text = "Мем слишком стар"
         }
 
-        whenever(api.execute(answerCallbackQuery)).thenReturn(true)
+        api.stub {
+            onBlocking { executeSuspended(answerCallbackQuery) }.thenReturn(true)
+        }
 
         voteHandler.handleSync(update)
 
-        verify(api).execute(answerCallbackQuery)
+        verifyBlocking(api) { api.executeSuspended(answerCallbackQuery) }
         verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 
     @Test
-    fun shouldThrowExceptionWhenMemeNotFound() {
+    fun shouldThrowWhenMemeNotFound() {
         val update = mock<VoteUpdate> {
             on(it.isOld).thenReturn(false)
             on(it.sourceChatId).thenReturn("bad_source_chat_id")
@@ -71,7 +77,7 @@ class VoteHandlerTest {
     fun shouldSendNotificationWhenSelfVoting() {
         val update = mock<VoteUpdate> {
             on(it.isOld).thenReturn(false)
-            on(it.sourceChatId).thenReturn("targetChannelId")
+            on(it.sourceChatId).thenReturn("2105")
             on(it.voterId).thenReturn(444)
             on(it.messageId).thenReturn(555)
             on(it.callbackQueryId).thenReturn("random_callback")
@@ -87,38 +93,59 @@ class VoteHandlerTest {
         }
 
         whenever(memeDao.findMemeByChannelMessageId(555)).thenReturn(meme to listOf())
-        whenever(api.execute(answerCallbackQuery)).thenReturn(true)
+        api.stub {
+            onBlocking { executeSuspended(answerCallbackQuery) }.thenReturn(true)
+        }
 
         voteHandler.handleSync(update)
 
         verify(memeDao).findMemeByChannelMessageId(555)
-        verify(api).execute(answerCallbackQuery)
+        verifyBlocking(api) { api.executeSuspended(answerCallbackQuery) }
         verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 
     @Test
-    @Disabled("TODO fix after remove static field as properties")
     fun shouldProcessVoteFromChannel() {
-        val update = mock(VoteUpdate::class.java).apply {
-            `when`(isOld).thenReturn(false)
-            `when`(sourceChatId).thenReturn("random_source_chat_id")
-            `when`(voterId).thenReturn(444)
-            `when`(messageId).thenReturn(555)
-            `when`(callbackQueryId).thenReturn("random_callback")
-            `when`(voteValue).thenReturn(VoteValue.UP)
+        val update = mock<VoteUpdate> {
+            on(it.isOld).thenReturn(false)
+            on(it.sourceChatId).thenReturn("2105")
+            on(it.voterId).thenReturn(444)
+            on(it.messageId).thenReturn(555)
+            on(it.callbackQueryId).thenReturn("random_callback")
+            on(it.voteValue).thenReturn(VoteValue.UP)
+            on(it.createdAt).thenReturn(1234567)
         }
 
-        val meme = mock(Meme::class.java).apply {
-            `when`(channelMessageId).thenReturn(1010)
+        val meme = mock<Meme> {
+            whenever(it.channelMessageId).thenReturn(1010)
+            whenever(it.id).thenReturn(1)
         }
 
-        `when`(memeDao.findMemeByChannelMessageId(555)).thenReturn(meme to listOf())
+        whenever(memeDao.findMemeByChannelMessageId(555)).thenReturn(meme to listOf())
+        val answerCallbackQuery = AnswerCallbackQuery().apply {
+            callbackQueryId = "random_callback"
+            text = "Вы обогатили этот мем \uD83D\uDC8E"
+        }
 
+        api.stub {
+            onBlocking { executeSuspended(answerCallbackQuery) }.thenReturn(true)
+        }
         voteHandler.handleSync(update)
 
-        verify(memeDao.findMemeByChannelMessageId(555))
-        verify(channelMarkupUpdater.submitVote(any()))
+        val vote = Vote(
+            1,
+            444,
+            2105,
+            VoteValue.UP,
+            Instant.ofEpochMilli(1234567)
+        )
 
+        verify(memeDao).findMemeByChannelMessageId(555)
+        verifyBlocking(channelMarkupUpdater) { submitVote(meme to listOf(vote)) }
+        verifyBlocking(voteDao) { insert(vote) }
+        verifyBlocking(api) { api.executeSuspended(answerCallbackQuery) }
+        verifyBlocking(api) { api.updateStatsInSenderChat(meme, listOf(vote)) }
+        verifyNoMoreInteractions(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api)
     }
 
     @Test

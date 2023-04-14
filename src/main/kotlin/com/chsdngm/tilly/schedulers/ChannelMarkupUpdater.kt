@@ -31,7 +31,7 @@ class ChannelMarkupUpdater(private val api: TelegramApi) {
         }
     }
 
-    fun submitVote(memeWithVotes: Pair<Meme, List<Vote>>) {
+    suspend fun submitVote(memeWithVotes: Pair<Meme, List<Vote>>) {
         markupSubject.onNext(memeWithVotes)
     }
 }

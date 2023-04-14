@@ -53,7 +53,9 @@ class PrivateModerationVoteHandlerTest {
         memeDao.stub {
             onBlocking { it.update(meme) }.thenReturn(1)
         }
-        whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
+        voteDao.stub {
+            onBlocking { it.insert(Vote(-1, 111, 222, VoteValue.UP)) }.thenReturn(mock())
+        }
 
         val editMessageCaption: EditMessageCaption = EditMessageCaption().apply {
             chatId = "111"
@@ -76,9 +78,9 @@ class PrivateModerationVoteHandlerTest {
         verifyBlocking(api) { executeSuspended(sendPhoto) }
 
         verifyBlocking(memeDao) { update(meme) }
-        verifyBlocking(memeDao) { memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222) }
+        verifyBlocking(memeDao) { findMemeByModerationChatIdAndModerationChatMessageId(111, 222) }
 
-        verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.UP))
+        verifyBlocking(voteDao) { insert(Vote(-1, 111, 222, VoteValue.UP)) }
         verifyNoMoreInteractions(memeDao, voteDao, api)
     }
 
@@ -99,10 +101,14 @@ class PrivateModerationVoteHandlerTest {
 
         whenever(memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222))
             .thenReturn(meme to votes)
+
         memeDao.stub {
             onBlocking { it.update(meme) }.thenReturn(1)
         }
-        whenever(voteDao.insert(Vote(-1, 111, 222, VoteValue.UP))).thenReturn(mock())
+
+        voteDao.stub {
+            onBlocking { it.insert(Vote(-1, 111, 222, VoteValue.UP)) }.thenReturn(mock())
+        }
 
         val editMessageCaption = EditMessageCaption().apply {
             chatId = "111"
@@ -124,7 +130,7 @@ class PrivateModerationVoteHandlerTest {
         verifyBlocking(api) { updateStatsInSenderChat(meme, votes) }
         verifyBlocking(api) { executeSuspended(sendPhoto) }
 
-        verify(voteDao).insert(Vote(-1, 111, 222, VoteValue.DOWN))
+        verifyBlocking(voteDao) { insert(Vote(-1, 111, 222, VoteValue.DOWN)) }
 
         verifyBlocking(memeDao) { update(meme) }
         verifyBlocking(memeDao) { memeDao.findMemeByModerationChatIdAndModerationChatMessageId(111, 222) }
