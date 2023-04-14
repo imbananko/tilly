@@ -7,6 +7,10 @@ import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.VoteDao
+import javassist.NotFoundException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
@@ -20,46 +24,45 @@ class DistributedModerationVoteHandler(
 ) : AbstractHandler<DistributedModerationVoteUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun handleSync(update: DistributedModerationVoteUpdate) {
-        distributedModerationEventDao.findMemeId(update.userId, update.messageId)?.let {
-            when (update.voteValue) {
-                DistributedModerationVoteValue.APPROVE_DISTRIBUTED -> approve(update, it)
-                DistributedModerationVoteValue.DECLINE_DISTRIBUTED -> decline(update, it)
-            }
-        } ?: log.error("unknown voteValue=${update.voteValue}")
+    override fun handleSync(update: DistributedModerationVoteUpdate) = runBlocking {
+        val memeId = distributedModerationEventDao.findMemeId(update.userId, update.messageId)
+            ?: throw NotFoundException("Meme wasn't found. update=$update")
+
+        when (update.voteValue) {
+            DistributedModerationVoteValue.APPROVE_DISTRIBUTED -> approve(update, memeId)
+            DistributedModerationVoteValue.DECLINE_DISTRIBUTED -> decline(update, memeId)
+        }
     }
 
-    private fun approve(update: DistributedModerationVoteUpdate, memeId: Int) {
-        EditMessageCaption().apply {
+    private suspend fun approve(update: DistributedModerationVoteUpdate, memeId: Int) = coroutineScope {
+        val editMessageCaption = EditMessageCaption().apply {
             chatId = update.userId.toString()
             messageId = update.messageId
             caption = "вы одобрили этот мем"
-        }.let { api.execute(it) }
+        }
 
-        //TODO fix
-        voteDao.insert(Vote(memeId, update.userId, update.userId, VoteValue.UP))
+        launch { api.executeSuspended(editMessageCaption) }
+        launch { voteDao.insert(Vote(memeId, update.userId, update.userId, VoteValue.UP)) }
 
         log.info("moderator with id=${update.userId} voted up for meme memeId=$memeId")
     }
 
-    private fun decline(update: DistributedModerationVoteUpdate, memeId: Int) {
-        EditMessageCaption().apply {
+    private suspend fun decline(update: DistributedModerationVoteUpdate, memeId: Int) = coroutineScope {
+        val editMessageCaption = EditMessageCaption().apply {
             chatId = update.userId.toString()
             messageId = update.messageId
             caption = "вы засрали этот мем"
-        }.let { api.execute(it) }
-
-        //TODO fix
-        voteDao.insert(Vote(memeId, update.userId, update.userId, VoteValue.DOWN))
+        }
+        launch { api.executeSuspended(editMessageCaption) }
+        launch { voteDao.insert(Vote(memeId, update.userId, update.userId, VoteValue.DOWN)) }
 
         log.info("moderator with id=${update.userId} voted down for meme memeId=$memeId")
     }
 
-    override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && update.callbackQuery.message.chat.isUserChat
-            && DistributedModerationVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            DistributedModerationVoteUpdate(update)
-        } else null
+    override fun retrieveSubtype(update: Update) = if (update.hasCallbackQuery()
+        && update.callbackQuery.message.chat.isUserChat
+        && DistributedModerationVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+    ) {
+        DistributedModerationVoteUpdate(update)
+    } else null
 }
