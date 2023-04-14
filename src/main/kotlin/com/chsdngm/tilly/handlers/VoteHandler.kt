@@ -81,17 +81,15 @@ class VoteHandler(
                 found.value = vote.value
                 found.sourceChatId = vote.sourceChatId
 
-                launch { voteDao.update(found) }
-
                 val text = getUpdatedVoteText(vote)
                 launch { sendPopupNotification(update.callbackQueryId, text) }
+                launch { voteDao.update(found) }
             }
         } ?: votes.add(vote).also {
 
-            launch { voteDao.insert(vote) }
-
             val text = getUpdatedVoteText(vote)
             launch { sendPopupNotification(update.callbackQueryId, text) }
+            launch { voteDao.insert(vote) }
         }
 
         if (meme.channelMessageId != null) {
