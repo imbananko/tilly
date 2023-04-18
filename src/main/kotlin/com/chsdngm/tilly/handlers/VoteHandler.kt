@@ -93,7 +93,9 @@ class VoteHandler(
         }
 
         if (meme.channelMessageId != null) {
-            launch { channelMarkupUpdater.submitVote(meme to votes) }
+            launch {
+                channelMarkupUpdater.submitVote(meme to votes)
+            }
         } else {
             launch { updateGroupMarkup(meme, votes) }
         }

@@ -1,5 +1,6 @@
 package com.chsdngm.tilly.similarity
 
+import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.repository.ImageDao
 import com.github.kilianB.hash.Hash
 import com.github.kilianB.hashAlgorithms.PerceptiveHash
@@ -44,7 +45,7 @@ class ImageMatcher(
     fun calculateHash(file: File): ByteArray =
         mainHashingAlgorithm.hash(ImageIO.read(file.inputStream())).hashValue.toByteArray()
 
-    fun add(image: com.chsdngm.tilly.model.dto.Image) {
+    fun add(image: Image) {
         addImageInternal(image.fileId, BigInteger(image.hash))
     }
 

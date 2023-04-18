@@ -51,10 +51,6 @@ dependencies {
     implementation("co.elastic.clients:elasticsearch-java:8.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
-//    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
-//    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
-//    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
-
     // rxjava
     implementation("io.reactivex.rxjava3:rxjava:3.1.5")
 
@@ -69,15 +65,8 @@ dependencies {
     implementation("com.github.kilianB:JImageHash:3.0.0")
     implementation("jakarta.json:jakarta.json-api:2.1.1")
 
-//    compileOnly("org.ktorm:ktorm-core:3.3.0")
-//    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
-
-//    testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
-//    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-//    testImplementation("com.ninja-squad:springmockk:3.1.2")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
-
 }
 
 tasks.bootJar {
@@ -88,7 +77,7 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-//remove when K2 will be okay with spring gralde plugin
+//remove when K2 will be okay with spring gradle plugin
 allOpen {
     annotation("org.springframework.context.annotation.Configuration")
     annotation("org.springframework.boot.autoconfigure.SpringBootApplication")
