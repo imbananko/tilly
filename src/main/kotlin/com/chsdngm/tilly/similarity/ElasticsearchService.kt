@@ -1,10 +1,12 @@
 package com.chsdngm.tilly.similarity
 
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders
 import co.elastic.clients.elasticsearch.core.BulkRequest
 import co.elastic.clients.elasticsearch.core.BulkResponse
 import co.elastic.clients.elasticsearch.core.IndexResponse
+import co.elastic.clients.elasticsearch.core.SearchResponse
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
@@ -27,16 +29,17 @@ class ElasticsearchService(val asyncClient: ElasticsearchAsyncClient) {
 
     suspend fun searchMemesByText(
         text: String,
-        pageNumber: Int,
-        pageSize: Int
-    ): co.elastic.clients.elasticsearch.core.SearchResponse<MemeDocument> {
+        offset: Int = 0,
+        size: Int
+    ): SearchResponse<MemeDocument> {
+        log.info("In searchMemesByText: $text $offset")
         return asyncClient.search(
             { request ->
                 request
                     .index(MEMES)
-                    .query(QueryBuilders.match { it.field(RAW_TEXT).query(text) })
-                    .from(pageSize * pageNumber)
-                    .size(pageSize)
+                    .query(QueryBuilders.match { it.field(RAW_TEXT).query(text).operator(Operator.And) })
+                    .from(offset)
+                    .size(size)
             },
             MemeDocument::class.java
         ).await()
