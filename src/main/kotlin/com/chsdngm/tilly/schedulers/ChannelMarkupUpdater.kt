@@ -21,7 +21,7 @@ class ChannelMarkupUpdater(
 
     private val queue =
         ExtendedCopyOnWriteArrayList<Pair<Int, List<Vote>>>()
-    private val rateLimiter = RateLimiter.create(0.2)
+    private val rateLimiter = RateLimiter.create(0.18)
 
     private val log = LoggerFactory.getLogger(javaClass)
 
