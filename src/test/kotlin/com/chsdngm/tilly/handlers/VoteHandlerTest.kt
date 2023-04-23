@@ -141,7 +141,7 @@ class VoteHandlerTest {
         )
 
         verify(memeDao).findMemeByChannelMessageId(555)
-        verifyBlocking(channelMarkupUpdater) { submitVote(meme to listOf(vote)) }
+        verifyBlocking(channelMarkupUpdater) { submitVote(1010 to listOf(vote)) }
         verifyBlocking(voteDao) { insert(vote) }
         verifyBlocking(api) { api.executeSuspended(answerCallbackQuery) }
         verifyBlocking(api) { api.updateStatsInSenderChat(meme, listOf(vote)) }

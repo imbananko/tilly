@@ -41,7 +41,7 @@ class SchedulersTest {
 
     private val metadataProperties = MetadataProperties(
         "1",
-        "asd"
+        "hui"
     )
 
     private val schedulers =
@@ -131,7 +131,7 @@ class SchedulersTest {
         verifyBlocking(api) {
             executeSuspended(SetChatTitle().apply {
                 chatId = "logsChatId"
-                title = "tilly.log | queued: 0 []"
+                title = "tilly.log | queued: 0 [hui]"
             })
         }
 
@@ -163,7 +163,7 @@ class SchedulersTest {
 
         val setChatTitle = SetChatTitle().apply {
             chatId = "logsChatId"
-            title = "tilly.log | queued: 0 []"
+            title = "tilly.log | queued: 0 [hui]"
         }
 
         api.stub {

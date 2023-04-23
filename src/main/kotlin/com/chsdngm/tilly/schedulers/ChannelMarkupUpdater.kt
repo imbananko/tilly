@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.schedulers
 
-import collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.utility.createMarkup
@@ -19,7 +19,8 @@ class ChannelMarkupUpdater(
     private val properties: TelegramProperties,
 ) {
 
-    private val queue = ExtendedCopyOnWriteArrayList<Pair<Int, List<Vote>>>()
+    private val queue =
+        ExtendedCopyOnWriteArrayList<Pair<Int, List<Vote>>>()
     private val rateLimiter = RateLimiter.create(0.2)
 
     private val log = LoggerFactory.getLogger(javaClass)
