@@ -3,7 +3,6 @@ package com.chsdngm.tilly
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
-import com.chsdngm.tilly.utility.createMarkup
 import kotlinx.coroutines.future.await
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -13,7 +12,6 @@ import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.GetFile
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.Message
 import java.io.File
@@ -46,13 +44,12 @@ class TelegramApi(val properties: TelegramProperties) : DefaultAbsSender(
                         prefix = " статистика: \n\n",
                         transform = { (value, sum) -> "${value.emoji}: $sum" })
 
-        return try {
+        try {
             EditMessageText().apply {
                 chatId = meme.senderId.toString()
                 messageId = meme.privateReplyMessageId
                 text = caption
             }.let { executeSuspended(it) }
-            Unit
         } catch (e: Exception) {
             log.error("Failed to update stats in sender chat", e)
         }
@@ -68,18 +65,6 @@ class TelegramApi(val properties: TelegramProperties) : DefaultAbsSender(
         }
 
         return file
-    }
-
-    fun updateChannelMarkup(meme: Meme, votes: List<Vote>) {
-        try {
-            EditMessageReplyMarkup().apply {
-                chatId = properties.targetChannelId
-                messageId = meme.channelMessageId
-                replyMarkup = createMarkup(votes)
-            }.let { execute(it) }
-        } catch (e: Exception) {
-            log.error("Failed to update markup. e=", e)
-        }
     }
 
     suspend fun <T : Serializable> executeSuspended(method: BotApiMethod<T>): T =

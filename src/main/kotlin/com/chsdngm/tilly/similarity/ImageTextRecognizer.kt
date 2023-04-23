@@ -4,7 +4,6 @@ import com.chsdngm.tilly.model.dto.*
 import com.google.cloud.spring.vision.CloudVisionTemplate
 import com.google.cloud.vision.v1.Feature.Type
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Profile
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.stereotype.Service
@@ -32,7 +31,7 @@ class ImageTextRecognizerGcp(
 
     data class AnalyzingResults(
         val words: String?,
-        val labels: String?
+        val labels: String?,
     )
 
     override fun analyze(image: File, fileId: String): AnalyzingResults? = runCatching {

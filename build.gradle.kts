@@ -90,6 +90,16 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+tasks.withType<JacocoReport> {
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.map {
+            fileTree(it).apply {
+                exclude("**/ExtendedCopyOnWriteArrayList**")
+            }
+        }))
+    }
+}
+
 tasks.jacocoTestReport {
     reports {
         csv.required.set(true)
