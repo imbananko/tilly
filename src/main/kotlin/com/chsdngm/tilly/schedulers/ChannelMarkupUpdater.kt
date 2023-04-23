@@ -1,21 +1,26 @@
 package com.chsdngm.tilly.schedulers
 
+import collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.TelegramApi
-import com.chsdngm.tilly.model.dto.Meme
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.Vote
-import io.reactivex.rxjava3.core.Flowable
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.subjects.PublishSubject
+import com.chsdngm.tilly.utility.createMarkup
+import com.google.common.util.concurrent.RateLimiter
+import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import kotlin.time.ExperimentalTime
 import kotlin.time.TimeSource
 
 @Service
-class ChannelMarkupUpdater(private val api: TelegramApi) {
-    private val markupSubject = PublishSubject.create<Pair<Meme, List<Vote>>>()
+class ChannelMarkupUpdater(
+    private val api: TelegramApi,
+    private val properties: TelegramProperties,
+) {
+
+    private val queue = ExtendedCopyOnWriteArrayList<Pair<Int, List<Vote>>>()
+    private val rateLimiter = RateLimiter.create(0.2)
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -24,26 +29,51 @@ class ChannelMarkupUpdater(private val api: TelegramApi) {
     private val timeSource = TimeSource.Monotonic
 
     init {
-        Executors.newSingleThreadExecutor().submit {
-            val timeoutObservable = Flowable.interval(/* initialDelay = */ 0, /* period = */ 5, TimeUnit.SECONDS)
-                .onBackpressureDrop()
-                .toObservable()
+        runBlocking {
+            launch(Job()) {
+                while (true) {
+                    delay(50)
+                    if (queue.isNotEmpty() && withContext(Dispatchers.IO) { rateLimiter.tryAcquire() }) {
+                        val messageId: Int
+                        var votes: List<Vote>
+                        queue.removeFirst().also {
+                            messageId = it.first
+                            votes = it.second
+                        }
 
-            val markupObservable: Observable<Pair<Meme, List<Vote>>> = markupSubject
-                .groupBy { it.first.id }
-                .flatMap { it.throttleLatest(5, TimeUnit.SECONDS, /* emitLast = */ true) }
+                        val lastSimilarToHead = queue.dropIf({ it.first == messageId }) {
+                            if (it > 1) log.info("Suppressed votes count: $it")
+                        }
 
-            timeoutObservable.zipWith(markupObservable) { _, m -> m }
-                .subscribe {
-                    api.updateChannelMarkup(it.first, it.second)
+                        if (lastSimilarToHead != null) {
+                            votes = lastSimilarToHead.second
+                        }
+
+                        //TODO check logs for errors like: keyboard markup is the same
+                        updateChannelMarkup(messageId, votes)
+                    }
                 }
+            }
         }
     }
 
+    fun submitVote(memeWithVotes: Pair<Int, List<Vote>>) {
+        queue.add(memeWithVotes)
+    }
+
     @OptIn(ExperimentalTime::class)
-    suspend fun submitVote(memeWithVotes: Pair<Meme, List<Vote>>) {
+    private suspend fun updateChannelMarkup(channelMessageId: Int, votes: List<Vote>) {
         val mark = timeSource.markNow()
-        markupSubject.onNext(memeWithVotes)
-        log.info("markupSubject.onNext elapsed ${mark.elapsedNow()}")
+        try {
+            EditMessageReplyMarkup().apply {
+                chatId = properties.targetChannelId
+                messageId = channelMessageId
+                replyMarkup = createMarkup(votes)
+            }.let { api.executeSuspended(it) }
+        } catch (e: Exception) {
+            log.error("Failed to update markup", e)
+        }
+
+        log.info("updateChannelMarkup elapsed ${mark.elapsedNow()}")
     }
 }

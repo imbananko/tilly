@@ -3,6 +3,7 @@ package com.chsdngm.tilly
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient
 import co.elastic.clients.json.jackson.JacksonJsonpMapper
 import co.elastic.clients.transport.rest_client.RestClientTransport
+import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.handlers.AbstractHandler
 import com.chsdngm.tilly.model.Timestampable
@@ -14,7 +15,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@EnableConfigurationProperties(TelegramProperties::class)
+@EnableConfigurationProperties(TelegramProperties::class, MetadataProperties::class)
 class Configuration {
     @Bean
     @Suppress("UNCHECKED_CAST")

@@ -1,6 +1,6 @@
 package com.chsdngm.tilly.repository
 
-import com.chsdngm.tilly.config.Metadata.Companion.MODERATION_THRESHOLD
+import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.dto.*
 import com.chsdngm.tilly.utility.allColumns
@@ -15,7 +15,10 @@ import org.springframework.stereotype.Repository
 import java.time.LocalDate
 
 @Repository
-class MemeDao(val database: Database) {
+class MemeDao(
+    database: Database,
+    private val metadata: MetadataProperties
+) {
 
     fun findMemeByChannelMessageId(channelMessageId: Int): Pair<Meme, List<Vote>>? = transaction {
         (Memes leftJoin Votes)
@@ -116,7 +119,7 @@ class MemeDao(val database: Database) {
                              and meme.created > now() - interval '7 days'
                            group by meme.id
                            having count(vote) filter ( where vote.value = 'UP' ) -
-                                  count(vote) filter ( where vote.value = 'DOWN') >= $MODERATION_THRESHOLD
+                                  count(vote) filter ( where vote.value = 'DOWN') >= ${metadata.moderationThreshold}
                      ) returning ${Memes.allColumns};
                   """.trimIndent()
 

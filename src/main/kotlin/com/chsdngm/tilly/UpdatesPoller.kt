@@ -1,5 +1,6 @@
 package com.chsdngm.tilly
 
+import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.handlers.AbstractHandler
 import com.chsdngm.tilly.model.Timestampable
@@ -18,7 +19,8 @@ import javax.annotation.PostConstruct
 class UpdatesPoller(
     val telegramProperties: TelegramProperties,
     val handlers: List<AbstractHandler<Timestampable>>,
-    val api: TelegramApi
+    val api: TelegramApi,
+    val metadata: MetadataProperties
 ) : TelegramLongPollingBot() {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -72,7 +74,7 @@ class UpdatesPoller(
     fun init() {
         SendMessage().apply {
             chatId = telegramProperties.logsChatId
-            text = "$botUsername started with sha: ${com.chsdngm.tilly.config.Metadata.COMMIT_SHA}"
+            text = "$botUsername started with sha: ${metadata.commitSha}"
             parseMode = ParseMode.HTML
         }.let { method -> executeAsync(method) }
     }

@@ -1,5 +1,6 @@
 package com.chsdngm.tilly
 
+import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.VoteValue
@@ -38,8 +39,13 @@ class SchedulersTest {
         777
     )
 
+    private val metadataProperties = MetadataProperties(
+        "1",
+        "asd"
+    )
+
     private val schedulers =
-        Schedulers(memeDao, telegramUserDao, memeLogDao, elasticsearchService, api, telegramProperties)
+        Schedulers(memeDao, telegramUserDao, memeLogDao, elasticsearchService, api, telegramProperties, metadataProperties)
 
     @Test
     fun shouldNotPublishAnythingWhenPublishingMemesDisabled() {

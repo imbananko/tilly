@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.schedulers
 
 import com.chsdngm.tilly.TelegramApi
-import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
+import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.AccumulatingAppender
 import com.chsdngm.tilly.model.MemeStatus
@@ -48,6 +48,7 @@ final class Schedulers(
     private val elasticsearchService: ElasticsearchService,
     private val api: TelegramApi,
     private val telegramProperties: TelegramProperties,
+    private val metadata: MetadataProperties
 ) {
     companion object {
         const val TILLY_LOG = "tilly.log"
@@ -93,7 +94,7 @@ final class Schedulers(
     private suspend fun updateLogChannelTitle(queueSize: Int) =
         SetChatTitle().apply {
             chatId = telegramProperties.logsChatId
-            title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
+            title = "$TILLY_LOG | queued: $queueSize [${metadata.commitSha}]"
         }.let { api.executeSuspended(it) }
 
     private suspend fun updateLogChannelTitle(): Boolean {
@@ -101,7 +102,7 @@ final class Schedulers(
 
         return SetChatTitle().apply {
             chatId = telegramProperties.logsChatId
-            title = "$TILLY_LOG | queued: $queueSize [$COMMIT_SHA]"
+            title = "$TILLY_LOG | queued: $queueSize [${metadata.commitSha}]"
         }.let { api.executeSuspended(it) }
     }
 

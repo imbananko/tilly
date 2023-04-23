@@ -72,7 +72,7 @@ class VoteHandler(
             VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
         }
 
-        //TODO refactor with set instead of list (after tests)
+        //TODO refactor with hashset instead of list (after tests)
         votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
             if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
                 launch { sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема") }
@@ -93,9 +93,7 @@ class VoteHandler(
         }
 
         if (meme.channelMessageId != null) {
-            launch {
-                channelMarkupUpdater.submitVote(meme to votes)
-            }
+            launch { channelMarkupUpdater.submitVote(meme.channelMessageId!! to votes) }
         } else {
             launch { updateGroupMarkup(meme, votes) }
         }
