@@ -2,56 +2,56 @@ package com.chsdngm.tilly.handlers
 
 import co.elastic.clients.elasticsearch.core.SearchResponse
 import co.elastic.clients.elasticsearch.core.search.Hit
-import co.elastic.clients.elasticsearch.core.search.HitsMetadata
 import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.model.InlineCommandUpdate
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ElasticsearchService.MemeDocument
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.stub
+import org.mockito.kotlin.verifyBlocking
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.cached.InlineQueryResultCachedPhoto
 
 class InlineCommandHandlerTest {
-    private val elasticsearchService = mock(ElasticsearchService::class.java)
-    private val api = mock(TelegramApi::class.java)
+    private val elasticsearchService = mock<ElasticsearchService>()
+    private val api = mock<TelegramApi>()
     private val inlineCommandHandler = InlineCommandHandler(elasticsearchService, api)
 
     @Test
     fun shouldDoNothingWhenNotEnoughSymbolsForSearching() {
-        val update = mock(InlineCommandUpdate::class.java).apply {
-            `when`(id).thenReturn("random_id")
-            `when`(value).thenReturn("хи")
-            `when`(offset).thenReturn("0")
+        val update = mock<InlineCommandUpdate> {
+            on(it.id).thenReturn("random_id")
+            on(it.value).thenReturn("хи")
+            on(it.offset).thenReturn("0")
         }
 
         inlineCommandHandler.handleSync(update)
-        verifyNoMoreInteractions(elasticsearchService)
+        verifyNoMoreInteractions(elasticsearchService, api)
     }
 
     @Test
     fun shouldReturnFirstPageWhenQueryingWithManyResults() {
-        val update = mock(InlineCommandUpdate::class.java).apply {
-            `when`(id).thenReturn("random_id")
-            `when`(value).thenReturn("куда гонишь дед")
-            `when`(offset).thenReturn("0")
+        val update = mock<InlineCommandUpdate> {
+            on(it.id).thenReturn("random_id")
+            on(it.value).thenReturn("куда гонишь дед")
+            on(it.offset).thenReturn("0")
         }
 
-        val hits = (0..16).map {
-            mock(Hit::class.java).apply {
-                `when`(id()).thenReturn("$it")
-            } as Hit<MemeDocument>
+        val hits = (0..16).map { number ->
+            mock<Hit<MemeDocument>> {
+                on(it.id()).thenReturn("$number")
+            }
         }
-        val hitsMetadata = mock(HitsMetadata::class.java) as HitsMetadata<MemeDocument>
-        `when`(hitsMetadata.hits()).thenReturn(hits)
 
-        val response = mock(SearchResponse::class.java) as SearchResponse<MemeDocument>
-        `when`(response.hits()).thenReturn(hitsMetadata)
+        val response: SearchResponse<MemeDocument> = mock(defaultAnswer = RETURNS_DEEP_STUBS) {
+            on(it.hits().hits()).thenReturn(hits)
+        }
 
-        //TODO shouldn't be runBlocking in tests???
-        runBlocking {
-            `when`(elasticsearchService.searchMemesByText("куда гонишь дед", 0, 16)).thenReturn(response)
+        elasticsearchService.stub {
+            onBlocking { searchMemesByText("куда гонишь дед", 0, 16) }
+                .thenReturn(response)
         }
 
         val cachedPhotos = (0..16).map {
@@ -68,11 +68,8 @@ class InlineCommandHandlerTest {
         }
 
         inlineCommandHandler.handleSync(update)
-        runBlocking {
-            verify(elasticsearchService).searchMemesByText("куда гонишь дед", 0, 16)
-        }
+        verifyBlocking(elasticsearchService) { searchMemesByText("куда гонишь дед", 0, 16) }
         verify(api).execute(answerInlineMethod)
-        verifyNoMoreInteractions(elasticsearchService)
-
+        verifyNoMoreInteractions(elasticsearchService, api)
     }
 }

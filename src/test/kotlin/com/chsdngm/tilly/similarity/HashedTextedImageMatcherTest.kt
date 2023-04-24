@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
+import org.mockito.kotlin.mock
 import java.io.File
 
 class HashedTextedImageMatcherTest {
@@ -52,10 +52,11 @@ class HashedTextedImageMatcherTest {
     fun `MemeMatcher should identify equal memes`(file: File) {
         val fileId = file.name
 
-        val image = mock(Image::class.java)
-        `when`(image.file).thenReturn(file.readBytes())
-        `when`(image.fileId).thenReturn(fileId)
-        `when`(image.hash).thenReturn(imageMatcher.calculateHash(file))
+        val image = mock<Image>{
+            on(it.file).thenReturn(file.readBytes())
+            on(it.fileId).thenReturn(fileId)
+            on(it.hash).thenReturn(imageMatcher.calculateHash(file))
+        }
         imageMatcher.add(image)
 
         assertEquals(fileId, imageMatcher.tryFindDuplicate(file))
@@ -66,10 +67,11 @@ class HashedTextedImageMatcherTest {
         val originalMeme = memes["original_meme.jpg"] ?: error("original_meme.jpg is not found")
         val doctor3 = memes["doctor3.jpg"] ?: error("doctor3.jpg is not found")
 
-        val originalImage = mock(Image::class.java)
-        `when`(originalImage.file).thenReturn(originalMeme.readBytes())
-        `when`(originalImage.fileId).thenReturn("original_meme.jpg")
-        `when`(originalImage.hash).thenReturn(imageMatcher.calculateHash(originalMeme))
+        val originalImage = mock<Image> {
+            on(it.file).thenReturn(originalMeme.readBytes())
+            on(it.fileId).thenReturn("original_meme.jpg")
+            on(it.hash).thenReturn(imageMatcher.calculateHash(originalMeme))
+        }
 
         imageMatcher.add(originalImage)
         val memeMatch1 = imageMatcher.tryFindDuplicate(doctor3)
@@ -83,10 +85,11 @@ class HashedTextedImageMatcherTest {
         val doctor1 = memes["doctor1.jpg"] ?: error("doctor1.jpg is not found")
         val doctor2 = memes["doctor2.jpg"] ?: error("doctor2.jpg is not found")
 
-        val image1 = mock(Image::class.java)
-        `when`(image1.file).thenReturn(doctor1.readBytes())
-        `when`(image1.fileId).thenReturn("meme1.jpg")
-        `when`(image1.hash).thenReturn(imageMatcher.calculateHash(doctor1))
+        val image1 = mock<Image> {
+            on(it.file).thenReturn(doctor1.readBytes())
+            on(it.fileId).thenReturn("meme1.jpg")
+            on(it.hash).thenReturn(imageMatcher.calculateHash(doctor1))
+        }
 
         imageMatcher.add(image1)
         val memeMatch1 = imageMatcher.tryFindDuplicate(doctor2)
@@ -98,10 +101,11 @@ class HashedTextedImageMatcherTest {
         val meme1 = memes["meme1.jpg"] ?: error("meme1.jpg is not found")
         val meme2 = memes["meme2.jpg"] ?: error("meme2.jpg is not found")
 
-        val image1 = mock(Image::class.java)
-        `when`(image1.file).thenReturn(meme1.readBytes())
-        `when`(image1.fileId).thenReturn("meme1.jpg")
-        `when`(image1.hash).thenReturn(imageMatcher.calculateHash(meme1))
+        val image1 = mock<Image> {
+            on(it.file).thenReturn(meme1.readBytes())
+            on(it.fileId).thenReturn("meme1.jpg")
+            on(it.hash).thenReturn(imageMatcher.calculateHash(meme1))
+        }
 
         imageMatcher.add(image1)
         val memeMatch = imageMatcher.tryFindDuplicate(meme2)
@@ -114,10 +118,11 @@ class HashedTextedImageMatcherTest {
         val meme1 = memes["duplicate1.jpg"] ?: error("meme1.jpg is not found")
         val meme2 = memes["duplicate2.jpg"] ?: error("meme2.jpg is not found")
 
-        val image1 = mock(Image::class.java)
-        `when`(image1.file).thenReturn(meme1.readBytes())
-        `when`(image1.fileId).thenReturn("duplicate1.jpg")
-        `when`(image1.hash).thenReturn(imageMatcher.calculateHash(meme1))
+        val image1 = mock<Image> {
+            on(it.file).thenReturn(meme1.readBytes())
+            on(it.fileId).thenReturn("duplicate1.jpg")
+            on(it.hash).thenReturn(imageMatcher.calculateHash(meme1))
+        }
 
         imageMatcher.add(image1)
         val memeMatch = imageMatcher.tryFindDuplicate(meme2)

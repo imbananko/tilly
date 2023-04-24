@@ -5,8 +5,10 @@ import com.chsdngm.tilly.collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.utility.createMarkup
-import com.google.common.util.concurrent.RateLimiter
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
@@ -21,7 +23,6 @@ class ChannelMarkupUpdater(
 
     private val queue =
         ExtendedCopyOnWriteArrayList<Pair<Int, List<Vote>>>()
-    private val rateLimiter = RateLimiter.create(0.16)
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -33,26 +34,28 @@ class ChannelMarkupUpdater(
         runBlocking {
             launch(Job()) {
                 while (true) {
-                    delay(50)
-                    if (queue.isNotEmpty() && withContext(Dispatchers.IO) { rateLimiter.tryAcquire() }) {
-                        val messageId: Int
-                        var votes: List<Vote>
-                        queue.removeFirst().also {
-                            messageId = it.first
-                            votes = it.second
-                        }
-
-                        val lastSimilarToHead = queue.dropIf({ it.first == messageId }) {
-                            if (it > 1) log.info("Suppressed votes count: $it")
-                        }
-
-                        if (lastSimilarToHead != null) {
-                            votes = lastSimilarToHead.second
-                        }
-
-                        //TODO check logs for errors like: keyboard markup is the same
-                        updateChannelMarkup(messageId, votes)
+                    if (queue.isEmpty()) {
+                        delay(50)
+                        continue
                     }
+
+                    val messageId: Int
+                    var votes: List<Vote>
+                    queue.removeFirst().also {
+                        messageId = it.first
+                        votes = it.second
+                    }
+
+                    val lastSimilarToHead = queue.dropIf({ it.first == messageId }) {
+                        if (it > 1) log.info("Suppressed votes count: $it")
+                    }
+
+                    if (lastSimilarToHead != null) {
+                        votes = lastSimilarToHead.second
+                    }
+
+                    //TODO check logs for errors like: keyboard markup is the same
+                    updateChannelMarkup(messageId, votes)
                 }
             }
         }
@@ -76,5 +79,6 @@ class ChannelMarkupUpdater(
         }
 
         log.info("updateChannelMarkup elapsed ${mark.elapsedNow()}")
+        delay(5000)
     }
 }
