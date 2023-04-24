@@ -7,6 +7,7 @@ import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
+import org.mockito.kotlin.mock
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
 import org.telegram.telegrambots.meta.api.objects.User
 
@@ -27,15 +28,14 @@ class AutosuggestionVoteHandlerTest {
 
     @Test
     fun shouldHandleByMemeHandlerOnPositiveAutosuggestionDecision() {
-        val user = mock(User::class.java)
         val memeUpdate = mock(AutoSuggestedMemeUpdate::class.java)
-        val update = mock(AutosuggestionVoteUpdate::class.java).apply {
-            `when`(whoSuggests).thenReturn(user)
-            `when`(fileId).thenReturn("random_file_id")
-            `when`(chatId).thenReturn(555)
-            `when`(messageId).thenReturn(666)
-            `when`(voteValue).thenReturn(AutosuggestionVoteValue.APPROVE_SUGGESTION)
-            `when`(toAutoSuggestedMemeUpdate()).thenReturn(memeUpdate)
+        val update = mock<AutosuggestionVoteUpdate> {
+            on(it.whoSuggests).thenReturn(mock<User>())
+            on(it.fileId).thenReturn("random_file_id")
+            on(it.chatId).thenReturn(555)
+            on(it.messageId).thenReturn(666)
+            on(it.voteValue).thenReturn(AutosuggestionVoteValue.APPROVE_SUGGESTION)
+            on(it.toAutoSuggestedMemeUpdate()).thenReturn(memeUpdate)
         }
 
         val editMessageCaptionMethod = EditMessageCaption().apply {
@@ -56,10 +56,10 @@ class AutosuggestionVoteHandlerTest {
 
     @Test
     fun shouldChangeCaptionOnNegativeAutosuggestionDecision() {
-        val update = mock(AutosuggestionVoteUpdate::class.java).apply {
-            `when`(chatId).thenReturn(555)
-            `when`(messageId).thenReturn(666)
-            `when`(voteValue).thenReturn(AutosuggestionVoteValue.DECLINE_SUGGESTION)
+        val update = mock<AutosuggestionVoteUpdate> {
+            on(it.chatId).thenReturn(555)
+            on(it.messageId).thenReturn(666)
+            on(it.voteValue).thenReturn(AutosuggestionVoteValue.DECLINE_SUGGESTION)
         }
 
         val editMessageCaptionMethod = EditMessageCaption().apply {

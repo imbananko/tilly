@@ -51,9 +51,6 @@ dependencies {
     implementation("co.elastic.clients:elasticsearch-java:8.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
-    // rxjava
-    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
-
     // spring
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
@@ -65,7 +62,7 @@ dependencies {
     implementation("com.github.kilianB:JImageHash:3.0.0")
     implementation("jakarta.json:jakarta.json-api:2.1.1")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
 }
 
@@ -75,6 +72,10 @@ tasks.bootJar {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+
+    testLogging {
+        events("passed")
+    }
 }
 
 //remove when K2 will be okay with spring gradle plugin
