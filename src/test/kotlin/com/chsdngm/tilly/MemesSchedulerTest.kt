@@ -22,7 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
-class SchedulersTest {
+class MemesSchedulerTest {
     private val telegramUserDao = mock<TelegramUserDao>()
     private val memeDao = mock<MemeDao>()
     private val api = mock<TelegramApi>()
