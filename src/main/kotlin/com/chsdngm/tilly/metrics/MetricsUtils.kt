@@ -1,6 +1,5 @@
 package com.chsdngm.tilly.metrics
 
-import com.chsdngm.tilly.config.Metadata.Companion.COMMIT_SHA
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.MemeUpdate
 import com.chsdngm.tilly.model.Timestampable
@@ -15,12 +14,28 @@ import com.google.cloud.monitoring.v3.MetricServiceSettings
 import com.google.monitoring.v3.*
 import com.google.protobuf.Timestamp
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
+interface MetricsUtils {
+    fun measureDuration(update: Timestampable): CompletableFuture<Unit>
+}
+
 @Component
-class MetricsUtils(credentialsProvider: CredentialsProvider) {
+@Profile("local")
+class MetricsUtilsLocal: MetricsUtils {
+
+    override fun measureDuration(update: Timestampable): CompletableFuture<Unit> {
+        return CompletableFuture.completedFuture(Unit)
+    }
+
+}
+
+@Component
+@Profile("default")
+class MetricsUtilsGcp(credentialsProvider: CredentialsProvider): MetricsUtils {
     private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
@@ -52,12 +67,7 @@ class MetricsUtils(credentialsProvider: CredentialsProvider) {
         metricServiceClient = MetricServiceClient.create(metricServiceSettings)
     }
 
-    fun measureDuration(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
-        //TODO refactor
-        if (COMMIT_SHA == "local") {
-            return@supplyAsync
-        }
-
+    override fun measureDuration(update: Timestampable): CompletableFuture<Unit> = CompletableFuture.supplyAsync {
         val endTimeMs = System.currentTimeMillis()
         val startTimeMs = update.createdAt
 

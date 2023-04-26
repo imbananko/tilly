@@ -1,13 +1,9 @@
 package com.chsdngm.tilly.model
 
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.utility.download
 import com.chsdngm.tilly.utility.mention
 import com.chsdngm.tilly.utility.minusDays
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
-import java.io.File
 import java.time.Instant
 
 private val trashCaptionParts = listOf("sender", "photo from")
@@ -20,8 +16,7 @@ class VoteUpdate(update: Update) : Timestampable() {
     val voterId: Long = update.callbackQuery.from.id
     val messageId: Int = update.callbackQuery.message.messageId
     val sourceChatId: String = when {
-        update.callbackQuery.message.isChannelMessage && update.callbackQuery.message.chatId.toString() == CHANNEL_ID -> CHANNEL_ID
-        update.callbackQuery.message.isSuperGroupMessage && update.callbackQuery.message.chatId.toString() == CHAT_ID -> CHAT_ID
+        update.callbackQuery.message.isChannelMessage || update.callbackQuery.message.isSuperGroupMessage -> update.callbackQuery.message.chatId.toString()
         else -> throw IllegalArgumentException("Unknown sourceChatId, update=$update")
     }
     val isOld: Boolean = Instant.ofEpochSecond(update.callbackQuery.message.date.toLong()) < Instant.now().minusDays(7)
@@ -56,11 +51,10 @@ class VoteUpdate(update: Update) : Timestampable() {
 }
 
 abstract class MemeUpdate(
-        open val messageId: Int,
-        open val fileId: String,
-        open val user: User,
-        caption: String?,
-        val file: File = download(fileId)
+    open val messageId: Int,
+    open val fileId: String,
+    open val user: User,
+    caption: String?
 ) : Timestampable() {
 
     val caption: String? = caption?.takeIf { caption ->
@@ -68,8 +62,7 @@ abstract class MemeUpdate(
         !trashCaptionParts.any { lowerCaseCaption.contains(it) }
     }
 
-    val status: MemeStatus = if (caption?.contains("#local") == true) MemeStatus.LOCAL
-    else MemeStatus.MODERATION
+    val status: MemeStatus = if (caption?.contains("#local") == true) MemeStatus.LOCAL else MemeStatus.MODERATION
 
     var isFreshman: Boolean = false
 
@@ -99,32 +92,32 @@ abstract class MemeUpdate(
 }
 
 class UserMemeUpdate(
-        override val messageId: Int,
-        override val fileId: String,
-        override val user: User,
-        caption: String?
+    override val messageId: Int,
+    override val fileId: String,
+    override val user: User,
+    caption: String?
 ) : MemeUpdate(messageId, fileId, user, caption) {
     constructor(update: Update) : this(
-            update.message.messageId,
-            update.message.photo.maxByOrNull { it.fileSize }!!.fileId,
-            update.message.from,
-            update.message.caption?.takeIf { caption ->
-                val lowerCaseCaption = caption.lowercase()
-                !trashCaptionParts.any { lowerCaseCaption.contains(it) }
-            }
+        update.message.messageId,
+        update.message.photo.maxByOrNull { it.fileSize }!!.fileId,
+        update.message.from,
+        update.message.caption?.takeIf { caption ->
+            val lowerCaseCaption = caption.lowercase()
+            !trashCaptionParts.any { lowerCaseCaption.contains(it) }
+        }
     )
 }
 
 class AutoSuggestedMemeUpdate(
-        override val messageId: Int,
-        override val fileId: String,
-        override val user: User,
-        caption: String?
+    override val messageId: Int,
+    override val fileId: String,
+    override val user: User,
+    caption: String?
 ) : MemeUpdate(
-        messageId,
-        fileId,
-        user,
-        caption
+    messageId,
+    fileId,
+    user,
+    caption
 ) {
     constructor(update: AutosuggestionVoteUpdate) : this(update.messageId, update.fileId, update.whoSuggests, null)
 }
@@ -194,11 +187,11 @@ class PrivateVoteUpdate(update: Update) : Timestampable() {
 }
 
 class DistributedModerationVoteUpdate(update: Update) : Timestampable() {
-    val user: User = update.callbackQuery.from
+    val userId: Long = update.callbackQuery.from.id
     val messageId: Int = update.callbackQuery.message.messageId
     val voteValue: DistributedModerationVoteValue = DistributedModerationVoteValue.valueOf(update.callbackQuery.data)
     override fun toString(): String {
-        return "DistributedModerationVoteUpdate(user=$user, messageId=$messageId, voteValue=$voteValue)"
+        return "DistributedModerationVoteUpdate(user=$userId, messageId=$messageId, voteValue=$voteValue)"
     }
 }
 
@@ -214,4 +207,6 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
     override fun toString(): String {
         return "AutosuggestionVoteUpdate(approver=$approverName, whoSuggests=${whoSuggests.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
     }
+
+    fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
 }

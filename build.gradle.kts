@@ -3,8 +3,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 group = "com.chsdngm"
 version = "1.1"
 
-val jupiterVersion = "5.9.0"
-
 repositories {
     mavenCentral()
     maven(url = "https://repo.spring.io/milestone")
@@ -16,9 +14,10 @@ plugins {
     id("org.springframework.boot") version "2.7.4"
     // https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/htmlsingle/#reacting-to-other-plugins.dependency-management
     id("io.spring.dependency-management") version "1.0.14.RELEASE"
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
+    id("org.jetbrains.kotlin.jvm") version "1.8.10"
     // makes all classes open https://kotlinlang.org/docs/all-open-plugin.html#spring-support
-    id("org.jetbrains.kotlin.plugin.spring") version "1.7.10"
+    id("org.jetbrains.kotlin.plugin.spring") version "1.8.10"
+    id("jacoco")
 }
 
 configurations {
@@ -49,30 +48,22 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-//    compileOnly("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
-//    compileOnly("org.jetbrains.kotlin:kotlin-main-kts:$kotlinVersion")
-//    compileOnly("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion")
-
-    // rxjava
-    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
+    implementation("co.elastic.clients:elasticsearch-java:8.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
     // spring
     compileOnly("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.telegram:telegrambots-spring-boot-starter:6.1.0")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.data:spring-data-elasticsearch")
 
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.postgresql:postgresql:42.5.0")
     implementation("com.github.kilianB:JImageHash:3.0.0")
+    implementation("jakarta.json:jakarta.json-api:2.1.1")
 
-//    compileOnly("org.ktorm:ktorm-core:3.3.0")
-//    compileOnly("org.ktorm:ktorm-support-postgresql:3.3.0")
-
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter:$jupiterVersion")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
 }
 
 tasks.bootJar {
@@ -81,11 +72,41 @@ tasks.bootJar {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+
+    testLogging {
+        events("passed")
+    }
+}
+
+//remove when K2 will be okay with spring gradle plugin
+allOpen {
+    annotation("org.springframework.context.annotation.Configuration")
+    annotation("org.springframework.boot.autoconfigure.SpringBootApplication")
+    annotation("org.springframework.stereotype.Repository")
 }
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        // K2 does not support plugins yet, so please remove -Xuse-k2 flag
-        //freeCompilerArgs = listOf("-Xuse-k2")
+        freeCompilerArgs = listOf("-Xuse-k2")
     }
+}
+
+tasks.withType<JacocoReport> {
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.map {
+            fileTree(it).apply {
+                exclude("**/ExtendedCopyOnWriteArrayList**")
+            }
+        }))
+    }
+}
+
+tasks.jacocoTestReport {
+    reports {
+        csv.required.set(true)
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
 }

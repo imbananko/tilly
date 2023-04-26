@@ -1,38 +1,40 @@
 package com.chsdngm.tilly.similarity
 
+import com.chsdngm.tilly.model.dto.*
 import com.google.cloud.spring.vision.CloudVisionTemplate
 import com.google.cloud.vision.v1.Feature.Type
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.RequestOptions
-import org.elasticsearch.client.RestHighLevelClient
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Profile
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.stereotype.Service
 import java.io.File
 
 
+interface ImageTextRecognizer {
+    fun analyze(image: File, fileId: String): ImageTextRecognizerGcp.AnalyzingResults?
+}
+
 @Service
-class ImageTextRecognizer(
+@Profile("local")
+class ImageTextRecognizerLocal: ImageTextRecognizer {
+    override fun analyze(image: File, fileId: String): ImageTextRecognizerGcp.AnalyzingResults? {
+        return ImageTextRecognizerGcp.AnalyzingResults("локальный запуск", "локальный запуск")
+    }
+}
+
+@Service
+@Profile("default")
+class ImageTextRecognizerGcp(
     val cloudVisionTemplate: CloudVisionTemplate,
-    val elasticsearchClient: RestHighLevelClient,
-) {
+): ImageTextRecognizer {
     private val log = LoggerFactory.getLogger(javaClass)
 
     data class AnalyzingResults(
         val words: String?,
         val labels: String?,
-        val fileId: String,
     )
 
-    companion object {
-        private const val TEXT_FIELD_NAME = "raw_text"
-        private const val LABELS_FIELD_NAME = "raw_labels"
-        private const val INDEX_DOCUMENT_TYPE = "_doc"
-        private const val INDEX_NAME = "memes"
-    }
-
-    fun analyzeAndIndex(image: File, fileId: String): AnalyzingResults? {
-        val results = runCatching {
+    override fun analyze(image: File, fileId: String): AnalyzingResults? = runCatching {
             val response = cloudVisionTemplate.analyzeImage(
                 ByteArrayResource(image.readBytes()),
                 Type.TEXT_DETECTION,
@@ -41,31 +43,11 @@ class ImageTextRecognizer(
 
             val words = response.textAnnotationsList.firstOrNull()?.description
             val labels = response.labelAnnotationsList.joinToString(separator = ",") { it.description }
-            AnalyzingResults(words, labels, fileId)
+            AnalyzingResults(words, labels)
 
         }.onSuccess {
             log.info("analyzing results=$it")
         }.onFailure {
             log.error("Failed to analyse with Google Vision API", it)
         }.getOrNull()
-
-        if (results?.words?.isNotEmpty() == true) {
-            val indexRequest =
-                IndexRequest(INDEX_NAME)
-                    .id(results.fileId)
-                    .type(INDEX_DOCUMENT_TYPE)
-                    .source(
-                        TEXT_FIELD_NAME, results.words,
-                        LABELS_FIELD_NAME, results.labels
-                    )
-
-            runCatching {
-                elasticsearchClient.index(indexRequest, RequestOptions.DEFAULT)
-            }.onFailure {
-                log.error("Failed to index to Elasticsearch", it)
-            }
-        }
-
-        return results
-    }
 }

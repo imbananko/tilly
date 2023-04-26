@@ -1,18 +1,21 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
-import java.util.concurrent.ExecutorService
+import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.concurrent.Executors
 
 @Service
-class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
-    AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
+class AutosuggestionVoteHandler(
+    private val memeHandler: MemeHandler,
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
+) : AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: AutosuggestionVoteUpdate) {
@@ -25,14 +28,14 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
     }
 
     private fun approve(update: AutosuggestionVoteUpdate) {
-        val memeUpdate = AutoSuggestedMemeUpdate(update)
+        val memeUpdate = update.toAutoSuggestedMemeUpdate()
         memeHandler.handle(memeUpdate)
 
         EditMessageCaption().apply {
             chatId = update.chatId.toString()
             messageId = update.messageId
             caption = "мем отправлен в общую предложку, если он не дубликат"
-        }.let { TelegramConfig.api.execute(it) }
+        }.let { api.execute(it) }
         log.info("auto suggested meme was approved. update=$update")
     }
 
@@ -41,8 +44,16 @@ class AutosuggestionVoteHandler(private val memeHandler: MemeHandler) :
             chatId = update.chatId.toString()
             messageId = update.messageId
             caption = "мем предан забвению"
-        }.let { TelegramConfig.api.execute(it) }
+        }.let { api.execute(it) }
 
         log.info("auto-suggested meme was declined. update=$update")
     }
+
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasCallbackQuery()
+            && update.callbackQuery.message.chatId.toString() == telegramProperties.montornChatId
+            && AutosuggestionVoteValue.values().map { it.name }.contains(update.callbackQuery.data)
+        ) {
+            AutosuggestionVoteUpdate(update)
+        } else null
 }

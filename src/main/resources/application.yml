@@ -1,10 +1,4 @@
 spring:
-#  datasource:
-#    hikari:
-#      driver-class-name: org.postgresql.Driver
-#      password: tilly
-#      jdbc-url: jdbc:postgresql://localhost:5432/tilly
-#      username: tilly
   datasource:
     driver-class-name: org.postgresql.Driver
     password: tilly
@@ -14,26 +8,22 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
-  cloud:
-    gcp:
-      metrics:
-        enabled: false
-  elasticsearch:
-    rest:
-      uris: elasticsearch:9200
-      connection-timeout: 5s
-      read-timeout: 1s
 
-bot:
-  token: token
-  username: username
+telegram:
+  bot-id: 0
+  bot-token: token
+  bot-username: username
 
-target.chat.id: 0
-target.channel.id: 0
+  target-chat-id: 0
+  target-channel-id: 0
 
-beta.chat.id: -1001401091410
-montorn.chat.id: -1001662205170
+  montorn-chat-id: -1001662205170
+  publishing-enabled: true
+  logs-chat-id: 0
 
 metadata:
   commit.sha: local
   moderation.threshold: 5
+
+elasticsearch:
+  url: elasticsearch

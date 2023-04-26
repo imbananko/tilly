@@ -1,20 +1,14 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHANNEL_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.LOGS_CHAT_ID
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
-import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
-import com.chsdngm.tilly.model.MemeStatus.LOCAL
-import com.chsdngm.tilly.model.MemeUpdate
-import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
-import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.DistributedModerationVoteValue.APPROVE_DISTRIBUTED
 import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTED
-import com.chsdngm.tilly.model.UserStatus
-import com.chsdngm.tilly.model.WeightedModerationType
+import com.chsdngm.tilly.model.MemeStatus.LOCAL
+import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
+import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
 import com.chsdngm.tilly.model.dto.DistributedModerationEvent
 import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
@@ -23,9 +17,14 @@ import com.chsdngm.tilly.repository.DistributedModerationEventDao
 import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
+import com.chsdngm.tilly.similarity.ElasticsearchService
 import com.chsdngm.tilly.similarity.ImageMatcher
 import com.chsdngm.tilly.similarity.ImageTextRecognizer
-import com.chsdngm.tilly.utility.*
+import com.chsdngm.tilly.utility.createMarkup
+import com.chsdngm.tilly.utility.format
+import com.chsdngm.tilly.utility.mention
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage
@@ -34,34 +33,33 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMem
 import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
-import org.telegram.telegrambots.meta.api.objects.InputFile
-import org.telegram.telegrambots.meta.api.objects.Message
-import org.telegram.telegrambots.meta.api.objects.User
+import org.telegram.telegrambots.meta.api.objects.*
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.io.File
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.function.Function
 import kotlin.math.abs
 
-
 @Service
 class MemeHandler(
-        private val telegramUserDao: TelegramUserDao,
-        private val imageMatcher: ImageMatcher,
-        private val imageTextRecognizer: ImageTextRecognizer,
-        private val imageDao: ImageDao,
-        private val memeDao: MemeDao,
-        private val distributedModerationEventDao: DistributedModerationEventDao,
-        private val metricsUtils: MetricsUtils) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
+    private val telegramUserDao: TelegramUserDao,
+    private val imageMatcher: ImageMatcher,
+    private val imageTextRecognizer: ImageTextRecognizer,
+    private val imageDao: ImageDao,
+    private val memeDao: MemeDao,
+    private val distributedModerationEventDao: DistributedModerationEventDao,
+    private val metricsUtils: MetricsUtils,
+    private val api: TelegramApi,
+    private val elasticsearchService: ElasticsearchService,
+    private val telegramProperties: TelegramProperties
+) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    private val distributedModerationExecutor = Executors.newFixedThreadPool(10)
 
     private val moderationRages = mutableListOf<Int>()
     private val random = Random()
@@ -75,10 +73,11 @@ class MemeHandler(
     }
 
     fun handle(update: AutoSuggestedMemeUpdate) {
-        val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
+        val file = api.download(update.fileId)
+        val duplicateFileId = imageMatcher.tryFindDuplicate(file)
         if (duplicateFileId != null) {
             sendDuplicateToLog(
-                update.user.mention(),
+                update.user.mention(telegramProperties.botId),
                 duplicateFileId = update.fileId,
                 originalFileId = duplicateFileId
             )
@@ -86,7 +85,7 @@ class MemeHandler(
         }
 
         val message = SendPhoto().apply {
-            chatId = CHAT_ID
+            chatId = telegramProperties.targetChatId
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
@@ -95,7 +94,7 @@ class MemeHandler(
 
         val meme = memeDao.insert(
             Meme(
-                CHAT_ID.toLong(),
+                telegramProperties.targetChatId.toLong(),
                 message.messageId,
                 update.user.id,
                 update.status,
@@ -106,7 +105,7 @@ class MemeHandler(
         )
 
         log.info("sent for moderation to group chat. meme=$meme")
-        handleImage(update)
+        handleImage(update, file)
 
         log.info("processed meme update=$update")
     }
@@ -120,12 +119,14 @@ class MemeHandler(
         val memeSender = if (foundUser == null) {
             update.isFreshman = true
 
-            telegramUserDao.insert(TelegramUser(
-                update.user.id,
-                update.user.userName,
-                update.user.firstName,
-                update.user.lastName
-            ))
+            telegramUserDao.insert(
+                TelegramUser(
+                    update.user.id,
+                    update.user.userName,
+                    update.user.firstName,
+                    update.user.lastName
+                )
+            )
         } else {
             val updatedUser = foundUser.copy(
                 username = update.user.userName,
@@ -146,7 +147,8 @@ class MemeHandler(
             return
         }
 
-        val duplicateFileId = imageMatcher.tryFindDuplicate(update.file)
+        val file = api.download(update.fileId)
+        val duplicateFileId = imageMatcher.tryFindDuplicate(file)
         if (duplicateFileId != null) {
             handleDuplicate(update, duplicateFileId)
             return
@@ -164,25 +166,38 @@ class MemeHandler(
 
             when (WeightedModerationType.values()[index]) {
                 WeightedModerationType.PRIVATE -> tryPrivateModeration(update, memeSender) || moderateWithGroup(update)
-                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(update, memeSender) || moderateWithGroup(update)
+                WeightedModerationType.DISTRIBUTED -> performDistributedModeration(
+                    update,
+                    memeSender
+                ) || moderateWithGroup(update)
+
                 WeightedModerationType.DEFAULT -> moderateWithGroup(update)
             }
         }
 
-        handleImage(update)
+        handleImage(update, file)
     }
 
-    private fun handleImage(update: MemeUpdate) {
-        val analyzingResults = imageTextRecognizer.analyzeAndIndex(update.file, update.fileId)
+    private fun handleImage(update: MemeUpdate, file: File) = runBlocking {
+        val analyzingResults = imageTextRecognizer.analyze(file, update.fileId)
         val image = Image(
             update.fileId,
-            update.file.readBytes(),
-            hash = imageMatcher.calculateHash(update.file),
+            file.readBytes(),
+            hash = imageMatcher.calculateHash(file),
             rawText = analyzingResults?.words,
             rawLabels = analyzingResults?.labels
         )
 
-        imageDao.insert(image)
+        if (analyzingResults != null) {
+            if (!(analyzingResults.words.isNullOrEmpty() && analyzingResults.labels.isNullOrEmpty())) {
+                elasticsearchService.indexMeme(
+                    update.fileId,
+                    ElasticsearchService.MemeDocument(analyzingResults.words, analyzingResults.labels)
+                )
+            }
+        }
+
+        launch { imageDao.insert(image) }
         imageMatcher.add(image)
     }
 
@@ -190,7 +205,8 @@ class MemeHandler(
         fun getDistributedModerationGroupId(): Int = 1
 
         val distributedModerationGroupId = getDistributedModerationGroupId()
-        val distributedGroupMembers = telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
+        val distributedGroupMembers =
+            telegramUserDao.findAllByDistributedModerationGroupId(distributedModerationGroupId)
 
         if (distributedGroupMembers.any { it.id == update.user.id }) {
             return false
@@ -198,15 +214,15 @@ class MemeHandler(
 
         val senderMessageId = replyToSender(update).messageId
         val meme = memeDao.insert(
-                Meme(
-                        null,
-                        null,
-                        update.user.id,
-                        update.status,
-                        senderMessageId,
-                        update.fileId,
-                        update.caption
-                )
+            Meme(
+                null,
+                null,
+                update.user.id,
+                update.status,
+                senderMessageId,
+                update.fileId,
+                update.caption
+            )
         )
 
         val futures = distributedGroupMembers.map { member ->
@@ -235,10 +251,11 @@ class MemeHandler(
             return false
         }
 
-        val moderationCandidates = telegramUserDao.findTopFiveSendersForLastWeek(
+        val moderationCandidates = runBlocking { telegramUserDao.findTopFiveSendersForLastWeek(
             sender.id,
-            TelegramConfig.BOT_ID,
-            *currentModerators.map { it.id }.toLongArray())
+            telegramProperties.botId,
+            *currentModerators.map { it.id }.toLongArray()
+        )}
 
         if (moderationCandidates.isEmpty()) {
             return false
@@ -253,7 +270,7 @@ class MemeHandler(
                 sendPrivateModerationEventToLog(meme, sender, moderator)
             }
         }.onFailure {
-            logExceptionInBetaChat(it)
+            logExceptionInChat(it)
         }.isSuccess
 
         for (moderator in moderationCandidates) {
@@ -280,13 +297,17 @@ class MemeHandler(
 
             }
 
-            sendDuplicateToLog(update.user.mention(), duplicateFileId = update.fileId, originalFileId = meme.fileId)
+            sendDuplicateToLog(
+                update.user.mention(telegramProperties.botId),
+                duplicateFileId = update.fileId,
+                originalFileId = meme.fileId
+            )
         }
     }
 
     private fun moderateWithGroup(update: MemeUpdate): Boolean {
         SendPhoto().apply {
-            chatId = CHAT_ID
+            chatId = telegramProperties.targetChatId
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
@@ -296,7 +317,7 @@ class MemeHandler(
             val senderMessageId = replyToSender(update).messageId
             val meme = memeDao.insert(
                 Meme(
-                    CHAT_ID.toLong(),
+                    telegramProperties.targetChatId.toLong(),
                     it.messageId,
                     update.user.id,
                     update.status,
@@ -342,13 +363,13 @@ class MemeHandler(
 
         runCatching {
             GetChatMember().apply {
-                chatId = CHAT_ID
+                chatId = telegramProperties.targetChatId
                 userId = update.user.id
             }.let(api::execute)
         }.onSuccess {
 
             if (!it.isFromChat() || it.isMemeManager()) {
-                caption += "\n\nSender: ${it.user.mention()}"
+                caption += "\n\nSender: ${it.user.mention(telegramProperties.botId)}"
             }
         }
 
@@ -361,7 +382,7 @@ class MemeHandler(
 
     private fun forwardMemeFromChannelToUser(meme: Meme, user: User) = ForwardMessage().apply {
         chatId = user.id.toString()
-        fromChatId = CHANNEL_ID
+        fromChatId = telegramProperties.targetChannelId
         messageId = meme.channelMessageId!!
         disableNotification = true
     }.let { api.execute(it) }
@@ -396,7 +417,7 @@ class MemeHandler(
 
     private fun sendDuplicateToLog(username: String, duplicateFileId: String, originalFileId: String) =
         SendMediaGroup().apply {
-            chatId = LOGS_CHAT_ID
+            chatId = telegramProperties.logsChatId
             medias = listOf(InputMediaPhoto().apply {
                 media = duplicateFileId
                 caption = "дубликат, отправленный $username"
@@ -413,7 +434,7 @@ class MemeHandler(
         memeSender: TelegramUser,
         moderator: TelegramUser,
     ) = SendPhoto().apply {
-        chatId = LOGS_CHAT_ID
+        chatId = telegramProperties.logsChatId
         photo = InputFile(meme.fileId)
         caption = "мем авторства ${memeSender.mention()} отправлен на личную модерацию к ${moderator.mention()}"
         parseMode = ParseMode.HTML
@@ -428,48 +449,72 @@ class MemeHandler(
     )
 
     fun createDistributedModerationMarkup() = InlineKeyboardMarkup(
-            listOf(listOf(
-                    InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name },
-                    InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
-            )
+        listOf(
+            listOf(
+                InlineKeyboardButton(APPROVE_DISTRIBUTED.emoji).also { it.callbackData = APPROVE_DISTRIBUTED.name },
+                InlineKeyboardButton(DECLINE_DISTRIBUTED.emoji).also { it.callbackData = DECLINE_DISTRIBUTED.name })
+        )
     )
 
-    private fun replyToBannedUser(update: MemeUpdate): Message = SendMessage().apply {
-        chatId = update.user.id.toString()
-        replyToMessageId = update.messageId
-        text = "Мем на привитой модерации"
-    }.let { api.execute(it) }
+    private fun replyToBannedUser(update: MemeUpdate): Message =
+        SendMessage().apply {
+            chatId = update.user.id.toString()
+            replyToMessageId = update.messageId
+            text = "Мем на привитой модерации"
+        }.let { api.execute(it) }
 
     private fun sendBannedEventToLog(update: MemeUpdate, telegramUser: TelegramUser) =
         SendPhoto().apply {
-            chatId = LOGS_CHAT_ID
+            chatId = telegramProperties.logsChatId
             photo = InputFile(update.fileId)
             caption = "мем ${telegramUser.mention()} отправлен на личную модерацию в НИКУДА"
             parseMode = ParseMode.HTML
             disableNotification = true
 
-        }.let { api.execute(it) }
+        }.let { api.executeAsync(it) }
 
-    private fun sendMemeToDistributedModerator(memeMessage: SendPhoto,
-                                               attemptNum: Int = 1,
-                                               executor: Executor = distributedModerationExecutor): CompletableFuture<Message?> =
-            if (attemptNum > 3) CompletableFuture.completedFuture(null)
-            else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
-                    .thenApply { CompletableFuture.completedFuture(it) }
-                    .exceptionally { ex ->
-                        logExceptionInBetaChat(ex)
-                        val delayedExecutor = CompletableFuture.delayedExecutor(5L * attemptNum, TimeUnit.SECONDS)
-                        sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
-                    }
-                    .thenCompose(Function.identity())
+    private fun sendMemeToDistributedModerator(
+        memeMessage: SendPhoto,
+        attemptNum: Int = 1,
+        executor: Executor = ForkJoinPool.commonPool()
+    ): CompletableFuture<Message?> =
+        if (attemptNum > 3) CompletableFuture.completedFuture(null)
+        else CompletableFuture.supplyAsync({ api.execute(memeMessage) }, executor)
+            .thenApply { CompletableFuture.completedFuture(it) }
+            .exceptionally { ex ->
+                logExceptionInChat(ex)
+                val delayedExecutor = CompletableFuture.delayedExecutor(5L * attemptNum, TimeUnit.SECONDS)
+                sendMemeToDistributedModerator(memeMessage, attemptNum + 1, delayedExecutor)
+            }
+            .thenCompose(Function.identity())
 
-    private fun sendDistributedModerationEventToLog(meme: Meme,
-                                                    memeSender: TelegramUser,
-                                                    moderators: List<TelegramUser>) = SendPhoto().apply {
-        chatId = LOGS_CHAT_ID
+    private fun sendDistributedModerationEventToLog(
+        meme: Meme,
+        memeSender: TelegramUser,
+        moderators: List<TelegramUser>
+    ) = SendPhoto().apply {
+        chatId = telegramProperties.logsChatId
         photo = InputFile(meme.fileId)
-        caption = "мем авторства ${memeSender.mention()} отправлен на распределенную модерацию к ${moderators.map { it.mention() }}"
+        caption =
+            "мем авторства ${memeSender.mention()} отправлен на распределенную модерацию к ${moderators.map { it.mention() }}"
         parseMode = ParseMode.HTML
         disableNotification = true
     }.let { api.execute(it) }
+
+    fun logExceptionInChat(ex: Throwable): Message =
+        SendMessage().apply {
+            chatId = telegramProperties.logsChatId
+            text = ex.format()
+            parseMode = ParseMode.HTML
+        }.let { method -> api.execute(method) }
+
+    private fun ChatMember.isMemeManager() = this.user.isBot && this.user.id == telegramProperties.botId
+
+    private fun ChatMember.isFromChat(): Boolean =
+        setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)
+
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasMessage() && update.message.chat.isUserChat && update.message.hasPhoto()) {
+            UserMemeUpdate(update)
+        } else null
 }

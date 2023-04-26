@@ -1,8 +1,7 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.config.TelegramConfig
-import com.chsdngm.tilly.config.TelegramConfig.Companion.BOT_USERNAME
-import com.chsdngm.tilly.config.TelegramConfig.Companion.api
+import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.CommandUpdate
 import com.chsdngm.tilly.model.CommandUpdate.Command
@@ -11,15 +10,14 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.utility.minusDays
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.Update
 import java.time.Instant
-import java.util.concurrent.ExecutorService
 
 @Service
 class CommandHandler(
@@ -27,9 +25,10 @@ class CommandHandler(
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils,
-    forkJoinPool: ExecutorService
+    private val api: TelegramApi,
+    private val telegramProperties: TelegramProperties
 ) :
-    AbstractHandler<CommandUpdate>(forkJoinPool) {
+    AbstractHandler<CommandUpdate>() {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun handleSync(update: CommandUpdate) {
@@ -37,7 +36,7 @@ class CommandHandler(
             sendStats(update)
         } else if (update.value == Command.HELP || update.value == Command.START) {
             sendInfoMessage(update)
-        } else if (update.value == Command.CONFIG && update.chatId == TelegramConfig.BETA_CHAT_ID) {
+        } else if (update.value == Command.CONFIG && update.chatId == telegramProperties.logsChatId) {
             changeConfig(update)
         } else {
             log.warn("unknown command from update=$update")
@@ -52,12 +51,18 @@ class CommandHandler(
 
     private fun sendStats(update: CommandUpdate) = runBlocking {
 
-        val memesByUserAll = withContext(Dispatchers.IO) { memeDao.findAllBySenderId(update.senderId.toLong()) }
-        val votesByUserAll = withContext(Dispatchers.IO) { voteDao.findAllByVoterId(update.senderId.toLong()) }
+        val memesDeferred = async { memeDao.findAllBySenderId(update.senderId.toLong()) }
+        val votesDeferred = async { voteDao.findAllByVoterId(update.senderId.toLong()) }
 
-        if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
+        val memesByUserAll = memesDeferred.await()
+        val votesByUserAll = votesDeferred.await()
+
+        val statsMessageText = if (memesByUserAll.isEmpty() && votesByUserAll.isEmpty()) {
             "Статистика недоступна. Отправляй и оценивай мемы!"
         } else {
+            val rankWeek = async { telegramUserDao.findUserRank(update.senderId, 7) }
+            val rankTotal = async { telegramUserDao.findUserRank(update.senderId) }
+
             val memesByUserWeek = memesByUserAll.filter { it.key.created > Instant.now().minusDays(7) }
             val votesByUserWeek = votesByUserAll.filter { it.created > Instant.now().minusDays(7) }
 
@@ -77,7 +82,7 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserWeek.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserWeek[VoteValue.UP] ?: 0} · ${likeDislikeByUserWeek[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк за неделю: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId, 7) } ?: "NaN"}</b>
+          ${if (rankWeek.await() == null) "" else "Ранк за неделю: <b>#${rankWeek.await()}</b>"}
           
           <u><b>Статистика за все время:</b></u>
           
@@ -88,21 +93,20 @@ class CommandHandler(
           Мемов оценено: <b>${votesByUserAll.size}</b>
           Поставлено: <b>${VoteValue.UP.emoji} ${likeDislikeByUserAll[VoteValue.UP] ?: 0} · ${likeDislikeByUserAll[VoteValue.DOWN] ?: 0} ${VoteValue.DOWN.emoji}</b>
           
-          Ранк: <b>#${withContext(Dispatchers.IO) { telegramUserDao.findUserRank(update.senderId) } ?: "NaN"}</b>
-          
+          ${if (rankTotal.await() == null) "" else "Ранк: <b>#${rankTotal.await()}</b>"}
           """.trimIndent()
         }
-    }.let { statsMessageText ->
+
         SendMessage().apply {
             parseMode = ParseMode.HTML
             chatId = update.senderId
             text = statsMessageText
-        }.let { api.execute(it) }
+        }.let { api.executeSuspended(it) }
     }
 
     fun sendInfoMessage(update: CommandUpdate) {
         val infoText = """
-      Привет, я $BOT_USERNAME. 
+      Привет, я ${telegramProperties.botUsername}. 
       
       Чат со мной - это место для твоих лучших мемов, которыми охота поделиться.
       Сейчас же отправляй мне самый крутой мем, и, если он пройдёт модерацию, то попадёт на канал <a href="https://t.me/chsdngm/">че с деньгами</a>. 
@@ -127,13 +131,15 @@ class CommandHandler(
     fun changeConfig(update: CommandUpdate) {
         val message = when {
             update.text.contains("enable publishing") -> {
-                TelegramConfig.publishEnabled = true
+                telegramProperties.publishingEnabled = true
                 "Публикация мемов включена"
             }
+
             update.text.contains("disable publishing") -> {
-                TelegramConfig.publishEnabled = false
+                telegramProperties.publishingEnabled = false
                 "Публикация мемов выключена"
             }
+
             else ->
                 """
           Не удается прочитать сообщение. Правильные команды выглядят так:
@@ -143,10 +149,18 @@ class CommandHandler(
         }
 
         SendMessage().apply {
-            chatId = TelegramConfig.BETA_CHAT_ID
+            chatId = telegramProperties.logsChatId
             parseMode = ParseMode.HTML
             replyToMessageId = update.messageId
             text = message
         }.let { api.execute(it) }
     }
+
+    override fun retrieveSubtype(update: Update) =
+        if (update.hasMessage() &&
+            (update.message.chat.isUserChat || update.message.chatId.toString() == telegramProperties.logsChatId) &&
+            update.message.isCommand
+        ) {
+            CommandUpdate(update)
+        } else null
 }
