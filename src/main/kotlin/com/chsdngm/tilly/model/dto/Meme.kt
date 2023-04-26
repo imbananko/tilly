@@ -15,7 +15,7 @@ data class Meme(
     val fileId: String,
     val caption: String?,
     var channelMessageId: Int? = null,
-    val created: Instant = Instant.now(),
+    var created: Instant = Instant.now(),
     val id: Int = 0,
 )
 

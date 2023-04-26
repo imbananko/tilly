@@ -21,6 +21,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCa
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
+import java.time.Instant
 
 @Service
 class PrivateModerationVoteHandler(
@@ -53,7 +54,12 @@ class PrivateModerationVoteHandler(
 
         launch { api.executeSuspended(editMessageCaption) }
 
-        meme.status = MemeStatus.SCHEDULED
+        meme.apply {
+            status = MemeStatus.SCHEDULED
+            //TODO: add published_at column and use it for defining meme of the week
+            created = Instant.now()
+        }
+
         launch { memeDao.update(meme) }
         voteDao.insert(Vote(meme.id, update.user.id, update.user.id, VoteValue.UP))
 
