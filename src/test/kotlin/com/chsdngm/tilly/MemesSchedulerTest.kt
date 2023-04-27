@@ -9,7 +9,7 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
-import com.chsdngm.tilly.schedulers.Schedulers
+import com.chsdngm.tilly.schedulers.MemesSchedulers
 import com.chsdngm.tilly.similarity.ElasticsearchService
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -22,7 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
-class SchedulersTest {
+class MemesSchedulerTest {
     private val telegramUserDao = mock<TelegramUserDao>()
     private val memeDao = mock<MemeDao>()
     private val api = mock<TelegramApi>()
@@ -44,14 +44,14 @@ class SchedulersTest {
         "hui"
     )
 
-    private val schedulers =
-        Schedulers(memeDao, telegramUserDao, memeLogDao, elasticsearchService, api, telegramProperties, metadataProperties)
+    private val memesSchedulers =
+        MemesSchedulers(memeDao, telegramUserDao, memeLogDao, api, telegramProperties, metadataProperties)
 
     @Test
     fun shouldNotPublishAnythingWhenPublishingMemesDisabled() {
         telegramProperties.publishingEnabled = false
 
-        schedulers.publishMeme()
+        memesSchedulers.publishMeme()
 
         verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
     }
@@ -64,7 +64,7 @@ class SchedulersTest {
             onBlocking { it.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }.thenReturn(mapOf())
         }
 
-        schedulers.publishMeme()
+        memesSchedulers.publishMeme()
 
         verifyBlocking(memeDao) {
             findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
@@ -120,7 +120,7 @@ class SchedulersTest {
             onBlocking { it.executeSuspended(sendPhoto) }.thenReturn(message)
         }
 
-        schedulers.publishMeme()
+        memesSchedulers.publishMeme()
 
         verifyBlocking(api) { executeSuspended(sendPhoto) }
         verifyBlocking(api) { updateStatsInSenderChat(meme, votes) }
@@ -141,7 +141,7 @@ class SchedulersTest {
     @Test
     fun shouldNotScheduleAnythingWhenThereNoMemesForScheduling() {
         whenever(memeDao.scheduleMemes()).thenReturn(listOf())
-        schedulers.scheduleMemesIfAny()
+        memesSchedulers.scheduleMemesIfAny()
 
         verify(memeDao).scheduleMemes()
         verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
@@ -170,7 +170,7 @@ class SchedulersTest {
             onBlocking { executeSuspended(setChatTitle) }.thenReturn(true)
         }
 
-        schedulers.scheduleMemesIfAny()
+        memesSchedulers.scheduleMemesIfAny()
 
         verify(memeDao).scheduleMemes()
         verifyBlocking(memeDao) { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }

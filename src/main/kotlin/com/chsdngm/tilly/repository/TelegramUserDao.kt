@@ -85,13 +85,13 @@ class TelegramUserDao(val database: Database) {
         sql.execAndMap { rs -> rs.getLong(1) }.singleOrNull()
     }
 
-    fun findUsersWithRecentlyPrivateModerationAssignment(): List<TelegramUser> = transaction {
+    suspend fun findUsersWithRecentlyPrivateModerationAssignment(): List<TelegramUser> = newSuspendedTransaction {
         TelegramUsers
             .select { TelegramUsers.privateModerationLastAssignment greater Instant.now().minusDays(1) }
             .toTelegramUsers()
     }
 
-    fun findAllByDistributedModerationGroupId(distributedModerationGroupId: Int): List<TelegramUser> = transaction {
+    suspend fun findAllByDistributedModerationGroupId(distributedModerationGroupId: Int): List<TelegramUser> = newSuspendedTransaction {
         TelegramUsers
                 .select { TelegramUsers.distributedModerationGroupId eq distributedModerationGroupId}
                 .toTelegramUsers()
