@@ -78,6 +78,7 @@ final class Schedulers(
 
             meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
             meme.status = MemeStatus.PUBLISHED
+            meme.published = Instant.now()
 
             memeDao.update(meme)
             launch { api.updateStatsInSenderChat(meme, votes) }

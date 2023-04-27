@@ -17,6 +17,7 @@ data class Meme(
     var channelMessageId: Int? = null,
     val created: Instant = Instant.now(),
     val id: Int = 0,
+    var published: Instant? = null
 )
 
 fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<Number> = statement.also {
@@ -29,6 +30,7 @@ fun Meme.toInsertStatement(statement: InsertStatement<Number>): InsertStatement<
     it[Memes.senderId] = this.senderId
     it[Memes.moderationChatMessageId] = this.moderationChatMessageId
     it[Memes.created] = this.created
+    it[Memes.published] = this.published
 }
 
 fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statement.also {
@@ -36,6 +38,7 @@ fun Meme.toUpdateStatement(statement: UpdateStatement): UpdateStatement = statem
     it[Memes.channelMessageId] = this.channelMessageId
     it[Memes.moderationChatId] = this.moderationChatId
     it[Memes.moderationChatMessageId] = this.moderationChatMessageId
+    it[Memes.published] = this.published
 }
 
 fun ResultRow.toMeme(): Meme? {
@@ -53,7 +56,8 @@ fun ResultRow.toMeme(): Meme? {
         fileId = this[Memes.fileId],
         privateReplyMessageId = this[Memes.privateReplyMessageId],
         senderId = this[Memes.senderId],
-        status = this[Memes.status]
+        status = this[Memes.status],
+        published = this[Memes.published]
     )
 }
 

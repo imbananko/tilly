@@ -65,7 +65,7 @@ class MemeDao(
                 select ${Memes.allColumns} 
                 from meme    
                     left join vote v on id = v.meme_id where channel_message_id is not null    
-                    and meme.created > current_timestamp - interval '7 days' 
+                    and meme.published > current_timestamp - interval '7 days' 
                 group by id 
                 order by count(value) filter (where value = 'UP') - count(value) filter (where value = 'DOWN') desc 
                 limit 1;

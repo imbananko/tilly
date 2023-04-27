@@ -20,6 +20,7 @@ object Memes : IntIdTable("meme", "id") {
     val caption = text("caption").nullable()
     val channelMessageId = integer("channel_message_id").nullable()
     val created = timestamp("created")
+    val published = timestamp("published").nullable()
 }
 
 object MemesLogs : Table("meme_log") {
