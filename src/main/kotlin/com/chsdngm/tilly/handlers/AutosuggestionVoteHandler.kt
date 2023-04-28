@@ -4,7 +4,6 @@ import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
