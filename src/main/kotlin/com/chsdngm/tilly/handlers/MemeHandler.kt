@@ -72,7 +72,7 @@ class MemeHandler(
         }
     }
 
-    fun handle(update: AutoSuggestedMemeUpdate) = runBlocking {
+    suspend fun handle(update: AutoSuggestedMemeUpdate) {
         val file = api.download(update.fileId)
         val duplicateFileId = imageMatcher.tryFindDuplicate(file)
         if (duplicateFileId != null) {
@@ -81,7 +81,7 @@ class MemeHandler(
                 duplicateFileId = update.fileId,
                 originalFileId = duplicateFileId
             )
-            return@runBlocking
+            return
         }
 
         val message = SendPhoto().apply {

@@ -5,6 +5,7 @@ import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import org.mockito.kotlin.mock
@@ -27,7 +28,7 @@ class AutosuggestionVoteHandlerTest {
     private val autosuggestionVoteHandler = AutosuggestionVoteHandler(memeHandler, api, telegramProperties)
 
     @Test
-    fun shouldHandleByMemeHandlerOnPositiveAutosuggestionDecision() {
+    fun shouldHandleByMemeHandlerOnPositiveAutosuggestionDecision() = runBlocking {
         val memeUpdate = mock(AutoSuggestedMemeUpdate::class.java)
         val update = mock<AutosuggestionVoteUpdate> {
             on(it.whoSuggests).thenReturn(mock<User>())
@@ -50,7 +51,7 @@ class AutosuggestionVoteHandlerTest {
         verify(memeHandler).handle(memeUpdate)
         verify(update).chatId
         verify(update).messageId
-        verify(api).execute(editMessageCaptionMethod)
+        verify(api).executeSuspended(editMessageCaptionMethod)
         verifyNoMoreInteractions(memeHandler, api, update)
     }
 

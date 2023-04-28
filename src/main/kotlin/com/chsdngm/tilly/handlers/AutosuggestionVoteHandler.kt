@@ -4,6 +4,8 @@ import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.AutosuggestionVoteUpdate
 import com.chsdngm.tilly.model.AutosuggestionVoteValue
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
@@ -18,7 +20,7 @@ class AutosuggestionVoteHandler(
 ) : AbstractHandler<AutosuggestionVoteUpdate>(Executors.newSingleThreadExecutor()) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun handleSync(update: AutosuggestionVoteUpdate) {
+    override fun handleSync(update: AutosuggestionVoteUpdate) = runBlocking {
         when (update.voteValue) {
             AutosuggestionVoteValue.APPROVE_SUGGESTION -> approve(update)
             AutosuggestionVoteValue.DECLINE_SUGGESTION -> decline(update)
@@ -27,7 +29,7 @@ class AutosuggestionVoteHandler(
         log.info("processed autosuggestion vote update=$update")
     }
 
-    private fun approve(update: AutosuggestionVoteUpdate) {
+    private suspend fun approve(update: AutosuggestionVoteUpdate) {
         val memeUpdate = update.toAutoSuggestedMemeUpdate()
         memeHandler.handle(memeUpdate)
 
@@ -35,11 +37,11 @@ class AutosuggestionVoteHandler(
             chatId = update.chatId.toString()
             messageId = update.messageId
             caption = "мем отправлен в общую предложку, если он не дубликат"
-        }.let { api.execute(it) }
+        }.let { api.executeSuspended(it) }
         log.info("auto suggested meme was approved. update=$update")
     }
 
-    private fun decline(update: AutosuggestionVoteUpdate) {
+    private suspend fun decline(update: AutosuggestionVoteUpdate) {
         EditMessageCaption().apply {
             chatId = update.chatId.toString()
             messageId = update.messageId
