@@ -9,26 +9,18 @@ import com.chsdngm.tilly.model.DistributedModerationVoteValue.DECLINE_DISTRIBUTE
 import com.chsdngm.tilly.model.MemeStatus.LOCAL
 import com.chsdngm.tilly.model.PrivateVoteValue.APPROVE
 import com.chsdngm.tilly.model.PrivateVoteValue.DECLINE
-import com.chsdngm.tilly.model.UserStatus
-import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.model.WeightedModerationType
 import com.chsdngm.tilly.model.dto.DistributedModerationEvent
-import com.chsdngm.tilly.model.dto.Image
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.DistributedModerationEventDao
-import com.chsdngm.tilly.repository.ImageDao
 import com.chsdngm.tilly.repository.MemeDao
-import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.repository.TelegramUserDao
-import com.chsdngm.tilly.similarity.ElasticsearchService
-import com.chsdngm.tilly.similarity.ImageMatcher
-import com.chsdngm.tilly.similarity.ImageTextRecognizer
+import com.chsdngm.tilly.repository.VoteDao
+import com.chsdngm.tilly.similarity.ImageService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -43,7 +35,6 @@ import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.media.InputMediaPhoto
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
-import java.io.File
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.*
@@ -53,15 +44,12 @@ import kotlin.math.abs
 @Service
 class MemeHandler(
     private val telegramUserDao: TelegramUserDao,
-    private val imageMatcher: ImageMatcher,
-    private val imageTextRecognizer: ImageTextRecognizer,
-    private val imageDao: ImageDao,
     private val memeDao: MemeDao,
     private val voteDao: VoteDao,
     private val distributedModerationEventDao: DistributedModerationEventDao,
     private val metricsUtils: MetricsUtils,
     private val api: TelegramApi,
-    private val elasticsearchService: ElasticsearchService,
+    private val imageService: ImageService,
     private val telegramProperties: TelegramProperties
 ) : AbstractHandler<MemeUpdate>(Executors.newSingleThreadExecutor()) {
 
@@ -80,7 +68,7 @@ class MemeHandler(
 
     fun handle(update: AutoSuggestedMemeUpdate) = runBlocking {
         val file = api.download(update.fileId)
-        val duplicateFileId = imageMatcher.tryFindDuplicate(file)
+        val duplicateFileId = imageService.tryFindDuplicate(file)
         if (duplicateFileId != null) {
             sendDuplicateToLog(
                 update.user.mention(telegramProperties.botId),
@@ -91,11 +79,11 @@ class MemeHandler(
         }
 
         val vote = Vote(
-                memeId = 0, // will be set below
-                update.approver.id,
-                telegramProperties.targetChatId.toLong(),
-                VoteValue.UP,
-                created = Instant.ofEpochMilli(update.createdAt)
+            memeId = 0, // will be set below
+            update.approver.id,
+            telegramProperties.targetChatId.toLong(),
+            VoteValue.UP,
+            created = Instant.ofEpochMilli(update.createdAt)
         )
 
         val message = SendPhoto().apply {
@@ -120,7 +108,7 @@ class MemeHandler(
         voteDao.insert(vote.copy(memeId = meme.id))
 
         log.info("sent for moderation to group chat. meme=$meme")
-        handleImage(update, file)
+        imageService.handleImage(update, file)
 
         log.info("processed meme update=$update")
     }
@@ -163,7 +151,7 @@ class MemeHandler(
         }
 
         val file = api.download(update.fileId)
-        val duplicateFileId = imageMatcher.tryFindDuplicate(file)
+        val duplicateFileId = imageService.tryFindDuplicate(file)
         if (duplicateFileId != null) {
             handleDuplicate(update, duplicateFileId)
             return@runBlocking
@@ -190,30 +178,7 @@ class MemeHandler(
             }
         }
 
-        handleImage(update, file)
-    }
-
-    private suspend fun handleImage(update: MemeUpdate, file: File) {
-        val analyzingResults = imageTextRecognizer.analyze(file, update.fileId)
-        val image = Image(
-            update.fileId,
-            file.readBytes(),
-            hash = imageMatcher.calculateHash(file),
-            rawText = analyzingResults?.words,
-            rawLabels = analyzingResults?.labels
-        )
-
-        if (analyzingResults != null) {
-            if (!(analyzingResults.words.isNullOrEmpty() && analyzingResults.labels.isNullOrEmpty())) {
-                elasticsearchService.indexMeme(
-                    update.fileId,
-                    ElasticsearchService.MemeDocument(analyzingResults.words, analyzingResults.labels)
-                )
-            }
-        }
-
-        imageDao.insert(image)
-        imageMatcher.add(image)
+        imageService.handleImage(update, file)
     }
 
     private suspend fun performDistributedModeration(update: MemeUpdate, sender: TelegramUser): Boolean = runCatching {
@@ -266,11 +231,13 @@ class MemeHandler(
             return false
         }
 
-        val moderationCandidates = runBlocking { telegramUserDao.findTopFiveSendersForLastWeek(
-            sender.id,
-            telegramProperties.botId,
-            *currentModerators.map { it.id }.toLongArray()
-        )}
+        val moderationCandidates = runBlocking {
+            telegramUserDao.findTopFiveSendersForLastWeek(
+                sender.id,
+                telegramProperties.botId,
+                *currentModerators.map { it.id }.toLongArray()
+            )
+        }
 
         if (moderationCandidates.isEmpty()) {
             return false
@@ -392,7 +359,7 @@ class MemeHandler(
             caption += "\n\n#freshman"
         }
 
-        return caption
+        return caption.trim()
     }
 
     private fun forwardMemeFromChannelToUser(meme: Meme, user: User) = ForwardMessage().apply {

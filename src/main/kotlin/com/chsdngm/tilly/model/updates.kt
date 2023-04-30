@@ -113,7 +113,7 @@ class AutoSuggestedMemeUpdate(
     override val fileId: String,
     override val user: User,
     caption: String?,
-        val approver: User
+    val approver: User
 ) : MemeUpdate(
     messageId,
     fileId,
@@ -205,7 +205,7 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
     val voteValue: AutosuggestionVoteValue = AutosuggestionVoteValue.valueOf(update.callbackQuery.data)
 
     override fun toString(): String {
-        return "AutosuggestionVoteUpdate(approver=${approver.mention()}, whoSuggests=${whoSuggests.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
+        return "AutosuggestionVoteUpdate(approver=${approver.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
     }
 
     fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
