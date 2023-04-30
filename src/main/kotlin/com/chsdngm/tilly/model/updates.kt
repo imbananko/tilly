@@ -112,14 +112,15 @@ class AutoSuggestedMemeUpdate(
     override val messageId: Int,
     override val fileId: String,
     override val user: User,
-    caption: String?
+    caption: String?,
+    val approver: User
 ) : MemeUpdate(
     messageId,
     fileId,
     user,
     caption
 ) {
-    constructor(update: AutosuggestionVoteUpdate) : this(update.messageId, update.fileId, update.whoSuggests, null)
+    constructor(update: AutosuggestionVoteUpdate) : this(update.messageId, update.fileId, update.whoSuggests, null, update.approver)
 }
 
 class CommandUpdate(update: Update) : Timestampable() {
@@ -196,8 +197,7 @@ class DistributedModerationVoteUpdate(update: Update) : Timestampable() {
 }
 
 class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
-    private val approverName: String = update.callbackQuery.from.mention()
-
+    val approver: User = update.callbackQuery.from
     val whoSuggests: User = update.callbackQuery.message.from
     val fileId: String = update.callbackQuery.message.photo.maxByOrNull { it.fileSize }!!.fileId
     val chatId: Long = update.callbackQuery.message.chatId
@@ -205,7 +205,7 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
     val voteValue: AutosuggestionVoteValue = AutosuggestionVoteValue.valueOf(update.callbackQuery.data)
 
     override fun toString(): String {
-        return "AutosuggestionVoteUpdate(approver=$approverName, whoSuggests=${whoSuggests.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
+        return "AutosuggestionVoteUpdate(approver=${approver.mention()}, groupId=$chatId, messageId=$messageId, voteValue=$voteValue)"
     }
 
     fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
