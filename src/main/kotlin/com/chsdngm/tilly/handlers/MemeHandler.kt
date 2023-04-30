@@ -21,6 +21,7 @@ import com.chsdngm.tilly.similarity.ImageService
 import com.chsdngm.tilly.utility.createMarkup
 import com.chsdngm.tilly.utility.format
 import com.chsdngm.tilly.utility.mention
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -89,10 +90,10 @@ class MemeHandler(
         val message = SendPhoto().apply {
             chatId = telegramProperties.targetChatId
             photo = InputFile(update.fileId)
-            caption = runCatching { resolveCaption(update) }.getOrNull()
+            caption = "Sender: montorn"
             parseMode = ParseMode.HTML
             replyMarkup = createMarkup(listOf(vote))
-        }.let(api::execute)
+        }.let { api.executeSuspended(it) }
 
         val meme = memeDao.insert(
             Meme(
@@ -102,13 +103,15 @@ class MemeHandler(
                 update.status,
                 null,
                 update.fileId,
-                update.caption
+                update.caption,
+                created = Instant.ofEpochMilli(update.createdAt)
             )
         )
-        voteDao.insert(vote.copy(memeId = meme.id))
+
+        launch { voteDao.insert(vote.copy(memeId = meme.id)) }
 
         log.info("sent for moderation to group chat. meme=$meme")
-        imageService.handleImage(update, file)
+        launch { imageService.handleImage(update, file) }
 
         log.info("processed meme update=$update")
     }
@@ -264,7 +267,7 @@ class MemeHandler(
         return false
     }
 
-    private fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
+    private suspend fun handleDuplicate(update: MemeUpdate, duplicateFileId: String) {
         sendSorryText(update)
 
         memeDao.findByFileId(duplicateFileId)?.also { meme ->
@@ -350,7 +353,7 @@ class MemeHandler(
             }.let(api::execute)
         }.onSuccess {
 
-            if (!it.isFromChat() || it.isMemeManager()) {
+            if (!it.isFromChat()) {
                 caption += "\n\nSender: ${it.user.mention(telegramProperties.botId)}"
             }
         }
@@ -397,7 +400,7 @@ class MemeHandler(
         text = "мем на приватной модерации"
     }.let { api.execute(it) }
 
-    private fun sendDuplicateToLog(username: String, duplicateFileId: String, originalFileId: String) =
+    private suspend fun sendDuplicateToLog(username: String, duplicateFileId: String, originalFileId: String) =
         SendMediaGroup().apply {
             chatId = telegramProperties.logsChatId
             medias = listOf(InputMediaPhoto().apply {
@@ -409,7 +412,7 @@ class MemeHandler(
                 caption = "оригинал"
             })
             disableNotification = true
-        }.let { api.execute(it) }
+        }.let { api.executeSuspended(it) }
 
     private fun sendPrivateModerationEventToLog(
         meme: Meme,
@@ -489,8 +492,6 @@ class MemeHandler(
             text = ex.format()
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
-
-    private fun ChatMember.isMemeManager() = this.user.isBot && this.user.id == telegramProperties.botId
 
     private fun ChatMember.isFromChat(): Boolean =
         setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)
