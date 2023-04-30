@@ -3,10 +3,7 @@ package com.chsdngm.tilly.handlers
 import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
-import com.chsdngm.tilly.model.AutoSuggestedMemeUpdate
-import com.chsdngm.tilly.model.MemeUpdate
-import com.chsdngm.tilly.model.UserStatus
-import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.*
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.TelegramUser
 import com.chsdngm.tilly.model.dto.Vote
@@ -22,21 +19,15 @@ import org.mockito.Mockito.verify
 import org.mockito.kotlin.*
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.telegram.telegrambots.meta.api.methods.ParseMode
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.objects.InputFile
-import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.Message
-import org.telegram.telegrambots.meta.api.objects.User
-import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.io.File
 import java.time.Instant
 
-
-//TODO: work in progress...
 class MemeHandlerTest {
     private val telegramUserDao = mock<TelegramUserDao>()
     private val memeDao = mock<MemeDao>()
@@ -53,7 +44,7 @@ class MemeHandlerTest {
         "botToken",
         "botUsername",
         "logsChatId",
-        777
+        888
     )
 
     private val memeHandler = MemeHandler(
@@ -83,7 +74,10 @@ class MemeHandlerTest {
         whenever(api.execute(any<SendMessage>())).thenReturn(mock())
         val file = File.createTempFile("photo-", "${Thread.currentThread().id}")
         file.deleteOnExit()
-        whenever(api.download("random_file_id")).thenReturn(file)
+
+        api.stub {
+            onBlocking { it.download("random_file_id") }.thenReturn(file)
+        }
         whenever(imageService.tryFindDuplicate(file)).thenReturn(null)
 
         val message = mock<Message> { on(it.messageId).thenReturn(0) }
@@ -95,7 +89,6 @@ class MemeHandlerTest {
             )
             onBlocking { findUsersWithRecentlyPrivateModerationAssignment() }.thenReturn((0..5).map { mock() })
         }
-
 
         memeHandler.handleSync(update)
         verify(telegramUserDao).findById(111)
@@ -116,6 +109,7 @@ class MemeHandlerTest {
             on(it.user.userName).thenReturn("test_user")
             on(it.messageId).thenReturn(222)
             on(it.fileId).thenReturn("random_file_id")
+            on(it.createdAt).thenReturn(12345678)
         }
 
         whenever(telegramUserDao.findById(111)).thenReturn(
@@ -158,17 +152,20 @@ class MemeHandlerTest {
         val approverId = 999L
 
         val autoSuggestedMemeUpdate: AutoSuggestedMemeUpdate = mock(defaultAnswer = RETURNS_DEEP_STUBS) {
-            on(it.user.id).thenReturn(telegramProperties.botId)
+            on(it.user.id).thenReturn(888)
             on(it.user.userName).thenReturn("tilly_bot_user")
             on(it.messageId).thenReturn(222)
             on(it.fileId).thenReturn("random_file_id")
             on(it.approver.id).thenReturn(approverId)
+            on(it.status).thenReturn(MemeStatus.MODERATION)
         }
 
         val file = File.createTempFile("photo-", "${Thread.currentThread().id}").apply {
             deleteOnExit()
         }
-        whenever(api.download("random_file_id")).thenReturn(file)
+        api.stub {
+            onBlocking { it.download("random_file_id") }.thenReturn(file)
+        }
         whenever(imageService.tryFindDuplicate(file)).thenReturn(null)
 
         val replyKeyboardMarkup = InlineKeyboardMarkup().apply {
@@ -185,7 +182,7 @@ class MemeHandlerTest {
             )
         }
         val photo = SendPhoto().apply {
-            chatId = telegramProperties.targetChatId
+            chatId = "777"
             photo = InputFile("random_file_id")
             caption = "Sender: montorn"
             parseMode = ParseMode.HTML
@@ -194,33 +191,39 @@ class MemeHandlerTest {
 
         val memeMessageId = 100500
         val message = mock<Message> { on(it.messageId).thenReturn(memeMessageId) }
-        val botUserMock = mock<User> {
-            on(it.isBot).thenReturn(true)
-            on(it.id).thenReturn(telegramProperties.botId)
-        }
-        val chatMember = mock<ChatMember> {
-            on(it.status).thenReturn(MemberStatus.ADMINISTRATOR)
-            on(it.user).thenReturn(botUserMock)
+
+        api.stub {
+            onBlocking { it.executeSuspended(photo) }.thenReturn(message)
         }
 
-        whenever(api.execute(any<GetChatMember>())).thenReturn(chatMember)
-        whenever(api.execute(photo)).thenReturn(message)
-
-        val memeId = 111111
-        val createdMeme = mock<Meme> {
-            on(it.id).thenReturn(memeId)
+        val meme = mock<Meme> {
+            whenever(it.id).thenReturn(111111)
         }
 
-        whenever(memeDao.insert(isA<Meme>())).thenReturn(createdMeme)
+        whenever(memeDao.insert(argWhere<Meme> {
+            it.moderationChatId == 777L
+                    && it.moderationChatMessageId == 100500
+                    && it.senderId == 888L
+                    && it.fileId == "random_file_id"
+                    && it.status == MemeStatus.MODERATION
+        })).thenReturn(meme)
 
         memeHandler.handle(autoSuggestedMemeUpdate)
 
-        val vote = Vote(memeId, approverId, telegramProperties.targetChatId.toLong(), VoteValue.UP, Instant.EPOCH)
+        val vote = Vote(111111, approverId, 777L, VoteValue.UP, Instant.EPOCH)
 
         verifyBlocking(voteDao) { insert(vote) }
-        verifyBlocking(memeDao) { (insert(isA<Meme>())) }
-        verify(imageService).tryFindDuplicate(isA<File>())
-        verifyBlocking(imageService) { handleImage(isA<MemeUpdate>(), isA<File>()) }
+        verifyBlocking(memeDao) {
+            insert(argWhere<Meme> {
+                it.moderationChatId == 777L
+                        && it.moderationChatMessageId == 100500
+                        && it.senderId == 888L
+                        && it.fileId == "random_file_id"
+                        && it.status == MemeStatus.MODERATION
+            })
+        }
+        verify(imageService).tryFindDuplicate(file)
+        verifyBlocking(imageService) { handleImage(autoSuggestedMemeUpdate, file) }
         verifyNoMoreInteractions(voteDao, memeDao, imageService)
     }
 }

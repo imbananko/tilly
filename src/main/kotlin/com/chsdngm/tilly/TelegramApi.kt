@@ -11,6 +11,7 @@ import org.telegram.telegrambots.bots.DefaultAbsSender
 import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.GetFile
+import org.telegram.telegrambots.meta.api.methods.send.SendMediaGroup
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.Message
@@ -55,12 +56,12 @@ class TelegramApi(val properties: TelegramProperties) : DefaultAbsSender(
         }
     }
 
-    fun download(fileId: String): File {
+    suspend fun download(fileId: String): File {
         val file = File.createTempFile("photo-", "-" + Thread.currentThread().id + "-" + System.currentTimeMillis())
         file.deleteOnExit()
 
         FileOutputStream(file).use { out ->
-            URL(execute(GetFile(fileId)).getFileUrl(properties.botToken)).openStream()
+            URL(executeAsync(GetFile(fileId)).await().getFileUrl(properties.botToken)).openStream()
                 .use { stream -> IOUtils.copy(stream, out) }
         }
 
@@ -72,4 +73,7 @@ class TelegramApi(val properties: TelegramProperties) : DefaultAbsSender(
 
     suspend fun executeSuspended(sendPhoto: SendPhoto): Message =
         executeAsync(sendPhoto).await()
+
+    suspend fun executeSuspended(sendMediaGroup: SendMediaGroup): MutableList<Message> =
+        executeAsync(sendMediaGroup).await()
 }
