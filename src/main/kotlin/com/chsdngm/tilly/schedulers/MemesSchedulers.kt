@@ -31,6 +31,7 @@ import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -236,5 +237,27 @@ final class MemesSchedulers(
         log.info("successfully scheduled memes: $memes")
         launch { updateLogChannelTitle() }
         memes.map { launch { editMessageReplyMarkup(it) } }
+    }
+
+    @Scheduled(cron = "0 0 19 * * FRI")
+    private fun sendHowToSearchMemesReminder() = runBlocking {
+        runCatching {
+            val gif = File("/opt/how_to_search_ex.gif") // TODO send telegram file id instead of real file
+
+            SendPhoto().apply {
+                chatId = telegramProperties.targetChannelId
+                photo = InputFile(gif)
+                parseMode = ParseMode.HTML
+                caption = "Есть лёгкое наитие, что ты даже и не подозреваешь, какую силу ты можешь возыметь с нашим ботом"
+            }.let { api.executeSuspended(it) }
+        }.onFailure { ex ->
+            log.error("Failed to send 'how to search memes example', exception=", ex)
+
+            SendMessage().apply {
+                chatId = telegramProperties.logsChatId
+                text = ex.format()
+                parseMode = ParseMode.HTML
+            }.let { api.executeSuspended(it) }
+        }
     }
 }
