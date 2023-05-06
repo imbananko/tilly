@@ -83,7 +83,8 @@ class MemeDao(
         sql.execAndMap { }
     }
 
-    suspend fun findDeadMemes(): List<Meme> = newSuspendedTransaction {
+    // memes which were partially moderated and weren't sent to channel
+    suspend fun findForgottenMemes(): List<Meme> = newSuspendedTransaction {
         val ascOrDesc = if (LocalDate.now().dayOfYear % 2 == 0) "asc" else "desc"
 
         val sql = """
@@ -95,6 +96,7 @@ class MemeDao(
                            left join vote on meme.id = vote.meme_id
                   where meme.status = 'MODERATION'
                     and meme.created <= now() - interval '14 days'
+                    and meme.created >= now() - interval '6 months'
                     and meme.caption is null
                   group by meme.id) as meme
             where (ups = 4 and downs = 0)
