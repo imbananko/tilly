@@ -48,7 +48,6 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-    implementation("co.elastic.clients:elasticsearch-java:8.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
     // spring

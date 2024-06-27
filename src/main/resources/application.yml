@@ -24,6 +24,3 @@ telegram:
 metadata:
   commit.sha: local
   moderation.threshold: 5
-
-elasticsearch:
-  url: elasticsearch
