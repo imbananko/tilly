@@ -9,8 +9,5 @@ spring:
       vision:
         enabled: false
 
-elasticsearch:
-  url: http://localhost
-
 #telegram:
 #  polling-enabled: false

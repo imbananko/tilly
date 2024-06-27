@@ -18,11 +18,6 @@ spring:
     gcp:
       metrics:
         enabled: false
-  elasticsearch:
-    rest:
-      uris: elasticsearch:9200
-      connection-timeout: 5s
-      read-timeout: 1s
 
 telegram:
   bot-id: 0

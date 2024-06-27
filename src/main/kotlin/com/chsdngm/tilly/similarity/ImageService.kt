@@ -8,7 +8,6 @@ import java.io.File
 
 @Service
 class ImageService(private val imageDao: ImageDao,
-                   private val elasticsearchService: ElasticsearchService,
                    private val imageTextRecognizer: ImageTextRecognizer,
                    private val imageMatcher: ImageMatcher) {
 
@@ -21,15 +20,6 @@ class ImageService(private val imageDao: ImageDao,
             rawText = analyzingResults?.words,
             rawLabels = analyzingResults?.labels
         )
-
-        if (analyzingResults != null) {
-            if (!(analyzingResults.words.isNullOrEmpty() && analyzingResults.labels.isNullOrEmpty())) {
-                elasticsearchService.indexMeme(
-                    update.fileId,
-                    ElasticsearchService.MemeDocument(analyzingResults.words, analyzingResults.labels)
-                )
-            }
-        }
 
         imageDao.insert(image)
         imageMatcher.add(image)

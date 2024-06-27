@@ -10,7 +10,6 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.schedulers.MemesSchedulers
-import com.chsdngm.tilly.similarity.ElasticsearchService
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import org.telegram.telegrambots.meta.api.methods.ParseMode
@@ -27,7 +26,6 @@ class MemesSchedulerTest {
     private val memeDao = mock<MemeDao>()
     private val api = mock<TelegramApi>()
     private val memeLogDao = mock<MemeLogDao>()
-    private val elasticsearchService = mock<ElasticsearchService>()
 
     private val telegramProperties = TelegramProperties(
         "montornChatId",
@@ -53,7 +51,7 @@ class MemesSchedulerTest {
 
         memesSchedulers.publishMeme()
 
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
 
     @Test
@@ -69,7 +67,7 @@ class MemesSchedulerTest {
         verifyBlocking(memeDao) {
             findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
         }
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
 
     @Test
@@ -135,7 +133,7 @@ class MemesSchedulerTest {
             })
         }
 
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
 
     @Test
@@ -144,7 +142,7 @@ class MemesSchedulerTest {
         memesSchedulers.scheduleMemesIfAny()
 
         verify(memeDao).scheduleMemes()
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
 
     @Test
@@ -184,6 +182,6 @@ class MemesSchedulerTest {
 
             verifyBlocking(api) { executeSuspended(editMessageReplyMarkup) }
         }
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, elasticsearchService)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
 }
