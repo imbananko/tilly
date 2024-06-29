@@ -4,26 +4,21 @@
         <Console name="LogToConsole" target="SYSTEM_OUT">
             <PatternLayout pattern="[%-5p] %d{HH:mm:ss.SSS} [%t] %c - %msg%n"/>
         </Console>
-        <AccumulatingAppender name="AccumulatingAppender"/>
     </Appenders>
     <Loggers>
         <Logger name="com.chsdngm.tilly" level="info" additivity="false">
             <AppenderRef ref="LogToConsole"/>
-            <AppenderRef ref="AccumulatingAppender"/>
         </Logger>
         <Logger name="org.springframework.boot" level="error" additivity="false">
             <AppenderRef ref="LogToConsole"/>
-            <AppenderRef ref="AccumulatingAppender"/>
         </Logger>
 
         <Root level="error">
             <AppenderRef ref="LogToConsole"/>
-            <AppenderRef ref="AccumulatingAppender"/>
         </Root>
 
         <logger name="Exposed" level="debug" additivity="false">
             <AppenderRef ref="LogToConsole"/>
-            <AppenderRef ref="AccumulatingAppender"/>
         </logger>
     </Loggers>
 </Configuration>
