@@ -139,7 +139,7 @@ class MemesSchedulerTest {
     @Test
     fun shouldNotScheduleAnythingWhenThereNoMemesForScheduling() {
         whenever(memeDao.scheduleMemes()).thenReturn(listOf())
-        memesSchedulers.scheduleMemesIfAny()
+        memesSchedulers.scheduleForChannel()
 
         verify(memeDao).scheduleMemes()
         verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
@@ -168,7 +168,7 @@ class MemesSchedulerTest {
             onBlocking { executeSuspended(setChatTitle) }.thenReturn(true)
         }
 
-        memesSchedulers.scheduleMemesIfAny()
+        memesSchedulers.scheduleForChannel()
 
         verify(memeDao).scheduleMemes()
         verifyBlocking(memeDao) { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }

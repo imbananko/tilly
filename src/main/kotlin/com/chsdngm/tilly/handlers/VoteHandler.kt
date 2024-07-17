@@ -2,16 +2,18 @@ package com.chsdngm.tilly.handlers
 
 import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.config.TelegramProperties
+import com.chsdngm.tilly.createMarkup
 import com.chsdngm.tilly.metrics.MetricsUtils
+import com.chsdngm.tilly.model.VideoVoteUpdate
 import com.chsdngm.tilly.model.VoteUpdate
 import com.chsdngm.tilly.model.VoteValue
-import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
+import com.chsdngm.tilly.repository.InstagramReelDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
-import com.chsdngm.tilly.utility.createMarkup
 import javassist.NotFoundException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -26,6 +28,7 @@ import java.util.concurrent.Executors
 @Service
 class VoteHandler(
     private val memeDao: MemeDao,
+    private val instagramReelDao: InstagramReelDao,
     private val voteDao: VoteDao,
     private val metricsUtils: MetricsUtils,
     private val channelMarkupUpdater: ChannelMarkupUpdater,
@@ -41,6 +44,15 @@ class VoteHandler(
             return@runBlocking
         }
 
+        when (update) {
+            is VideoVoteUpdate -> handleVideoVoteUpdate(update)
+            else -> handleMemeVoteUpdate(update)
+        }
+
+        log.info("processed vote update=$update")
+    }
+
+    private fun CoroutineScope.handleMemeVoteUpdate(update: VoteUpdate) {
         val memeWithVotes = when (update.sourceChatId) {
             telegramProperties.targetChannelId -> memeDao.findMemeByChannelMessageId(update.messageId)
             telegramProperties.targetChatId -> memeDao.findMemeByModerationChatIdAndModerationChatMessageId(
@@ -55,8 +67,8 @@ class VoteHandler(
         val votes = memeWithVotes.second.toMutableList()
 
         if (meme.senderId == update.voterId) {
-            sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя")
-            return@runBlocking
+            launch { sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя") }
+            return
         }
 
         val vote = Vote(
@@ -67,40 +79,84 @@ class VoteHandler(
             created = Instant.ofEpochMilli(update.createdAt)
         )
 
+        processVote(votes, vote, update)
+
+        if (meme.channelMessageId != null) {
+            launch { channelMarkupUpdater.submitVote(meme.channelMessageId!! to votes) }
+        } else {
+            launch { updateGroupMarkup(meme.moderationChatMessageId, votes) }
+        }
+
+        launch { api.updateStatsInSenderChat(meme, votes) }
+    }
+
+    private fun CoroutineScope.processVote(
+        existingVotes: MutableList<Vote>,
+        newVote: Vote,
+        update: VoteUpdate
+    ) {
         fun getUpdatedVoteText(vote: Vote) = when (vote.value) {
             VoteValue.UP -> "Вы обогатили этот мем ${VoteValue.UP.emoji}"
             VoteValue.DOWN -> "Вы засрали этот мем ${VoteValue.DOWN.emoji}"
         }
 
         //TODO refactor with hashset instead of list (after tests)
-        votes.firstOrNull { it.voterId == vote.voterId }?.let { found ->
-            if (votes.removeIf { it.voterId == vote.voterId && it.value == vote.value }) {
+        existingVotes.firstOrNull { it.voterId == newVote.voterId }?.let { found ->
+            if (existingVotes.removeIf { it.voterId == newVote.voterId && it.value == newVote.value }) {
                 launch { sendPopupNotification(update.callbackQueryId, "Вы удалили свой голос с этого мема") }
                 launch { voteDao.delete(found) }
             } else {
-                found.value = vote.value
-                found.sourceChatId = vote.sourceChatId
+                found.value = newVote.value
+                found.sourceChatId = newVote.sourceChatId
 
-                val text = getUpdatedVoteText(vote)
+                val text = getUpdatedVoteText(newVote)
                 launch { sendPopupNotification(update.callbackQueryId, text) }
                 launch { voteDao.update(found) }
             }
-        } ?: votes.add(vote).also {
+        } ?: existingVotes.add(newVote).also {
 
-            val text = getUpdatedVoteText(vote)
+            val text = getUpdatedVoteText(newVote)
             launch { sendPopupNotification(update.callbackQueryId, text) }
-            launch { voteDao.insert(vote) }
+            launch { voteDao.insert(newVote) }
+        }
+    }
+
+    private fun CoroutineScope.handleVideoVoteUpdate(update: VideoVoteUpdate) {
+        val reelWithVotes = when (update.sourceChatId) {
+            telegramProperties.targetChannelId -> instagramReelDao.findReelByChannelMessageId(update.messageId)
+            telegramProperties.targetChatId -> instagramReelDao.findReelByModerationChatIdAndModerationChatMessageId(
+                telegramProperties.targetChatId.toLong(),
+                update.messageId
+            )
+
+            else -> null
+        } ?: throw NotFoundException("Meme wasn't found. update=$update")
+
+        val reel = reelWithVotes.first
+        val votes = reelWithVotes.second.toMutableList()
+
+        if (reel.senderId == update.voterId) {
+            launch { sendPopupNotification(update.callbackQueryId, "Голосуй за других, а не за себя") }
+            return
         }
 
-        if (meme.channelMessageId != null) {
-            launch { channelMarkupUpdater.submitVote(meme.channelMessageId!! to votes) }
+        val vote = Vote(
+            reel.id,
+            update.voterId,
+            update.sourceChatId.toLong(),
+            update.voteValue,
+            created = Instant.ofEpochMilli(update.createdAt)
+        )
+
+        processVote(votes, vote, update)
+
+        if (reel.channelMessageId != null) {
+            launch { channelMarkupUpdater.submitVote(reel.channelMessageId!! to votes) }
         } else {
-            launch { updateGroupMarkup(meme, votes) }
+            launch { updateGroupMarkup(reel.moderationChatMessageId, votes) }
         }
 
-        launch { api.updateStatsInSenderChat(meme, votes) }
-
-        log.info("processed vote update=$update")
+        launch { api.updateStatsInSenderChat(reel, votes) }
     }
 
     private suspend fun sendPopupNotification(userCallbackQueryId: String, popupText: String): Boolean =
@@ -109,10 +165,10 @@ class VoteHandler(
             text = popupText
         }.let { api.executeSuspended(it) }
 
-    private suspend fun updateGroupMarkup(meme: Meme, votes: List<Vote>): Serializable =
+    private suspend fun updateGroupMarkup(moderationChatMessageId: Int?, votes: List<Vote>): Serializable =
         EditMessageReplyMarkup().apply {
             chatId = telegramProperties.targetChatId
-            messageId = meme.moderationChatMessageId
+            messageId = moderationChatMessageId
             replyMarkup = createMarkup(votes)
         }.let { api.executeSuspended(it) }
 
@@ -120,11 +176,15 @@ class VoteHandler(
         metricsUtils.measureDuration(update)
     }
 
-    override fun retrieveSubtype(update: Update) =
-        if (update.hasCallbackQuery()
-            && (update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)
-            && VoteValue.values().map { it.name }.contains(update.callbackQuery.data)
-        ) {
-            VoteUpdate(update)
-        } else null
+    override fun retrieveSubtype(update: Update): VoteUpdate? {
+        if (!update.hasCallbackQuery()) return null
+        if (!(update.callbackQuery.message.isSuperGroupMessage || update.callbackQuery.message.isChannelMessage)) return null
+        if (!VoteValue.values().map { it.name }.contains(update.callbackQuery.data)) return null
+
+        if (update.callbackQuery.message.hasVideo()) {
+            return VideoVoteUpdate(update)
+        }
+
+        return VoteUpdate(update)
+    }
 }

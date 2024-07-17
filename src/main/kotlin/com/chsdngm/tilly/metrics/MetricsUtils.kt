@@ -118,21 +118,6 @@ class MetricsUtilsGcp(credentialsProvider: CredentialsProvider): MetricsUtils {
         return Point.newBuilder().setValue(value).setInterval(interval).build()
     }
 
-    private fun buildDurationPoint(startTimeMs: Long, endTimeMs: Long, votesCount: Int): Point {
-        val interval: TimeInterval = TimeInterval.newBuilder()
-                .setEndTime(
-                        Timestamp.newBuilder()
-                                .setSeconds(TimeUnit.MILLISECONDS.toSeconds(endTimeMs))
-                                .setNanos((TimeUnit.MILLISECONDS.toNanos(endTimeMs) % (1000 * 1000 * 1000)).toInt())
-                ).build()
-
-        val value = TypedValue.newBuilder()
-                .setDoubleValue(votesCount.toDouble())
-                .build()
-
-        return Point.newBuilder().setValue(value).setInterval(interval).build()
-    }
-
     private fun checkMetricShipment() {
         if (durationSeries.size >= THRESHOLD) {
             runCatching {

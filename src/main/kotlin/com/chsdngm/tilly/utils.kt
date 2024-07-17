@@ -1,4 +1,4 @@
-package com.chsdngm.tilly.utility
+package com.chsdngm.tilly
 
 
 import com.chsdngm.tilly.model.VoteValue
@@ -7,7 +7,9 @@ import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.telegram.telegrambots.meta.api.objects.MemberStatus
 import org.telegram.telegrambots.meta.api.objects.User
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import java.lang.reflect.UndeclaredThrowableException
@@ -19,7 +21,7 @@ fun User.mention(montornId: Long): String =
 
 fun User.mention(): String = """<a href="tg://user?id=${this.id}">${this.userName ?: this.firstName}</a>"""
 
-fun createMarkup(votes: List<Vote>): InlineKeyboardMarkup {
+fun createMarkup(votes: List<Vote> = listOf()): InlineKeyboardMarkup {
     val stats = votes.groupingBy { it.value }.eachCount()
 
     return InlineKeyboardMarkup().apply {
@@ -92,3 +94,6 @@ class TelegramFormattedException(
     val cause: Throwable?,
     val stackTrace: String
 )
+
+fun ChatMember.isFromChat(): Boolean =
+    setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)

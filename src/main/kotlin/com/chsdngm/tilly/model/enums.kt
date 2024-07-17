@@ -21,12 +21,21 @@ enum class DistributedModerationVoteValue(val emoji: String) {
 }
 
 enum class MemeStatus(val description: String) {
-    MODERATION("мем на модерации."),
-    LOCAL("так как мем локальный, на канал он отправлен не будет."),
-    SCHEDULED("мем будет отправлен на канал."),
-    PUBLISHED("мем отправлен на канал."),
-    DECLINED("мем предан забвению."),
-    RESURRECTION_ASKED("для мема запрошено воскрешение.")
+    MODERATION("мем на модерации"),
+    LOCAL("так как мем локальный, на канал он отправлен не будет"),
+    SCHEDULED("мем будет отправлен на канал"),
+    PUBLISHED("мем отправлен на канал"),
+    DECLINED("мем предан забвению"),
+    RESURRECTION_ASKED("для мема запрошено воскрешение")
+}
+
+enum class InstagramReelStatus(val description: String) {
+    PROCESSING("рилс на обработке"),
+    MODERATION("рилс на модерации"),
+    FAILED("ошибка обработки, попробуйте еще раз"),
+    SCHEDULED("рилс будет отправлен на канал"),
+    PUBLISHED("рилс отправлен на канал"),
+    DECLINED("рилс предан забвению"),
 }
 
 enum class WeightedModerationType(val weight: Int) {

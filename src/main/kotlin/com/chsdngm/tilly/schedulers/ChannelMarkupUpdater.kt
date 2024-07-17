@@ -4,7 +4,7 @@ import com.chsdngm.tilly.TelegramApi
 import com.chsdngm.tilly.collections.ExtendedCopyOnWriteArrayList
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.model.dto.Vote
-import com.chsdngm.tilly.utility.createMarkup
+import com.chsdngm.tilly.createMarkup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -56,6 +56,7 @@ class ChannelMarkupUpdater(
 
                     //TODO check logs for errors like: keyboard markup is the same
                     updateChannelMarkup(messageId, votes)
+                    delay(5000)
                 }
             }
         }
@@ -79,6 +80,5 @@ class ChannelMarkupUpdater(
         }
 
         log.info("updateChannelMarkup elapsed ${mark.elapsedNow()}")
-        delay(5000)
     }
 }

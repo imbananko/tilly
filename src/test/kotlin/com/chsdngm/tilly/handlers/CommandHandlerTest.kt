@@ -9,7 +9,7 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
-import com.chsdngm.tilly.utility.minusDays
+import com.chsdngm.tilly.minusDays
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import org.mockito.kotlin.mock

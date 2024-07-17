@@ -1,8 +1,11 @@
 package com.chsdngm.tilly.model.dto
 
+import com.chsdngm.tilly.model.InstagramReelStatus
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.UserStatus
 import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.dto.Memes.nullable
+import com.chsdngm.tilly.model.dto.TelegramUsers.nullable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.BasicBinaryColumnType
@@ -32,7 +35,7 @@ object MemesLogs : Table("meme_log") {
 }
 
 object Votes : Table("vote") {
-    val memeId = integer("meme_id").references(Memes.id)
+    val memeId = integer("meme_id")
     val voterId = long("voter_id")
     val sourceChatId = long("source_chat_id")
     val value = enumerationByName("value", 10, VoteValue::class)
@@ -63,6 +66,20 @@ object DistributedModerationEvents : Table("distributed_moderation_event") {
     val moderatorId = long("moderator_id")
     val chatMessageId = integer("chat_message_id")
     val moderationGroupId = integer("moderation_group_id")
+}
+
+object InstagramReels : IntIdTable("instagram_reel", "id") {
+    val url = text("url")
+    val postId = text("post_id").nullable()
+    val moderationChatId = long("moderation_chat_id").nullable()
+    val moderationChatMessageId = integer("moderation_chat_message_id").nullable()
+    val senderId = long("sender_id")
+    val status = enumerationByName("status", 10, InstagramReelStatus::class)
+    val privateReplyMessageId = integer("private_reply_message_id").nullable()
+    val fileId = text("file_id").nullable()
+    val channelMessageId = integer("channel_message_id").nullable()
+    val created = timestamp("created")
+    val published = timestamp("published").nullable()
 }
 
 /**

@@ -11,12 +11,13 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
 import java.math.BigInteger
+import java.sql.SQLException
 
 @Repository
 class ImageDao(val database: Database) {
     suspend fun insert(image: Image) = newSuspendedTransaction {
         Images.insert { image.toInsertStatement(it) }.resultedValues?.first()?.toImage()
-            ?: throw NoSuchElementException("Error saving image")
+            ?: throw SQLException("Error saving image")
     }
 
     fun findAllHashes(): Map<String, BigInteger> = transaction {

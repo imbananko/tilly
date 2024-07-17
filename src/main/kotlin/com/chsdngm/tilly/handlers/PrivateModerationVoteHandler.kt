@@ -10,7 +10,7 @@ import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
-import com.chsdngm.tilly.utility.mention
+import com.chsdngm.tilly.mention
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory

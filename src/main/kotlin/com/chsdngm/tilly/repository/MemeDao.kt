@@ -3,15 +3,16 @@ package com.chsdngm.tilly.repository
 import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.dto.*
-import com.chsdngm.tilly.utility.allColumns
-import com.chsdngm.tilly.utility.execAndMap
-import com.chsdngm.tilly.utility.indexedColumns
+import com.chsdngm.tilly.allColumns
+import com.chsdngm.tilly.execAndMap
+import com.chsdngm.tilly.indexedColumns
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 import java.time.LocalDate
 
 @Repository
@@ -21,8 +22,11 @@ class MemeDao(
 ) {
 
     fun findMemeByChannelMessageId(channelMessageId: Int): Pair<Meme, List<Vote>>? = transaction {
-        (Memes leftJoin Votes)
-            .select(Memes.channelMessageId eq channelMessageId)
+        Memes.join(
+            Votes, JoinType.LEFT,
+            onColumn = Memes.id,
+            otherColumn = Votes.memeId
+        ).select(Memes.channelMessageId eq channelMessageId)
             .toList()
             .toMemeWithVotes()
     }
@@ -31,7 +35,11 @@ class MemeDao(
         moderationChatId: Long,
         moderationChatMessageId: Int,
     ): Pair<Meme, List<Vote>>? = transaction {
-        Memes.leftJoin(Votes)
+        Memes.join(
+            Votes, JoinType.LEFT,
+            onColumn = Memes.id,
+            otherColumn = Votes.memeId
+        )
             .select((Memes.moderationChatId eq moderationChatId) and (Memes.moderationChatMessageId eq moderationChatMessageId))
             .toList()
             .toMemeWithVotes()
@@ -39,7 +47,7 @@ class MemeDao(
 
     fun insert(meme: Meme) = transaction {
         Memes.insert { meme.toInsertStatement(it) }.resultedValues?.first()?.toMeme()
-            ?: throw NoSuchElementException("Error saving meme")
+            ?: throw SQLException("Error saving meme")
     }
 
     suspend fun update(meme: Meme) = newSuspendedTransaction {
@@ -47,13 +55,19 @@ class MemeDao(
     }
 
     suspend fun findAllByStatusOrderByCreated(memeStatus: MemeStatus): Map<Meme, List<Vote>> = newSuspendedTransaction {
-        (Memes leftJoin Votes)
-            .select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemesWithVotes()
+        Memes.join(
+            Votes, JoinType.LEFT,
+            onColumn = Memes.id,
+            otherColumn = Votes.memeId
+        ).select { Memes.status eq memeStatus }.orderBy(Memes.created).toMemesWithVotes()
     }
 
     suspend fun findAllBySenderId(senderId: Long): Map<Meme, List<Vote>> = newSuspendedTransaction {
-        (Memes leftJoin Votes)
-            .select { Memes.senderId eq senderId }.toMemesWithVotes()
+        Memes.join(
+            Votes, JoinType.LEFT,
+            onColumn = Memes.id,
+            otherColumn = Votes.memeId
+        ).select { Memes.senderId eq senderId }.toMemesWithVotes()
     }
 
     fun findByFileId(fileId: String): Meme? = transaction {

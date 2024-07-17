@@ -10,7 +10,7 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
-import com.chsdngm.tilly.utility.createMarkup
+import com.chsdngm.tilly.createMarkup
 import javassist.NotFoundException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -244,7 +244,7 @@ class VoteHandlerTest {
         val editMessageReplyMarkup = EditMessageReplyMarkup().apply {
             chatId = telegramProperties.targetChatId
             messageId = 321
-            replyMarkup = createMarkup(listOf())
+            replyMarkup = createMarkup()
         }
 
         api.stub {

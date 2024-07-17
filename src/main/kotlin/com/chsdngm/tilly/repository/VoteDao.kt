@@ -4,12 +4,13 @@ import com.chsdngm.tilly.model.dto.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.springframework.stereotype.Repository
+import java.sql.SQLException
 
 @Repository
 class VoteDao(val database: Database) {
     suspend fun insert(vote: Vote) = newSuspendedTransaction {
         Votes.insert { vote.toInsertStatement(it) }.resultedValues?.first()?.toVote()
-            ?: throw NoSuchElementException("Error saving vote")
+            ?: throw SQLException("Error saving vote")
     }
 
     suspend fun delete(vote: Vote) = newSuspendedTransaction {
