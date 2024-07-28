@@ -135,7 +135,11 @@ final class MemesSchedulers(
                 chatId = telegramProperties.targetChannelId
                 parseMode = ParseMode.HTML
                 replyToMessageId = meme.channelMessageId
-                text = "Поздравляем $winnerMention с мемом недели!"
+                text = """
+                    Поздравляем $winnerMention с мемом недели!
+                    
+                    Каждый может получить признание толпы!
+                    Просто отправь свой мем боту https://t.me/meme_manager_bot""".trimIndent()
             }.let { api.executeSuspended(it) }
 
             launch { api.executeSuspended(PinChatMessage(message.chatId.toString(), message.messageId)) }
@@ -168,10 +172,10 @@ final class MemesSchedulers(
 
         runCatching {
             val moderators = telegramUserDao.findTopFiveSendersForLastWeek(telegramProperties.botId).iterator()
-            val deadMemes = memeDao.findDeadMemes().iterator()
+            val forgottenMemes = memeDao.findForgottenMemes().iterator()
 
-            while (deadMemes.hasNext() && moderators.hasNext()) {
-                val meme = deadMemes.next()
+            while (forgottenMemes.hasNext() && moderators.hasNext()) {
+                val meme = forgottenMemes.next()
                 val moderator = moderators.next()
 
                 launch { memeLogDao.insert(MemeLog.fromMeme(meme)) }
