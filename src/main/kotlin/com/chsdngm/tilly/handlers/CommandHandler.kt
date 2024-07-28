@@ -9,7 +9,7 @@ import com.chsdngm.tilly.model.VoteValue
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
-import com.chsdngm.tilly.utility.minusDays
+import com.chsdngm.tilly.minusDays
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory

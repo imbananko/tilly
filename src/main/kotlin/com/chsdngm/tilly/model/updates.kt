@@ -1,7 +1,7 @@
 package com.chsdngm.tilly.model
 
-import com.chsdngm.tilly.utility.mention
-import com.chsdngm.tilly.utility.minusDays
+import com.chsdngm.tilly.mention
+import com.chsdngm.tilly.minusDays
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.time.Instant
@@ -12,7 +12,7 @@ abstract class Timestampable {
     val createdAt: Long = System.currentTimeMillis()
 }
 
-class VoteUpdate(update: Update) : Timestampable() {
+open class VoteUpdate(update: Update) : Timestampable() {
     val voterId: Long = update.callbackQuery.from.id
     val messageId: Int = update.callbackQuery.message.messageId
     val sourceChatId: String = when {
@@ -48,6 +48,10 @@ class VoteUpdate(update: Update) : Timestampable() {
         result = 31 * result + voteValue.hashCode()
         return result
     }
+}
+
+class VideoVoteUpdate(update: Update) : VoteUpdate(update) {
+    val videoFileId: String = update.callbackQuery.message.video.fileId
 }
 
 abstract class MemeUpdate(
@@ -210,3 +214,10 @@ class AutosuggestionVoteUpdate(update: Update) : Timestampable() {
 
     fun toAutoSuggestedMemeUpdate() = AutoSuggestedMemeUpdate(this)
 }
+
+class InstagramReelsLinkUpdate(
+    val url: String,
+    val postId: String,
+    val user: User,
+    val messageId: Int,
+) : Timestampable()

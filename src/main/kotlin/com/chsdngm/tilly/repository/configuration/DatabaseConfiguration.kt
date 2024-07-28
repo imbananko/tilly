@@ -41,7 +41,8 @@ class DatabaseConfiguration {
                     MemesLogs,
                     Votes,
                     TelegramUsers,
-                    DistributedModerationEvents
+                    DistributedModerationEvents,
+                    InstagramReels,
                 )
             }
         }

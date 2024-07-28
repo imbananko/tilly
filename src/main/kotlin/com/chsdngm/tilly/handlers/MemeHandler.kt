@@ -1,6 +1,6 @@
 package com.chsdngm.tilly.handlers
 
-import com.chsdngm.tilly.TelegramApi
+import com.chsdngm.tilly.*
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.metrics.MetricsUtils
 import com.chsdngm.tilly.model.*
@@ -18,9 +18,6 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.TelegramUserDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.similarity.ImageService
-import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.format
-import com.chsdngm.tilly.utility.mention
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -296,7 +293,7 @@ class MemeHandler(
             photo = InputFile(update.fileId)
             caption = runCatching { resolveCaption(update) }.getOrNull()
             parseMode = ParseMode.HTML
-            replyMarkup = createMarkup(listOf())
+            replyMarkup = createMarkup()
         }.let(api::execute).let {
 
             val senderMessageId = replyToSender(update).messageId
@@ -493,8 +490,7 @@ class MemeHandler(
             parseMode = ParseMode.HTML
         }.let { method -> api.execute(method) }
 
-    private fun ChatMember.isFromChat(): Boolean =
-        setOf(MemberStatus.ADMINISTRATOR, MemberStatus.CREATOR, MemberStatus.MEMBER).contains(this.status)
+
 
     override fun retrieveSubtype(update: Update) =
         if (update.hasMessage() && update.message.chat.isUserChat && update.message.hasPhoto()) {

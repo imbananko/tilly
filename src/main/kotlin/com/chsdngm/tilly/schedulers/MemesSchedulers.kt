@@ -11,9 +11,14 @@ import com.chsdngm.tilly.model.dto.Vote
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
-import com.chsdngm.tilly.utility.createMarkup
-import com.chsdngm.tilly.utility.format
-import com.chsdngm.tilly.utility.mention
+import com.chsdngm.tilly.createMarkup
+import com.chsdngm.tilly.format
+import com.chsdngm.tilly.mention
+import com.chsdngm.tilly.model.InstagramReelStatus
+import com.chsdngm.tilly.model.dto.InstagramReel
+import com.chsdngm.tilly.repository.InstagramReelDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -21,11 +26,13 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChat
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatTitle
 import org.telegram.telegrambots.meta.api.methods.pinnedmessages.PinChatMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
+import org.telegram.telegrambots.meta.api.methods.send.SendVideo
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
@@ -38,8 +45,9 @@ import java.time.format.FormatStyle
 
 @Service
 @EnableScheduling
-final class MemesSchedulers(
+class MemesSchedulers(
     private val memeDao: MemeDao,
+    private val reelDao: InstagramReelDao,
     private val telegramUserDao: TelegramUserDao,
     private val memeLogDao: MemeLogDao,
     private val api: TelegramApi,
@@ -63,22 +71,9 @@ final class MemesSchedulers(
         }
 
         runCatching {
-            val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
-
-            if (scheduledMemes.isEmpty()) {
-                log.info("Nothing to post")
-                return@runBlocking
+            if (sequenceOf(publishReelIfAny(), publishMemeIfAny()).any { it }) {
+                decrementQueueSizeInTitle()
             }
-
-            val (meme, votes) = scheduledMemes.entries.first().toPair()
-
-            meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
-            meme.status = MemeStatus.PUBLISHED
-            meme.published = Instant.now()
-
-            memeDao.update(meme)
-            launch { api.updateStatsInSenderChat(meme, votes) }
-            launch { updateLogChannelTitle(scheduledMemes.size - 1) }
         }.onFailure {
             SendMessage().apply {
                 chatId = telegramProperties.logsChatId
@@ -88,17 +83,74 @@ final class MemesSchedulers(
         }
     }
 
+    private suspend fun decrementQueueSizeInTitle() {
+        val currentSize = getCurrentQueueSize()
+        updateLogChannelTitle(currentSize - 1)
+    }
+
+    private suspend fun incrementQueueSizeInTitle(size: Int) {
+        val currentSize = getCurrentQueueSize()
+        updateLogChannelTitle(currentSize + size)
+    }
+
+    private suspend fun getCurrentQueueSize(): Int {
+        val title = GetChat().apply {
+            chatId = telegramProperties.logsChatId
+        }.let { method -> api.executeSuspended(method) }.title
+
+        return try {
+            Regex(".*queued:([^\\[]+)").find(title)?.groupValues?.last()?.trim()?.toInt() ?: 0
+        } catch (ex: Exception) {
+            log.error("Failed to decrement queue size in title, exception=", ex)
+            0
+        }
+    }
+
+    private suspend fun publishReelIfAny(): Boolean {
+        val scheduledReels = reelDao.findAllByStatusOrderByCreated(InstagramReelStatus.SCHEDULED)
+
+        if (scheduledReels.isEmpty()) {
+            log.info("No reels to post")
+            return false
+        }
+
+        val (reel, votes) = scheduledReels.entries.first()
+
+        reel.channelMessageId = sendReelToChannel(reel, votes).messageId
+        reel.status = InstagramReelStatus.PUBLISHED
+        reel.published = Instant.now()
+
+        reelDao.update(reel)
+        api.updateStatsInSenderChat(reel, votes)
+
+        return true
+    }
+
+    private suspend fun publishMemeIfAny(): Boolean {
+        val scheduledMemes = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
+
+        if (scheduledMemes.isEmpty()) {
+            log.info("No memes to post")
+            return false
+        }
+
+        val (meme, votes) = scheduledMemes.entries.first()
+
+        meme.channelMessageId = sendMemeToChannel(meme, votes).messageId
+        meme.status = MemeStatus.PUBLISHED
+        meme.published = Instant.now()
+
+        memeDao.update(meme)
+        api.updateStatsInSenderChat(meme, votes)
+
+        return true
+    }
+
     private suspend fun updateLogChannelTitle(queueSize: Int) =
         SetChatTitle().apply {
             chatId = telegramProperties.logsChatId
             title = "$TILLY_LOG | queued: $queueSize [${metadata.commitSha}]"
         }.let { api.executeSuspended(it) }
-
-    private suspend fun updateLogChannelTitle(): Boolean {
-        val queueSize = memeDao.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED).size
-
-        return updateLogChannelTitle(queueSize)
-    }
 
     private suspend fun sendMemeToChannel(meme: Meme, votes: List<Vote>): Message {
         val sendPhoto = SendPhoto().apply {
@@ -111,6 +163,20 @@ final class MemesSchedulers(
 
         val message = api.executeSuspended(sendPhoto)
         log.info("sent meme to channel. meme=$meme")
+
+        return message
+    }
+
+    private suspend fun sendReelToChannel(reel: InstagramReel, votes: List<Vote>): Message {
+        val sendVideo = SendVideo().apply {
+            chatId = telegramProperties.targetChannelId
+            video = InputFile(reel.fileId)
+            replyMarkup = createMarkup(votes)
+            parseMode = ParseMode.HTML
+        }
+
+        val message = api.executeSuspended(sendVideo)
+        log.info("sent reel to channel. reel=$reel")
 
         return message
     }
@@ -217,24 +283,50 @@ final class MemesSchedulers(
         }
     }
 
-    @Scheduled(cron = "0 */9 4-22 * * *")
-    fun scheduleMemesIfAny() = runBlocking {
-        suspend fun editMessageReplyMarkup(meme: Meme) {
-            EditMessageReplyMarkup().apply {
-                chatId = meme.moderationChatId.toString()
-                messageId = meme.moderationChatMessageId
-            }.let { api.executeSuspended(it) }
+    private suspend fun removeMessageReplyMarkup(moderationChatId: String, moderationMessageId: Int?) {
+        EditMessageReplyMarkup().apply {
+            chatId = moderationChatId
+            messageId = moderationMessageId
+        }.let { api.executeSuspended(it) }
+    }
+
+    @Scheduled(cron = "0 */1 * * * *")
+    fun scheduleForChannel() = runBlocking {
+        val memes = async { scheduleMemesIfAny() }
+        val reels = async { scheduleReelsIfAny() }
+
+        val queueSize = memes.await() + reels.await()
+
+        if (queueSize > 0) {
+            launch { incrementQueueSizeInTitle(memes.await() + reels.await()) }
+        }
+    }
+
+    private fun CoroutineScope.scheduleReelsIfAny(): Int {
+        val reels = reelDao.scheduleReels()
+
+        if (reels.isEmpty()) {
+            log.info("there was no reels to schedule")
+            return 0
         }
 
+        reels.map { launch { removeMessageReplyMarkup(it.moderationChatId.toString(), it.moderationChatMessageId) } }
+        log.info("successfully scheduled reels: $reels")
+
+        return reels.size
+    }
+
+    private fun CoroutineScope.scheduleMemesIfAny(): Int {
         val memes = memeDao.scheduleMemes()
 
         if (memes.isEmpty()) {
-            log.info("there was nothing to schedule")
-            return@runBlocking
+            log.info("there was no memes to schedule")
+            return 0
         }
 
+        memes.map { launch { removeMessageReplyMarkup(it.moderationChatId.toString(), it.moderationChatMessageId) } }
         log.info("successfully scheduled memes: $memes")
-        launch { updateLogChannelTitle() }
-        memes.map { launch { editMessageReplyMarkup(it) } }
+
+        return memes.size
     }
 }

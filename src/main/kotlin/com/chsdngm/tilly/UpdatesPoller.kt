@@ -4,7 +4,6 @@ import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
 import com.chsdngm.tilly.handlers.AbstractHandler
 import com.chsdngm.tilly.model.Timestampable
-import com.chsdngm.tilly.utility.formatExceptionForTelegramMessage
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
