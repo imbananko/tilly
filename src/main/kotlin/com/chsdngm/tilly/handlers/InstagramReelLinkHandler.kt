@@ -157,8 +157,10 @@ class InstagramReelLinkHandler(
             .addParameter("variables", "{\"shortcode\":\"$postId\"}")
             .build()
 
+        log.debug("Requesting instagram: {}", uri)
         val execute = httpClient.execute(HttpGet(uri))
         val response = String(execute.entity.content.readAllBytes())
+        log.debug("Response: {}", response)
 
         val jsonObject = JSONObject(response)
         val objectGraphql = jsonObject.getJSONObject("data")

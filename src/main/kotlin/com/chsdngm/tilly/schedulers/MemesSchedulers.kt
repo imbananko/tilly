@@ -290,7 +290,7 @@ class MemesSchedulers(
         }.let { api.executeSuspended(it) }
     }
 
-    @Scheduled(cron = "0 */1 * * * *")
+    @Scheduled(cron = "0 */9 4-22 * * *")
     fun scheduleForChannel() = runBlocking {
         val memes = async { scheduleMemesIfAny() }
         val reels = async { scheduleReelsIfAny() }
