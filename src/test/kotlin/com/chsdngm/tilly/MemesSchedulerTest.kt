@@ -2,10 +2,13 @@ package com.chsdngm.tilly
 
 import com.chsdngm.tilly.config.MetadataProperties
 import com.chsdngm.tilly.config.TelegramProperties
+import com.chsdngm.tilly.model.InstagramReelStatus
 import com.chsdngm.tilly.model.MemeStatus
 import com.chsdngm.tilly.model.VoteValue
+import com.chsdngm.tilly.model.dto.InstagramReel
 import com.chsdngm.tilly.model.dto.Meme
 import com.chsdngm.tilly.model.dto.Vote
+import com.chsdngm.tilly.repository.InstagramReelDao
 import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.MemeLogDao
 import com.chsdngm.tilly.repository.TelegramUserDao
@@ -13,9 +16,11 @@ import com.chsdngm.tilly.schedulers.MemesSchedulers
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import org.telegram.telegrambots.meta.api.methods.ParseMode
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChat
 import org.telegram.telegrambots.meta.api.methods.groupadministration.SetChatTitle
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
+import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -23,6 +28,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 class MemesSchedulerTest {
     private val telegramUserDao = mock<TelegramUserDao>()
+    private val instagramReelDao = mock<InstagramReelDao>()
     private val memeDao = mock<MemeDao>()
     private val api = mock<TelegramApi>()
     private val memeLogDao = mock<MemeLogDao>()
@@ -43,7 +49,7 @@ class MemesSchedulerTest {
     )
 
     private val memesSchedulers =
-        MemesSchedulers(memeDao, telegramUserDao, memeLogDao, api, telegramProperties, metadataProperties)
+        MemesSchedulers(memeDao, instagramReelDao, telegramUserDao, memeLogDao, api, telegramProperties, metadataProperties)
 
     @Test
     fun shouldNotPublishAnythingWhenPublishingMemesDisabled() {
@@ -62,10 +68,18 @@ class MemesSchedulerTest {
             onBlocking { it.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }.thenReturn(mapOf())
         }
 
+        instagramReelDao.stub {
+            onBlocking { it.findAllByStatusOrderByCreated(InstagramReelStatus.SCHEDULED) }.thenReturn(mapOf())
+        }
+
         memesSchedulers.publishMeme()
 
         verifyBlocking(memeDao) {
             findAllByStatusOrderByCreated(MemeStatus.SCHEDULED)
+        }
+
+        verifyBlocking(instagramReelDao) {
+            findAllByStatusOrderByCreated(InstagramReelStatus.SCHEDULED)
         }
         verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
     }
@@ -87,6 +101,10 @@ class MemesSchedulerTest {
         memeDao.stub {
             onBlocking { it.findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }.thenReturn(memes)
             onBlocking { it.update(meme) }.thenReturn(1)
+        }
+
+        instagramReelDao.stub {
+            onBlocking { it.findAllByStatusOrderByCreated(InstagramReelStatus.SCHEDULED) }.thenReturn(mapOf())
         }
 
         val sendPhoto = SendPhoto().apply {
@@ -114,8 +132,23 @@ class MemesSchedulerTest {
             on(it.messageId).thenReturn(666)
         }
 
+
+        val getChatTitle = GetChat().apply {
+            chatId = "logsChatId"
+        }
+
+        val chat = mock<Chat> {
+            whenever(it.title).thenReturn("tilly.log | queued: 1 [local]")
+        }
+
         api.stub {
             onBlocking { it.executeSuspended(sendPhoto) }.thenReturn(message)
+            onBlocking { it.executeSuspended(getChatTitle) }.thenReturn(chat)
+        }
+
+        val setChatTitle = SetChatTitle().apply {
+            chatId = "logsChatId"
+            title = "tilly.log | queued: 0 [hui]"
         }
 
         memesSchedulers.publishMeme()
@@ -123,26 +156,25 @@ class MemesSchedulerTest {
         verifyBlocking(api) { executeSuspended(sendPhoto) }
         verifyBlocking(api) { updateStatsInSenderChat(meme, votes) }
 
+        verifyBlocking(api) { executeSuspended(getChatTitle) }
+        verifyBlocking(api) { executeSuspended(setChatTitle) }
+
         verifyBlocking(memeDao) { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }
+        verifyBlocking(instagramReelDao) { findAllByStatusOrderByCreated(InstagramReelStatus.SCHEDULED) }
         verifyBlocking(memeDao) { update(meme) }
 
-        verifyBlocking(api) {
-            executeSuspended(SetChatTitle().apply {
-                chatId = "logsChatId"
-                title = "tilly.log | queued: 0 [hui]"
-            })
-        }
-
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, instagramReelDao)
     }
 
     @Test
     fun shouldNotScheduleAnythingWhenThereNoMemesForScheduling() {
         whenever(memeDao.scheduleMemes()).thenReturn(listOf())
+        whenever(instagramReelDao.scheduleReels()).thenReturn(listOf())
         memesSchedulers.scheduleForChannel()
 
         verify(memeDao).scheduleMemes()
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
+        verify(instagramReelDao).scheduleReels()
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, instagramReelDao)
     }
 
     @Test
@@ -154,27 +186,47 @@ class MemesSchedulerTest {
             }
         }
 
+        val reels = (5..9).map { number ->
+            mock<InstagramReel> {
+                on(it.moderationChatId).thenReturn(number.toLong())
+                on(it.moderationChatMessageId).thenReturn(number)
+            }
+        }
+
         memeDao.stub {
             whenever(it.scheduleMemes()).thenReturn(memes)
-            onBlocking { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }.thenReturn(mapOf())
+        }
+
+        instagramReelDao.stub {
+            whenever(it.scheduleReels()).thenReturn(reels)
+        }
+
+        val getChatTitle = GetChat().apply {
+            chatId = "logsChatId"
+        }
+
+        val chat = mock<Chat> {
+            whenever(it.title).thenReturn("tilly.log | queued: 1 [local]")
         }
 
         val setChatTitle = SetChatTitle().apply {
             chatId = "logsChatId"
-            title = "tilly.log | queued: 0 [hui]"
+            title = "tilly.log | queued: 11 [hui]"
         }
 
         api.stub {
             onBlocking { executeSuspended(setChatTitle) }.thenReturn(true)
+            onBlocking { executeSuspended(getChatTitle) }.thenReturn(chat)
         }
 
         memesSchedulers.scheduleForChannel()
 
         verify(memeDao).scheduleMemes()
-        verifyBlocking(memeDao) { findAllByStatusOrderByCreated(MemeStatus.SCHEDULED) }
+        verify(instagramReelDao).scheduleReels()
+        verifyBlocking(api) { executeSuspended(getChatTitle) }
         verifyBlocking(api) { executeSuspended(setChatTitle) }
 
-        repeat((0..4).count()) {
+        repeat((0..9).count()) {
             val editMessageReplyMarkup = EditMessageReplyMarkup().apply {
                 chatId = "$it"
                 messageId = it
@@ -182,6 +234,6 @@ class MemesSchedulerTest {
 
             verifyBlocking(api) { executeSuspended(editMessageReplyMarkup) }
         }
-        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao)
+        verifyNoMoreInteractions(telegramUserDao, memeDao, api, memeLogDao, instagramReelDao)
     }
 }

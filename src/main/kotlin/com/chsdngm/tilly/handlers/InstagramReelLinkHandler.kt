@@ -20,6 +20,8 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -66,12 +68,16 @@ class InstagramReelLinkHandler(
             }
         }
 
-        val entity = instagramReelDao.insert(InstagramReel(
-            url = update.url,
-            status = InstagramReelStatus.PROCESSING,
-            senderId = update.user.id,
-            created = Instant.ofEpochMilli(update.createdAt)
-        ))
+        val reelEntity = instagramReelDao.insert(
+            InstagramReel(
+                url = update.url,
+                status = InstagramReelStatus.PROCESSING,
+                senderId = update.user.id,
+                created = Instant.ofEpochMilli(update.createdAt)
+            )
+        )
+
+        val replyMessageId = replyToSender(update).messageId
 
         val innerUrl = try {
             fetchInnerUrl(update.postId)
@@ -83,21 +89,23 @@ class InstagramReelLinkHandler(
                 parseMode = ParseMode.HTML
             }.let { method -> api.execute(method) }
 
-            instagramReelDao.update(entity.apply { status = InstagramReelStatus.FAILED })
+            instagramReelDao.update(reelEntity.apply { status = InstagramReelStatus.FAILED })
 
             return
         }
 
-        val message = moderateInstagramReelVideo(innerUrl, update, isFreshman)
-        val replyMessageId = replyToSender(update).messageId
+        updateReelStatusToModeration(update.user.id.toString(), replyMessageId)
+
+        val fileId = sendVideoToUser(innerUrl, update.user.id).video?.fileId
+        val messageInModerationChat = moderateInstagramReelVideo(fileId, update, isFreshman)
 
         instagramReelDao.update(
-            entity.copy(
+            reelEntity.copy(
                 status = InstagramReelStatus.MODERATION,
-                moderationChatId = message.chatId,
-                moderationChatMessageId = message.messageId,
+                moderationChatId = messageInModerationChat.chatId,
+                moderationChatMessageId = messageInModerationChat.messageId,
                 privateReplyMessageId = replyMessageId,
-                fileId = message.video?.fileId,
+                fileId = fileId,
             )
         )
     }
@@ -117,7 +125,7 @@ class InstagramReelLinkHandler(
         return ""
     }
 
-    private fun moderateInstagramReelVideo(innerUrl: String, update: InstagramReelsLinkUpdate, isFreshman: Boolean): Message {
+    private fun sendVideoToUser(innerUrl: String, userId: Long): Message {
         val file = File.createTempFile("video", "-$innerUrl").apply {
             deleteOnExit()
         }
@@ -125,12 +133,23 @@ class InstagramReelLinkHandler(
         FileUtils.copyURLToFile(URL(innerUrl), file)
 
         return SendVideo().apply {
-            chatId = properties.targetChatId
+            chatId = userId.toString()
             video = InputFile(file)
-            replyMarkup = createMarkup()
-            caption = resolveCaption(update) + if (isFreshman) "\n\n#freshman" else ""
+            parseMode = ParseMode.HTML
+            caption = """<a href="https://t.me/chsdngm">че с деньгами</a>"""
         }.let { api.execute(it) }
     }
+
+    private fun moderateInstagramReelVideo(
+        fileId: String?,
+        update: InstagramReelsLinkUpdate,
+        isFreshman: Boolean
+    ) = SendVideo().apply {
+        chatId = properties.targetChatId
+        video = InputFile(fileId)
+        replyMarkup = createMarkup()
+        caption = resolveCaption(update) + if (isFreshman) "\n\n#freshman" else ""
+    }.let { api.execute(it) }
 
     private fun fetchInnerUrl(postId: String): String {
         val uri = URIBuilder("https://www.instagram.com/graphql/query")
@@ -153,18 +172,27 @@ class InstagramReelLinkHandler(
         }
     }
 
-    private fun replyToSender(update: InstagramReelsLinkUpdate): Message = SendMessage().apply {
-        chatId = update.user.id.toString()
-        replyToMessageId = update.messageId
-        disableNotification = true
-        text = "рилс на модерации"
-    }.let { api.execute(it) }
+    private fun updateReelStatusToModeration(userId: String, replyMessageId: Int) {
+        EditMessageText().apply {
+            chatId = userId
+            messageId = replyMessageId
+            text = "рилс на модерации"
+        }.let { api.execute(it) }
+    }
+
+    private fun replyToSender(update: InstagramReelsLinkUpdate): Message =
+        SendMessage().apply {
+            chatId = update.user.id.toString()
+            replyToMessageId = update.messageId
+            disableNotification = true
+            text = "рилс на обработке"
+        }.let { api.execute(it) }
 
     override fun retrieveSubtype(update: Update): InstagramReelsLinkUpdate? {
         if (update.message?.chat?.isUserChat != true) return null
         if (!update.message.hasText()) return null
 
-        val postId = Regex("reel.?\\/([^\\/]+)").find(update.message.text)?.groupValues?.last() ?: return null
+        val postId = Regex("reel.?/([^/]+)").find(update.message.text)?.groupValues?.last() ?: return null
 
         return InstagramReelsLinkUpdate(
             url = update.message.text,

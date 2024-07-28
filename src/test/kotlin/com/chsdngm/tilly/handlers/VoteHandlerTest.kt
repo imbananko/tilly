@@ -11,6 +11,7 @@ import com.chsdngm.tilly.repository.MemeDao
 import com.chsdngm.tilly.repository.VoteDao
 import com.chsdngm.tilly.schedulers.ChannelMarkupUpdater
 import com.chsdngm.tilly.createMarkup
+import com.chsdngm.tilly.repository.InstagramReelDao
 import javassist.NotFoundException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -28,6 +29,7 @@ import java.time.Instant
 class VoteHandlerTest {
     private val memeDao = mock<MemeDao>()
     private val voteDao = mock<VoteDao>()
+    private val instagramReelDao = mock<InstagramReelDao>()
     private val metricsUtils = mock<MetricsUtils>()
     private val channelMarkupUpdater = mock<ChannelMarkupUpdater>()
     private val api = mock<TelegramApi>()
@@ -41,7 +43,7 @@ class VoteHandlerTest {
         777
     )
 
-    private val voteHandler = VoteHandler(memeDao, voteDao, metricsUtils, channelMarkupUpdater, api, telegramProperties)
+    private val voteHandler = VoteHandler(memeDao, instagramReelDao, voteDao, metricsUtils, channelMarkupUpdater, api, telegramProperties)
 
     @Test
     fun shouldSendNotificationWhenVotingTooOldMeme() {
