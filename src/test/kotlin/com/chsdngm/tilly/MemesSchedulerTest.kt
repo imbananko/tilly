@@ -211,7 +211,7 @@ class MemesSchedulerTest {
 
         val setChatTitle = SetChatTitle().apply {
             chatId = "logsChatId"
-            title = "tilly.log | queued: 11 [hui]"
+            title = "tilly.log | queued: ${memes.size + reels.size} [hui]"
         }
 
         api.stub {
@@ -223,7 +223,6 @@ class MemesSchedulerTest {
 
         verify(memeDao).scheduleMemes()
         verify(instagramReelDao).scheduleReels()
-        verifyBlocking(api) { executeSuspended(getChatTitle) }
         verifyBlocking(api) { executeSuspended(setChatTitle) }
 
         repeat((0..9).count()) {
