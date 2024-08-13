@@ -84,16 +84,11 @@ class MemesSchedulers(
     }
 
     private suspend fun decrementQueueSizeInTitle() {
-        val currentSize = getCurrentQueueSize()
+        val currentSize = getCurrentQueueSizeFromChatTitle()
         updateLogChannelTitle(currentSize - 1)
     }
 
-    private suspend fun incrementQueueSizeInTitle(size: Int) {
-        val currentSize = getCurrentQueueSize()
-        updateLogChannelTitle(currentSize + size)
-    }
-
-    private suspend fun getCurrentQueueSize(): Int {
+    private suspend fun getCurrentQueueSizeFromChatTitle(): Int {
         val title = GetChat().apply {
             chatId = telegramProperties.logsChatId
         }.let { method -> api.executeSuspended(method) }.title
@@ -298,7 +293,7 @@ class MemesSchedulers(
         val queueSize = memes.await() + reels.await()
 
         if (queueSize > 0) {
-            launch { incrementQueueSizeInTitle(memes.await() + reels.await()) }
+            launch { updateLogChannelTitle(queueSize) }
         }
     }
 
